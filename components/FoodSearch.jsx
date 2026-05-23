@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { searchFood, getCommonRestaurantItems } from '../services/foodLookup';
+import { searchFood, getCommonRestaurantItems } from '@/lib/foodLookup';
 import Loading from './Loading';
 
 export default function FoodSearch({ onSelectFood, onClose }) {

@@ -2,17 +2,114 @@
 
 A personal macro accountability ledger. Track protein, fat, and carbs against goal-based targets calculated from your stats using the Mifflin-St Jeor equation.
 
-Single Next.js 15 app deployed to Vercel, with Neon Postgres for persistence.
+Single Next.js 15 app deployed to Vercel, with Postgres for persistence.
 
-## Quick start (local)
+The DB driver (`postgres` package, porsager) speaks the standard Postgres wire protocol, so **the exact same code runs against either Neon (cloud) or a local Postgres install** — only the `DATABASE_URL` differs.
+
+## Setup
+
+Pick one of two paths. Both end with `npm run dev` on http://localhost:3000.
+
+### Option A — Neon (cloud DB, no local install)
+
+Best when you already have Neon set up via Vercel or want to share the DB across machines. Free tier is generous.
 
 ```bash
 git clone <your-repo-url> lean-ledger
 cd lean-ledger
-cp .env.example .env.local        # paste your Neon DATABASE_URL
 npm install
-npm run init-db                   # create/update schema
-npm run dev                       # http://localhost:3000
+cp .env.example .env.local
+```
+
+Then edit `.env.local` and paste your Neon connection string. To get one:
+
+1. `console.neon.tech` → your project → **Branches** → create a `dev` branch (instant, copy-on-write, keeps prod data clean)
+2. Click the `dev` branch → **Connection Details** → copy the URL (looks like `postgresql://neondb_owner:...@ep-...neon.tech/neondb?sslmode=require`)
+3. Paste into `.env.local` as `DATABASE_URL=…`
+
+```bash
+npm run init-db        # create schema on the dev branch
+npm run dev            # → http://localhost:3000
+```
+
+### Option B — Local Postgres (fully offline)
+
+Best when you want to hack offline or keep your DB entirely on your machine. Requires Homebrew on macOS.
+
+```bash
+git clone <your-repo-url> lean-ledger
+cd lean-ledger
+
+# Install Postgres 16 (one-time)
+brew bundle           # reads ./Brewfile → installs postgresql@16
+# (or directly: brew install postgresql@16)
+
+# Start the server (one-time; survives reboots)
+brew services start postgresql@16
+
+# Create the database (one-time)
+createdb lean_ledger
+
+# Set the connection string and initialize
+cp .env.example .env.local
+echo "DATABASE_URL=postgresql://localhost:5432/lean_ledger" >> .env.local
+npm install
+npm run init-db
+npm run dev            # → http://localhost:3000
+```
+
+Connecting to your local DB with `psql`:
+
+```bash
+psql lean_ledger        # interactive shell
+# Inside psql:  \dt     (list tables)  \q (quit)
+```
+
+To wipe and rebuild:
+
+```bash
+dropdb lean_ledger && createdb lean_ledger && npm run init-db
+```
+
+To stop the server when you're done:
+
+```bash
+brew services stop postgresql@16
+```
+
+## Common workflows (mixing local + Neon)
+
+Both setups use the same driver and code path — only `DATABASE_URL` differs. Swap `.env.local` to switch.
+
+### Offline (plane, café, etc.) — point at local Postgres
+
+```bash
+echo "DATABASE_URL=postgresql://localhost:5432/lean_ledger" > .env.local
+npm run dev
+```
+
+### Share data across machines — point at a Neon dev branch
+
+```bash
+# .env.local
+DATABASE_URL=postgresql://neondb_owner:...@ep-....neon.tech/neondb?sslmode=require
+```
+
+### Debug a prod issue with prod data — pull Neon's prod URL temporarily
+
+```bash
+vercel env pull .env.local        # pulls Neon prod URL from Vercel
+npm run dev                       # now reading prod data
+# When done, restore your dev URL or:
+rm .env.local                     # forces error until you set one again
+```
+
+⚠️ Be deliberate with this one. Local dev pointed at prod can write to prod. Use `psql` read-only or a Neon **read replica branch** if you need to be safe.
+
+### Confirm which DB you're connected to
+
+```bash
+psql "$(grep DATABASE_URL .env.local | cut -d= -f2-)" -c '\conninfo'
 ```
 
 ## Stack

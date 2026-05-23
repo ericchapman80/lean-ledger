@@ -4,8 +4,7 @@
 //   node scripts/init-db.mjs                  (reads DATABASE_URL from .env.local)
 //   DATABASE_URL=postgres://... node scripts/init-db.mjs
 
-import { neon } from '@neondatabase/serverless';
-import { readFile } from 'node:fs/promises';
+import postgres from 'postgres';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { config } from 'dotenv';
@@ -20,18 +19,11 @@ if (!process.env.DATABASE_URL) {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const schemaPath = join(__dirname, '..', 'lib', 'schema.sql');
-const schema = await readFile(schemaPath, 'utf8');
 
-const sql = neon(process.env.DATABASE_URL);
-
-const statements = schema
-  .split(/;\s*$/m)
-  .map((s) => s.trim())
-  .filter((s) => s && !s.startsWith('--'));
-
-for (const statement of statements) {
-  console.log(`→ ${statement.split('\n')[0].slice(0, 80)}...`);
-  await sql.query(statement);
+const sql = postgres(process.env.DATABASE_URL);
+try {
+  await sql.file(schemaPath);
+  console.log('✓ Schema initialized');
+} finally {
+  await sql.end();
 }
-
-console.log('✓ Schema initialized');

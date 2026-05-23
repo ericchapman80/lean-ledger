@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { calculatePortionMacros } from '../services/foodLookup';
+import { calculatePortionMacros } from '@/lib/foodLookup';
 
 export default function ProductLookup({ product, onAddToMeal, onBack }) {
   const [portion, setPortion] = useState(product.servingSize || 100);
