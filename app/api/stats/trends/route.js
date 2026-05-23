@@ -1,0 +1,34 @@
+import { NextResponse } from 'next/server';
+import { getCurrentUserId } from '@/lib/auth';
+import * as Meal from '@/lib/models/meal';
+
+export async function GET(request) {
+  const userId = await getCurrentUserId(request);
+  const { searchParams } = new URL(request.url);
+  const startDate = searchParams.get('startDate');
+  const endDate = searchParams.get('endDate');
+
+  if (!startDate || !endDate) {
+    return NextResponse.json({ error: 'Start date and end date are required' }, { status: 400 });
+  }
+
+  const meals = await Meal.findByUserAndDateRange(userId, startDate, endDate);
+
+  const byDate = meals.reduce((acc, m) => {
+    if (!acc[m.date]) {
+      acc[m.date] = { protein: 0, fat: 0, carbs: 0, calories: 0, mealCount: 0 };
+    }
+    acc[m.date].protein  += m.protein;
+    acc[m.date].fat      += m.fat;
+    acc[m.date].carbs    += m.carbs;
+    acc[m.date].calories += m.calories;
+    acc[m.date].mealCount += 1;
+    return acc;
+  }, {});
+
+  const trends = Object.entries(byDate)
+    .map(([date, stats]) => ({ date, ...stats }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  return NextResponse.json(trends);
+}
