@@ -47,6 +47,10 @@ brew bundle           # reads ./Brewfile → installs postgresql@16
 # Start the server (one-time; survives reboots)
 brew services start postgresql@16
 
+# Update the path and reload the .zshrc in the current terminal
+echo 'export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+
 # Create the database (one-time)
 createdb lean_ledger
 
