@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import postgres from 'postgres';
 import { config } from 'dotenv';
+import { getDatabaseUrl } from '../lib/dbUrl.js';
 
 config({ path: '.env.local' });
 config({ path: '.env' });
@@ -23,7 +24,7 @@ const projectRoot = join(__dirname, '..');
 const baselinePath = join(projectRoot, 'lib', 'schema.sql');
 const migrationsDir = join(projectRoot, 'db', 'migrations');
 
-const sql = postgres(process.env.DATABASE_URL);
+const sql = postgres(getDatabaseUrl(process.env));
 
 async function ensureMigrationTable() {
   await sql`
