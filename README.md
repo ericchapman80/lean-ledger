@@ -126,6 +126,7 @@ npm run init-db:preview
 ```
 
 Uses `.env.preview.local` and should point at a dedicated Neon preview branch or database.
+In practice, Preview env pulls usually work correctly through `vercel env pull`.
 
 ### Neon production
 
@@ -135,6 +136,7 @@ npm run init-db:prod
 ```
 
 Uses `.env.production.local` for careful local verification only. Do not point preview and production at the same Neon branch or database.
+If Production uses Vercel integration-managed Neon secrets, `vercel env pull` may create the file but leave values blank. In that case, create `.env.production.local` manually from Neon Connection Details instead of relying on CLI export.
 
 ### Vercel safety warning
 

@@ -65,6 +65,16 @@ To refresh a local preview env file from Vercel:
 vercel env pull .env.preview.local
 ```
 
+Preview env pulls typically work correctly through the Vercel CLI and are the recommended way to sync your local QA/preview file.
+
+Production can behave differently when the database is attached through a Vercel-managed Neon integration:
+
+- the Production env vars can be present and populated in the Vercel UI
+- Vercel runtime injection can still work correctly in hosted deploys
+- `vercel env pull` may still export blank values for those Production integration-managed secrets
+
+If that happens, build `.env.production.local` manually from Neon Connection Details instead of relying on CLI export.
+
 If you move deployment ownership to GitHub Actions, disable Vercel's automatic Git-based production deployment to avoid duplicate deploys.
 
 ## 3. One-Time Local Postgres -> Neon Production Migration
@@ -154,6 +164,19 @@ npm run init-db:local
 npm run init-db:preview
 npm run init-db:prod
 ```
+
+Recommended local env sync workflow:
+
+```bash
+vercel env pull .env.preview.local --environment=preview
+```
+
+And for production, if the CLI exports blank values:
+
+1. open Neon
+2. go to the production project or branch connection details
+3. copy the production connection string manually
+4. place it in `.env.production.local`
 
 Formal migration command:
 
