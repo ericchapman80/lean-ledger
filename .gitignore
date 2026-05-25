@@ -17,10 +17,14 @@ build/
 # Testing
 coverage/
 .nyc_output/
+playwright-report/
+test-results/
 
 # Environment (committed: .env.example only)
 .env
 .env.local
+.env.preview.local
+.env.production.local
 .env.*.local
 
 # Vercel

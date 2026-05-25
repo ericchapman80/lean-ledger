@@ -1,12 +1,75 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { profileApi } from '@/lib/api';
-import { getActivityLevelDescription, getGoalDescription } from '@/lib/utils/macroUtils';
+import {
+  getActivityLevelDescription,
+  getDietStyleDescription,
+  getGoalDescription,
+} from '@/lib/utils/macroUtils';
 import { cmToFeetInches, feetInchesToCm, kgToLbs, lbsToKg, formatHeight, formatWeight } from '@/lib/utils/unitUtils';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
+
+const LEAN_RECOMP_HELPER_TEXT = 'Lean Recomp prioritizes fat loss while preserving or building muscle. Focus on strength performance, waist trend, and weekly average weight instead of day-to-day scale swings.';
+const LEAN_RECOMP_PROTEIN_HELPER = 'If you are around 231 lbs and strength training, a typical Lean Recomp protein target lands around 180–220g per day.';
+
+function MacroSummaryCard({
+  title,
+  macros,
+  subtitle,
+  metadata,
+  badgeText,
+}) {
+  return (
+    <div className="card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '24px' }}>
+        <div>
+          <h2 style={{ margin: 0 }}>{title}</h2>
+          {subtitle && (
+            <p style={{ margin: '8px 0 0', fontSize: '14px', color: 'var(--text-secondary)' }}>{subtitle}</p>
+          )}
+        </div>
+        {badgeText && (
+          <span style={{
+            fontSize: '12px',
+            fontWeight: 600,
+            color: 'var(--primary-color)',
+            background: 'rgba(52, 152, 219, 0.08)',
+            border: '1px solid rgba(52, 152, 219, 0.18)',
+            borderRadius: '999px',
+            padding: '6px 10px',
+            whiteSpace: 'nowrap',
+          }}>
+            {badgeText}
+          </span>
+        )}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>Protein:</span><span style={{ fontWeight: 'bold' }}>{macros.protein}g</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>Carbs:</span><span style={{ fontWeight: 'bold' }}>{macros.carbs}g</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>Fat:</span><span style={{ fontWeight: 'bold' }}>{macros.fat}g</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '12px', borderTop: '2px solid var(--border-color)' }}>
+          <span style={{ fontWeight: 'bold' }}>Calories:</span>
+          <span style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>{macros.calories}</span>
+        </div>
+        {metadata && (
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+            {metadata}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function Profile() {
   const router = useRouter();
@@ -23,6 +86,7 @@ export default function Profile() {
     gender: 'male',
     activityLevel: 'moderate',
     goal: 'maintain',
+    dietStyle: 'balanced',
     units: 'imperial',
     useCustomMacros: false,
     customMacros: { protein: '', fat: '', carbs: '', calories: '' },
@@ -47,6 +111,7 @@ export default function Profile() {
           gender: data.gender,
           activityLevel: data.activityLevel,
           goal: data.goal,
+          dietStyle: data.dietStyle || 'balanced',
           units: units,
           useCustomMacros: !!data.customMacros,
           customMacros: data.customMacros || { protein: '', fat: '', carbs: '', calories: '' },
@@ -90,6 +155,7 @@ export default function Profile() {
         gender: formData.gender,
         activityLevel: formData.activityLevel,
         goal: formData.goal,
+        dietStyle: formData.dietStyle,
         units: formData.units,
         customMacros: formData.useCustomMacros ? {
           protein: parseFloat(formData.customMacros.protein),
@@ -200,10 +266,44 @@ export default function Profile() {
               <select value={formData.goal}
                 onChange={(e) => setFormData((p) => ({ ...p, goal: e.target.value }))}
                 className="form-select" required>
+                <option value="recomp">Lean Recomp: Lose Fat + Build Muscle (Recommended)</option>
                 <option value="lose">Weight Loss (500 cal deficit)</option>
                 <option value="maintain">Maintain Weight</option>
                 <option value="gain">Muscle Gain (300 cal surplus)</option>
               </select>
+              {formData.goal === 'recomp' && (
+                <div style={{
+                  marginTop: '12px',
+                  padding: '14px 16px',
+                  borderRadius: '12px',
+                  background: 'rgba(52, 152, 219, 0.08)',
+                  border: '1px solid rgba(52, 152, 219, 0.18)',
+                }}>
+                  <p style={{ margin: '0 0 6px', fontSize: '14px', color: 'var(--text-primary)' }}>
+                    {LEAN_RECOMP_HELPER_TEXT}
+                  </p>
+                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+                    {LEAN_RECOMP_PROTEIN_HELPER}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Diet Style</label>
+              <select value={formData.dietStyle}
+                onChange={(e) => setFormData((p) => ({ ...p, dietStyle: e.target.value }))}
+                className="form-select" required>
+                <option value="balanced">Balanced</option>
+                <option value="low_carb">Low Carb</option>
+                <option value="keto">Keto</option>
+                <option value="keto_flexible">Keto Weekdays / Flexible Weekends</option>
+              </select>
+              {formData.goal === 'recomp' && (
+                <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '8px' }}>
+                  Protein stays high, calories stay fixed to the goal, carbs adapt to your selected style, and fat fills the remainder.
+                </p>
+              )}
             </div>
 
             <h2 style={{ marginTop: '32px', marginBottom: '24px' }}>Macro Goals</h2>
@@ -300,55 +400,80 @@ export default function Profile() {
               <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '4px' }}>Goal</p>
               <p style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>{getGoalDescription(profile.goal)}</p>
             </div>
+            <div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '4px' }}>Diet Style</p>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>{getDietStyleDescription(profile.dietStyle)}</p>
+            </div>
+            {profile.goal === 'recomp' && (
+              <div style={{
+                padding: '14px 16px',
+                borderRadius: '12px',
+                background: 'rgba(52, 152, 219, 0.08)',
+                border: '1px solid rgba(52, 152, 219, 0.18)',
+              }}>
+                <p style={{ margin: '0 0 6px', fontSize: '14px', color: 'var(--text-primary)' }}>
+                  {LEAN_RECOMP_HELPER_TEXT}
+                </p>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  {LEAN_RECOMP_PROTEIN_HELPER}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       <div className="grid grid-2">
-        <div className="card">
-          <h2 style={{ marginBottom: '24px' }}>Recommended Macros</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Protein:</span><span style={{ fontWeight: 'bold' }}>{profile.recommendedMacros.protein}g</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Carbs:</span><span style={{ fontWeight: 'bold' }}>{profile.recommendedMacros.carbs}g</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Fat:</span><span style={{ fontWeight: 'bold' }}>{profile.recommendedMacros.fat}g</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '12px', borderTop: '2px solid var(--border-color)' }}>
-              <span style={{ fontWeight: 'bold' }}>Calories:</span>
-              <span style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>{profile.recommendedMacros.calories}</span>
-            </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
-              <p style={{ margin: 0 }}>BMR: {profile.recommendedMacros.bmr} kcal</p>
-              <p style={{ margin: 0 }}>TDEE: {profile.recommendedMacros.tdee} kcal</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="card">
-          <h2 style={{ marginBottom: '24px' }}>{profile.customMacros ? 'Custom Macros' : 'Active Macros'}</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Protein:</span><span style={{ fontWeight: 'bold' }}>{profile.activeMacros.protein}g</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Carbs:</span><span style={{ fontWeight: 'bold' }}>{profile.activeMacros.carbs}g</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Fat:</span><span style={{ fontWeight: 'bold' }}>{profile.activeMacros.fat}g</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '12px', borderTop: '2px solid var(--border-color)' }}>
-              <span style={{ fontWeight: 'bold' }}>Calories:</span>
-              <span style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>{profile.activeMacros.calories}</span>
-            </div>
-            {profile.customMacros && (
-              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>✓ Using custom targets</p>
+        {profile.hasMacroOverrides ? (
+          <>
+            <MacroSummaryCard
+              title="Recommended Targets"
+              subtitle="System recommendation based on your profile, goal, and diet style."
+              macros={profile.recommendedMacros}
+              metadata={(
+                <>
+                  <p style={{ margin: 0 }}>BMR: {profile.recommendedMacros.bmr} kcal</p>
+                  <p style={{ margin: 0 }}>TDEE: {profile.recommendedMacros.tdee} kcal</p>
+                  {profile.goal === 'recomp' && profile.recommendedMacros.deficit && (
+                    <p style={{ margin: 0 }}>Lean Recomp deficit: {profile.recommendedMacros.deficit} kcal</p>
+                  )}
+                </>
+              )}
+            />
+            <MacroSummaryCard
+              title="Active Targets"
+              subtitle="Your custom macro targets are currently active."
+              macros={profile.activeMacros}
+              badgeText="Custom"
+            />
+          </>
+        ) : (
+          <MacroSummaryCard
+            title="Macro Targets"
+            subtitle={profile.hasCustomMacros
+              ? 'Custom targets are enabled, but they currently match the system recommendation.'
+              : 'System recommendation based on your profile, goal, and diet style.'}
+            macros={profile.activeMacros}
+            badgeText={profile.hasCustomMacros ? 'Matches recommendation' : 'Recommended'}
+            metadata={(
+              <>
+                <p style={{ margin: 0 }}>BMR: {profile.recommendedMacros.bmr} kcal</p>
+                <p style={{ margin: 0 }}>TDEE: {profile.recommendedMacros.tdee} kcal</p>
+                {profile.goal === 'recomp' && profile.recommendedMacros.deficit && (
+                  <p style={{ margin: 0 }}>Lean Recomp deficit: {profile.recommendedMacros.deficit} kcal</p>
+                )}
+              </>
             )}
-          </div>
-        </div>
+          />
+        )}
+      </div>
+
+      <div className="card">
+        <h2 style={{ marginBottom: '12px' }}>Advanced Health Metrics</h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '16px', maxWidth: '680px' }}>
+          Optional only. Use this if you want to import smart-scale or body-composition data without changing the core Lean Recomp workflow.
+        </p>
+        <Link href="/health" className="btn btn-outline">Open Advanced Health</Link>
       </div>
     </div>
   );

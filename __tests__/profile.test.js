@@ -4,7 +4,7 @@ import { enrichProfile, validateProfilePayload } from '@/lib/profile.js';
 describe('validateProfilePayload', () => {
   const valid = {
     age: 30, height: 175, weight: 75,
-    gender: 'male', activityLevel: 'moderate', goal: 'maintain',
+    gender: 'male', activityLevel: 'moderate', goal: 'maintain', dietStyle: 'balanced',
   };
 
   it('returns null for a valid payload', () => {
@@ -39,6 +39,11 @@ describe('validateProfilePayload', () => {
       .toBe('Invalid units');
   });
 
+  it('rejects an invalid diet style', () => {
+    expect(validateProfilePayload({ ...valid, dietStyle: 'see-food' }))
+      .toBe('Invalid diet style');
+  });
+
   it('accepts a payload with no units field', () => {
     expect(validateProfilePayload(valid)).toBeNull();
   });
@@ -49,6 +54,7 @@ describe('enrichProfile', () => {
     id: 1,
     age: 30, height: 175, weight: 75,
     gender: 'male', activityLevel: 'moderate', goal: 'maintain',
+    dietStyle: 'balanced',
     units: 'metric',
     customMacros: null,
   };
@@ -57,6 +63,7 @@ describe('enrichProfile', () => {
     const result = enrichProfile(user);
     expect(result.recommendedMacros).toHaveProperty('bmr');
     expect(result.recommendedMacros).toHaveProperty('protein');
+    expect(result.recommendedMacros.dietStyle).toBe('balanced');
     expect(result.activeMacros).toHaveProperty('protein');
   });
 
@@ -64,11 +71,34 @@ describe('enrichProfile', () => {
     const customed = { ...user, customMacros: { protein: 200, fat: 70, carbs: 250, calories: 2400 } };
     const result = enrichProfile(customed);
     expect(result.activeMacros).toEqual(customed.customMacros);
+    expect(result.hasCustomMacros).toBe(true);
+    expect(result.hasMacroOverrides).toBe(true);
+    expect(result.macrosMatchRecommendation).toBe(false);
   });
 
   it('falls back to recommendedMacros when customMacros is null', () => {
     const result = enrichProfile(user);
     expect(result.activeMacros.protein).toBe(result.recommendedMacros.protein);
     expect(result.activeMacros.calories).toBe(result.recommendedMacros.calories);
+    expect(result.hasCustomMacros).toBe(false);
+    expect(result.hasMacroOverrides).toBe(false);
+    expect(result.macrosMatchRecommendation).toBe(true);
+  });
+
+  it('treats matching customMacros as non-overrides', () => {
+    const baseline = enrichProfile(user);
+    const matching = enrichProfile({
+      ...user,
+      customMacros: {
+        protein: baseline.recommendedMacros.protein,
+        fat: baseline.recommendedMacros.fat,
+        carbs: baseline.recommendedMacros.carbs,
+        calories: baseline.recommendedMacros.calories,
+      },
+    });
+
+    expect(matching.hasCustomMacros).toBe(true);
+    expect(matching.hasMacroOverrides).toBe(false);
+    expect(matching.macrosMatchRecommendation).toBe(true);
   });
 });

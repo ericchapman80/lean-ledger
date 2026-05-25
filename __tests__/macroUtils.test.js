@@ -4,6 +4,7 @@ import {
   getProgressColor,
   formatMacroValue,
   getActivityLevelDescription,
+  getDietStyleDescription,
   getGoalDescription,
 } from '@/lib/utils/macroUtils.js';
 
@@ -48,5 +49,13 @@ describe('getGoalDescription', () => {
   it('returns human-readable goals', () => {
     expect(getGoalDescription('lose')).toBe('Weight Loss');
     expect(getGoalDescription('gain')).toBe('Muscle Gain');
+    expect(getGoalDescription('recomp')).toBe('Lean Recomp');
+  });
+});
+
+describe('getDietStyleDescription', () => {
+  it('returns human-readable diet styles', () => {
+    expect(getDietStyleDescription('low_carb')).toBe('Low Carb');
+    expect(getDietStyleDescription('keto_flexible')).toBe('Keto Weekdays / Flexible Weekends');
   });
 });

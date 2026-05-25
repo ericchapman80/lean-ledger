@@ -5,6 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { weightApi, profileApi } from '@/lib/api';
 import { getTodayDate, formatDisplayDate } from '@/lib/utils/dateUtils';
 import { kgToLbs, lbsToKg, formatWeight } from '@/lib/utils/unitUtils';
+import { getGoalDescription } from '@/lib/utils/macroUtils';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 
@@ -113,11 +114,7 @@ export default function Weight() {
               )}
               <div>
                 <p style={{ color: 'var(--text-secondary)', marginBottom: '8px' }}>Goal</p>
-                <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>
-                  {profile.goal === 'lose' && '📉 Weight Loss'}
-                  {profile.goal === 'maintain' && '⚖️ Maintain'}
-                  {profile.goal === 'gain' && '📈 Muscle Gain'}
-                </p>
+                <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{getGoalDescription(profile.goal)}</p>
               </div>
             </div>
           )}

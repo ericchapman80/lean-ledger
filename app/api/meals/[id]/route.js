@@ -8,13 +8,27 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ error: 'Meal not found' }, { status: 404 });
   }
 
-  const { mealName, protein, fat, carbs, calories } = await request.json();
+  const {
+    mealName,
+    mealType = existing.mealType || 'breakfast',
+    portionAmount = existing.portionAmount,
+    portionUnit = existing.portionUnit,
+    portionGrams = existing.portionGrams,
+    protein,
+    fat,
+    carbs,
+    calories,
+  } = await request.json();
   if (!mealName || protein == null || fat == null || carbs == null || calories == null) {
     return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
   }
 
   const meal = await Meal.update(id, {
     mealName,
+    mealType,
+    portionAmount: portionAmount == null || portionAmount === '' ? null : Number(portionAmount),
+    portionUnit: portionUnit || null,
+    portionGrams: portionGrams == null || portionGrams === '' ? null : Number(portionGrams),
     protein: Number(protein),
     fat: Number(fat),
     carbs: Number(carbs),

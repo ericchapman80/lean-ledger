@@ -1,0 +1,122 @@
+name: Rollback Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_ref:
+        description: Git ref to redeploy
+        required: true
+        default: main
+      restore_database:
+        description: Restore production database before redeploy
+        required: true
+        default: false
+        type: boolean
+      backup_run_id:
+        description: Actions run ID that contains the backup artifact
+        required: false
+      backup_artifact_name:
+        description: Backup artifact name, for example lean-ledger-prod-20260524T051700Z.dump
+        required: false
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Pull Vercel production environment
+        run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Download requested backup artifact
+        if: ${{ inputs.restore_database }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if [ -z "${{ inputs.backup_run_id }}" ] || [ -z "${{ inputs.backup_artifact_name }}" ]; then
+            echo "backup_run_id and backup_artifact_name are required when restore_database=true"
+            exit 1
+          fi
+          mkdir -p restore-artifact
+          gh run download "${{ inputs.backup_run_id }}" \
+            --name "${{ inputs.backup_artifact_name }}" \
+            --dir restore-artifact
+
+      - name: Restore production database
+        if: ${{ inputs.restore_database }}
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: npm run db:restore -- "restore-artifact/${{ inputs.backup_artifact_name }}"
+
+      - name: Run migrations after restore
+        shell: bash
+        run: |
+          set -a
+          source .vercel/.env.production.local
+          set +a
+          npm run migrate-db
+
+      - name: Build rollback deployment
+        run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Redeploy requested ref to production
+        id: deploy
+        shell: bash
+        run: |
+          url=$(npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} | tail -n 1)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Rollback deployment: $url" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Resolve verification URL
+        id: target
+        shell: bash
+        run: |
+          url="${{ vars.PRODUCTION_BASE_URL }}"
+          if [ -z "$url" ]; then
+            url="${{ steps.deploy.outputs.url }}"
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Rollback verification URL: $url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Post-rollback smoke test
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ steps.target.outputs.url }}
+        run: npm run smoke -- "${PLAYWRIGHT_BASE_URL}" --read-only
+
+      - name: Post-rollback browser checks
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ steps.target.outputs.url }}
+        run: npm run test:e2e

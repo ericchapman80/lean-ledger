@@ -38,7 +38,7 @@ export default function Header() {
 
           <ul className={menuOpen ? 'nav-open' : ''}>
             <li><Link href="/" className={isActive('/')} onClick={closeMenu}>Dashboard</Link></li>
-            <li><Link href="/meals" className={isActive('/meals')} onClick={closeMenu}>Meals</Link></li>
+            <li><Link href="/meals" className={isActive('/meals')} onClick={closeMenu}>Intake</Link></li>
             <li><Link href="/weight" className={isActive('/weight')} onClick={closeMenu}>Weight</Link></li>
             <li><Link href="/trends" className={isActive('/trends')} onClick={closeMenu}>Trends</Link></li>
             <li><Link href="/profile" className={isActive('/profile')} onClick={closeMenu}>Profile</Link></li>
