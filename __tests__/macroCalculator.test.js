@@ -82,4 +82,31 @@ describe('getRecommendedMacros (orchestrator)', () => {
     expect(result).toHaveProperty('calories');
     expect(result.calories).toBe(result.tdee);
   });
+
+  it('calculates a Lean Recomp target with a dynamic deficit and high protein', () => {
+    const result = getRecommendedMacros(35, 180, 104.8, 'male', 'moderate', 'recomp', 'keto');
+    expect(result.deficit).toBeGreaterThanOrEqual(300);
+    expect(result.deficit).toBeLessThanOrEqual(500);
+    expect(result.calories).toBe(result.tdee - result.deficit);
+    expect(result.protein).toBeGreaterThanOrEqual(180);
+    expect(result.protein).toBeLessThanOrEqual(220);
+    expect(result.carbs).toBeGreaterThanOrEqual(20);
+    expect(result.carbs).toBeLessThanOrEqual(50);
+  });
+
+  it('uses flexible weekend carbs for keto flexible Lean Recomp', () => {
+    const result = getRecommendedMacros(
+      35,
+      180,
+      95,
+      'male',
+      'active',
+      'recomp',
+      'keto_flexible',
+      { date: '2026-05-24' },
+    );
+    expect(result.carbs).toBeGreaterThanOrEqual(100);
+    expect(result.carbs).toBeLessThanOrEqual(175);
+    expect(result.protein * 4 + result.carbs * 4 + result.fat * 9).toBeGreaterThanOrEqual(result.calories - 9);
+  });
 });

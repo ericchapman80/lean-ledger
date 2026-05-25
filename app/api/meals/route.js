@@ -21,7 +21,18 @@ export async function GET(request) {
 
 export async function POST(request) {
   const userId = await getCurrentUserId(request);
-  const { date, mealName, protein, fat, carbs, calories } = await request.json();
+  const {
+    date,
+    mealName,
+    mealType = 'breakfast',
+    portionAmount = null,
+    portionUnit = null,
+    portionGrams = null,
+    protein,
+    fat,
+    carbs,
+    calories,
+  } = await request.json();
 
   if (!date || !mealName || protein == null || fat == null || carbs == null || calories == null) {
     return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
@@ -31,6 +42,10 @@ export async function POST(request) {
     userId,
     date,
     mealName,
+    mealType,
+    portionAmount: portionAmount == null || portionAmount === '' ? null : Number(portionAmount),
+    portionUnit: portionUnit || null,
+    portionGrams: portionGrams == null || portionGrams === '' ? null : Number(portionGrams),
     protein: Number(protein),
     fat: Number(fat),
     carbs: Number(carbs),

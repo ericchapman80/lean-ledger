@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
 import * as User from '@/lib/models/user';
 import * as Meal from '@/lib/models/meal';
+import * as Beverage from '@/lib/models/beverageEntry';
 import { enrichProfile } from '@/lib/profile';
+import { calculateBeverageNutritionTotals } from '@/lib/beverages';
+import { summarizeMealLog } from '@/lib/mealTemplates';
 
 export async function GET(request, { params }) {
   const userId = await getCurrentUserId(request);
@@ -13,6 +16,7 @@ export async function GET(request, { params }) {
 
   const { date } = await params;
   const meals = await Meal.findByUserAndDate(userId, date);
+  const beverages = await Beverage.findByUserAndDate(userId, date);
 
   const totals = meals.reduce((acc, m) => ({
     protein: acc.protein + m.protein,
@@ -20,6 +24,13 @@ export async function GET(request, { params }) {
     carbs: acc.carbs + m.carbs,
     calories: acc.calories + m.calories,
   }), { protein: 0, fat: 0, carbs: 0, calories: 0 });
+
+  const beverageTotals = calculateBeverageNutritionTotals(beverages);
+
+  totals.protein += beverageTotals.protein;
+  totals.fat += beverageTotals.fat;
+  totals.carbs += beverageTotals.carbs;
+  totals.calories += beverageTotals.calories;
 
   const { activeMacros: targets } = enrichProfile(user);
 
@@ -30,5 +41,17 @@ export async function GET(request, { params }) {
     calories: targets.calories > 0 ? (totals.calories / targets.calories) * 100 : 0,
   };
 
-  return NextResponse.json({ date, meals, totals, targets, progress, mealCount: meals.length });
+  const mealSummary = summarizeMealLog(meals);
+
+  return NextResponse.json({
+    date,
+    meals,
+    totals,
+    targets,
+    progress,
+    mealCount: mealSummary.mealCount,
+    foodEntryCount: mealSummary.foodEntryCount,
+    mealTypes: mealSummary.mealTypes,
+    beverageCount: beverages.length,
+  });
 }

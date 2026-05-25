@@ -263,6 +263,10 @@ header nav h2 {
   background-color: var(--warning-color);
 }
 
+.progress-bar-fill.info {
+  background-color: var(--secondary-color);
+}
+
 .progress-bar-fill.danger {
   background-color: var(--danger-color);
 }

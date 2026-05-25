@@ -1,42 +1,114 @@
 import { useState, useRef, useEffect } from 'react';
+import { getCameraEnvironmentDetails, getCameraErrorDetails } from '@/lib/barcodeScanner';
 
-export default function BarcodeScanner({ onScanSuccess, onClose }) {
+export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, onAddManual }) {
   const [scanning, setScanning] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [ready, setReady] = useState(false);
   const [error, setError] = useState(null);
+  const [cameraHelp, setCameraHelp] = useState(null);
   const [manualEntry, setManualEntry] = useState('');
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const insecureContext = typeof window !== 'undefined' ? !window.isSecureContext : false;
+
+  const stopCamera = () => {
+    if (videoRef.current) {
+      videoRef.current.pause?.();
+      videoRef.current.srcObject = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setScanning(false);
+    setReady(false);
+  };
 
   useEffect(() => {
+    const handlePageHide = () => stopCamera();
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopCamera();
+      }
+    };
+
+    window.addEventListener('pagehide', handlePageHide);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
+      window.removeEventListener('pagehide', handlePageHide);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       stopCamera();
     };
   }, []);
 
+  useEffect(() => {
+    const attachStream = async () => {
+      if (!scanning || !videoRef.current || !streamRef.current) return;
+
+      try {
+        videoRef.current.srcObject = streamRef.current;
+        videoRef.current.muted = true;
+        await videoRef.current.play();
+        setCameraHelp(null);
+        setReady(true);
+      } catch (err) {
+        console.error('Video preview error:', err);
+        setError('Camera started, but the preview could not be displayed. Try again or enter the barcode manually.');
+      }
+    };
+
+    attachStream();
+  }, [scanning]);
+
   const startCamera = async () => {
     try {
+      setStarting(true);
       setError(null);
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' } // Use back camera on mobile
+      setCameraHelp(null);
+      stopCamera();
+
+      const environmentDetails = getCameraEnvironmentDetails({
+        isSecureContext: window.isSecureContext,
+        hasMediaDevices: Boolean(navigator.mediaDevices),
+        hasGetUserMedia: Boolean(navigator.mediaDevices?.getUserMedia),
       });
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-        setScanning(true);
+
+      if (environmentDetails) {
+        setCameraHelp(environmentDetails);
+        setError(environmentDetails.message);
+        return;
       }
+
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
+
+      streamRef.current = stream;
+      setScanning(true);
     } catch (err) {
-      setError('Camera access denied. Please enable camera permissions or enter barcode manually.');
+      const details = getCameraErrorDetails(err);
+      setCameraHelp(details);
+      setError(details.message);
       console.error('Camera error:', err);
+    } finally {
+      setStarting(false);
     }
   };
 
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    setScanning(false);
+  const handleClose = () => {
+    stopCamera();
+    onClose();
   };
 
   const handleManualSubmit = (e) => {
@@ -47,11 +119,41 @@ export default function BarcodeScanner({ onScanSuccess, onClose }) {
     }
   };
 
+  const handleOpenSettings = () => {
+    try {
+      window.location.href = 'app-settings:';
+    } catch {
+      // Best effort only; fallback instructions remain visible.
+    }
+  };
+
   const captureBarcode = async () => {
-    if (!videoRef.current) return;
+    if (!videoRef.current || !ready || !videoRef.current.videoWidth || !videoRef.current.videoHeight) {
+      setError('Camera preview is not ready yet. Wait a moment and try again.');
+      return;
+    }
+
+    setError(null);
+    const video = videoRef.current;
+
+    if ('BarcodeDetector' in window) {
+      try {
+        const barcodeDetector = new window.BarcodeDetector({
+          formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'],
+        });
+
+        const directDetections = await barcodeDetector.detect(video);
+        if (directDetections.length > 0) {
+          stopCamera();
+          onScanSuccess(directDetections[0].rawValue);
+          return;
+        }
+      } catch (err) {
+        console.error('Direct video barcode detection failed:', err);
+      }
+    }
 
     const canvas = document.createElement('canvas');
-    const video = videoRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext('2d');
@@ -61,7 +163,7 @@ export default function BarcodeScanner({ onScanSuccess, onClose }) {
     if ('BarcodeDetector' in window) {
       try {
         const barcodeDetector = new window.BarcodeDetector({
-          formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e']
+          formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39']
         });
         const barcodes = await barcodeDetector.detect(canvas);
         
@@ -69,7 +171,7 @@ export default function BarcodeScanner({ onScanSuccess, onClose }) {
           stopCamera();
           onScanSuccess(barcodes[0].rawValue);
         } else {
-          setError('No barcode detected. Try again or enter manually.');
+          setError('No barcode detected. Move closer, improve lighting, keep the barcode flat and centered, then try again.');
         }
       } catch (err) {
         setError('Barcode detection failed. Please enter manually.');
@@ -86,6 +188,14 @@ export default function BarcodeScanner({ onScanSuccess, onClose }) {
         <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
           Scan the barcode to automatically lookup nutritional information
         </p>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginTop: '8px' }}>
+          Best results: use bright light, hold the barcode flat, and fill the center of the frame.
+        </p>
+        {insecureContext ? (
+          <p style={{ color: 'var(--danger-color)', fontSize: '13px', marginTop: '8px' }}>
+            Camera scanning requires HTTPS on mobile browsers.
+          </p>
+        ) : null}
       </div>
 
       {error && (
@@ -101,15 +211,58 @@ export default function BarcodeScanner({ onScanSuccess, onClose }) {
         </div>
       )}
 
+      {cameraHelp && (
+        <div style={{
+          padding: '14px',
+          backgroundColor: '#fff8e1',
+          border: '1px solid #f2d38a',
+          borderRadius: '8px',
+          marginBottom: '16px',
+        }}>
+          <p style={{ margin: '0 0 8px', fontWeight: 700 }}>{cameraHelp.title}</p>
+          <div style={{ display: 'grid', gap: '6px', color: 'var(--text-secondary)', fontSize: '14px' }}>
+            {cameraHelp.steps.map((step) => (
+              <p key={step} style={{ margin: 0 }}>{step}</p>
+            ))}
+            <p style={{ margin: '4px 0 0', fontSize: '13px' }}>
+              “Try Open Settings” is best-effort only and may not work on every iPhone browser.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
+            {cameraHelp.canRetry ? (
+              <button onClick={startCamera} className="btn btn-primary" type="button" disabled={starting}>
+                {starting ? 'Retrying...' : 'Retry Camera'}
+              </button>
+            ) : null}
+            <button onClick={handleOpenSettings} className="btn btn-outline" type="button">
+              Try Open Settings
+            </button>
+          </div>
+        </div>
+      )}
+
       {!scanning ? (
         <div>
           <button
             onClick={startCamera}
             className="btn btn-primary"
             style={{ width: '100%', marginBottom: '16px' }}
+            disabled={starting}
           >
-            📷 Start Camera Scanner
+            {starting ? 'Starting Camera...' : '📷 Start Camera Scanner'}
           </button>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+            {onSearchFood ? (
+              <button type="button" onClick={onSearchFood} className="btn btn-outline" style={{ flex: '1 1 160px' }}>
+                Search Food
+              </button>
+            ) : null}
+            {onAddManual ? (
+              <button type="button" onClick={onAddManual} className="btn btn-outline" style={{ flex: '1 1 160px' }}>
+                Add Food Manually
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : (
         <div style={{ marginBottom: '16px' }}>
@@ -117,6 +270,7 @@ export default function BarcodeScanner({ onScanSuccess, onClose }) {
             ref={videoRef}
             autoPlay
             playsInline
+            onLoadedMetadata={() => setReady(true)}
             style={{
               width: '100%',
               maxHeight: '300px',
@@ -125,11 +279,15 @@ export default function BarcodeScanner({ onScanSuccess, onClose }) {
               marginBottom: '12px'
             }}
           />
+          <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '12px' }}>
+            {ready ? 'Camera ready. Center the barcode, then capture.' : 'Starting camera preview...'}
+          </p>
           <div style={{ display: 'flex', gap: '12px' }}>
             <button
               onClick={captureBarcode}
               className="btn btn-primary"
               style={{ flex: 1 }}
+              disabled={!ready}
             >
               📸 Capture Barcode
             </button>
@@ -174,7 +332,7 @@ export default function BarcodeScanner({ onScanSuccess, onClose }) {
       </div>
 
       <button
-        onClick={onClose}
+        onClick={handleClose}
         className="btn btn-outline"
         style={{ width: '100%', marginTop: '16px' }}
       >

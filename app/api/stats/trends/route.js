@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
 import * as Meal from '@/lib/models/meal';
+import * as Beverage from '@/lib/models/beverageEntry';
+import { calculateBeverageNutritionTotals } from '@/lib/beverages';
 
 export async function GET(request) {
   const userId = await getCurrentUserId(request);
@@ -13,6 +15,7 @@ export async function GET(request) {
   }
 
   const meals = await Meal.findByUserAndDateRange(userId, startDate, endDate);
+  const beverages = await Beverage.findByUserAndDateRange(userId, startDate, endDate);
 
   const byDate = meals.reduce((acc, m) => {
     if (!acc[m.date]) {
@@ -25,6 +28,17 @@ export async function GET(request) {
     acc[m.date].mealCount += 1;
     return acc;
   }, {});
+
+  for (const beverage of beverages) {
+    if (!byDate[beverage.date]) {
+      byDate[beverage.date] = { protein: 0, fat: 0, carbs: 0, calories: 0, mealCount: 0 };
+    }
+    const beverageTotals = calculateBeverageNutritionTotals([beverage]);
+    byDate[beverage.date].protein += beverageTotals.protein;
+    byDate[beverage.date].fat += beverageTotals.fat;
+    byDate[beverage.date].carbs += beverageTotals.carbs;
+    byDate[beverage.date].calories += beverageTotals.calories;
+  }
 
   const trends = Object.entries(byDate)
     .map(([date, stats]) => ({ date, ...stats }))

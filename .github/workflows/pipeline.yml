@@ -1,0 +1,300 @@
+name: Pipeline
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pipeline-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: lean_ledger
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d lean_ledger"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      CI: true
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lean_ledger
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run migrate-db
+
+      - run: npm run test:coverage
+
+      - run: npm run build
+
+      - run: npm audit --audit-level=high
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage
+          retention-days: 14
+
+  local-functional:
+    needs: validate
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: lean_ledger
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d lean_ledger"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      CI: true
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lean_ledger
+      PLAYWRIGHT_ALLOW_MUTATION: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run migrate-db
+
+      - run: npx playwright install --with-deps chromium
+
+      - run: npm run build
+
+      - name: Start app
+        run: npm run start -- --hostname 127.0.0.1 > /tmp/lean-ledger.log 2>&1 &
+
+      - name: Wait for app
+        shell: bash
+        run: |
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/api/health >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "App failed to start"
+          cat /tmp/lean-ledger.log
+          exit 1
+
+      - run: npm run smoke -- http://127.0.0.1:3000
+
+      - run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: local-functional-logs
+          path: |
+            /tmp/lean-ledger.log
+            playwright-report
+            test-results
+          retention-days: 7
+
+  deploy-preview:
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft
+    needs: [validate, local-functional]
+    runs-on: ubuntu-latest
+    outputs:
+      deployment-url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Pull Vercel preview environment
+        run: npx vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Migrate preview database
+        shell: bash
+        run: |
+          set -a
+          source .vercel/.env.preview.local
+          set +a
+          npm run migrate-db
+
+      - name: Build preview deployment
+        run: npx vercel build --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy preview
+        id: deploy
+        shell: bash
+        run: |
+          url=$(npx vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} | tail -n 1)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Preview deployment: $url" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+  preview-post-deploy:
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft
+    needs: deploy-preview
+    runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_BASE_URL: ${{ needs.deploy-preview.outputs.deployment-url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      - run: npm run smoke -- "${PLAYWRIGHT_BASE_URL}" --read-only
+
+      - run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: preview-post-deploy-results
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
+  deploy-production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [validate, local-functional]
+    runs-on: ubuntu-latest
+    environment: production
+    outputs:
+      deployment-url: ${{ steps.deploy.outputs.url }}
+      target-url: ${{ steps.target.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Pull Vercel production environment
+        run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Migrate production database
+        shell: bash
+        run: |
+          set -a
+          source .vercel/.env.production.local
+          set +a
+          npm run migrate-db
+
+      - name: Build production deployment
+        run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy production
+        id: deploy
+        shell: bash
+        run: |
+          url=$(npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} | tail -n 1)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Production deployment: $url" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Resolve production test URL
+        id: target
+        shell: bash
+        run: |
+          url="${{ vars.PRODUCTION_BASE_URL }}"
+          if [ -z "$url" ]; then
+            url="${{ steps.deploy.outputs.url }}"
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Production verification URL: $url" >> "$GITHUB_STEP_SUMMARY"
+
+  production-post-deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      PLAYWRIGHT_BASE_URL: ${{ needs.deploy-production.outputs.target-url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      - run: npm run smoke -- "${PLAYWRIGHT_BASE_URL}" --read-only
+
+      - run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: production-post-deploy-results
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
