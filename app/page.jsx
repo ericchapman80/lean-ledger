@@ -27,7 +27,7 @@ const DEFAULT_CHECKIN_TIME = '20:00';
 
 function getEmptyCheckIn(date, metric = null, units = 'metric') {
   return {
-    recordedAt: metric?.recordedAt || `${date}T${DEFAULT_CHECKIN_TIME}`,
+    recordedAt: metric?.recordedAt || (date ? `${date}T${DEFAULT_CHECKIN_TIME}` : ''),
     waistMeasurement: metric?.waistMeasurement != null
       ? String(getHealthMetricDisplayValue('waistMeasurement', metric.waistMeasurement, units))
       : '',
@@ -69,13 +69,14 @@ function countLoggedSignals(checkIn) {
 }
 
 export default function Dashboard() {
+  const initialDate = typeof window === 'undefined' ? '' : getTodayDate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
   const [profile, setProfile] = useState(null);
   const [weeklyStats, setWeeklyStats] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(getTodayDate());
-  const [checkIn, setCheckIn] = useState(getEmptyCheckIn(getTodayDate()));
+  const [selectedDate, setSelectedDate] = useState(initialDate);
+  const [checkIn, setCheckIn] = useState(getEmptyCheckIn(initialDate));
   const [beverageEntries, setBeverageEntries] = useState([]);
   const [checkInSavedAt, setCheckInSavedAt] = useState(null);
   const [savingCheckIn, setSavingCheckIn] = useState(false);
@@ -106,6 +107,13 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    if (!selectedDate) {
+      setSelectedDate(getTodayDate());
+    }
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (!selectedDate) return;
     fetchData();
   }, [selectedDate]);
 

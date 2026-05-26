@@ -120,6 +120,18 @@ describe('unit-aware health metric helpers', () => {
     expect(normalized.waistMeasurement).toBeCloseTo(32, 1);
   });
 
+  it('keeps the local date key for late-night health metric entries near a UTC boundary', () => {
+    const normalized = normalizeHealthMetricEntry({
+      recordedAt: '2026-05-25T22:16',
+      weight: 180,
+    }, {
+      units: 'imperial',
+      inputMode: 'display',
+    });
+
+    expect(normalized.date).toBe('2026-05-25');
+  });
+
   it('normalizes metric waist display values into canonical stored inches', () => {
     const normalized = normalizeHealthMetricEntry({
       recordedAt: '2026-05-24T20:00',
