@@ -114,6 +114,7 @@ function InlineActionButton({ children, onClick, danger = false }) {
 }
 
 export default function Meals() {
+  const initialDate = typeof window === 'undefined' ? '' : getTodayDate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -121,7 +122,7 @@ export default function Meals() {
   const [recentMeals, setRecentMeals] = useState([]);
   const [favoriteMeals, setFavoriteMeals] = useState([]);
   const [beverageEntries, setBeverageEntries] = useState([]);
-  const [selectedDate, setSelectedDate] = useState(getTodayDate());
+  const [selectedDate, setSelectedDate] = useState(initialDate);
   const [selectedMealType, setSelectedMealType] = useState('breakfast');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -134,7 +135,7 @@ export default function Meals() {
   const [formData, setFormData] = useState(getEmptyFormData());
   const [mealMacroSnapshot, setMealMacroSnapshot] = useState(null);
   const [manualMacroOverride, setManualMacroOverride] = useState(false);
-  const [beverageForm, setBeverageForm] = useState(getDefaultBeverageForm(getTodayDate()));
+  const [beverageForm, setBeverageForm] = useState(getDefaultBeverageForm(initialDate || ''));
   const [editingBeverage, setEditingBeverage] = useState(null);
   const [beverageEditorOpen, setBeverageEditorOpen] = useState(false);
   const [savingBeverage, setSavingBeverage] = useState(false);
@@ -168,6 +169,13 @@ export default function Meals() {
   };
 
   useEffect(() => {
+    if (!selectedDate) {
+      setSelectedDate(getTodayDate());
+    }
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (!selectedDate) return;
     fetchMeals();
   }, [selectedDate]);
 

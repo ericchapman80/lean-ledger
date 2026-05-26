@@ -67,6 +67,17 @@ describe('water helpers', () => {
     expect(result.caffeineMg).toBe(75);
   });
 
+  it('keeps the local date key for late-night beverage entries near a UTC boundary', () => {
+    const result = normalizeBeverageEntryInput({
+      amount: 16,
+      unit: 'fl_oz',
+      recordedAt: '2026-05-25T22:16',
+      beverageType: 'water',
+    });
+
+    expect(result.date).toBe('2026-05-25');
+  });
+
   it('aggregates daily totals and computes adherence summaries', () => {
     const entries = [
       { beverageType: 'water', countsTowardHydration: true, amountFlOz: 16, date: '2026-05-25', calories: 0, protein: 0, carbs: 0, fat: 0 },

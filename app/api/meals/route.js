@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
 import * as Meal from '@/lib/models/meal';
+import { getRequestLocalDate } from '@/lib/utils/dateUtils';
 
 export async function GET(request) {
   const userId = await getCurrentUserId(request);
@@ -13,7 +14,7 @@ export async function GET(request) {
   if (startDate && endDate) {
     meals = await Meal.findByUserAndDateRange(userId, startDate, endDate);
   } else {
-    const targetDate = date ?? new Date().toISOString().split('T')[0];
+    const targetDate = date ?? getRequestLocalDate(request);
     meals = await Meal.findByUserAndDate(userId, targetDate);
   }
   return NextResponse.json(meals);
@@ -34,13 +35,15 @@ export async function POST(request) {
     calories,
   } = await request.json();
 
-  if (!date || !mealName || protein == null || fat == null || carbs == null || calories == null) {
+  const targetDate = date || getRequestLocalDate(request);
+
+  if (!targetDate || !mealName || protein == null || fat == null || carbs == null || calories == null) {
     return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
   }
 
   const meal = await Meal.create({
     userId,
-    date,
+    date: targetDate,
     mealName,
     mealType,
     portionAmount: portionAmount == null || portionAmount === '' ? null : Number(portionAmount),

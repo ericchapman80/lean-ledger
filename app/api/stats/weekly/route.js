@@ -6,7 +6,7 @@ import * as Beverage from '@/lib/models/beverageEntry';
 import * as Weight from '@/lib/models/weight';
 import { enrichProfile } from '@/lib/profile';
 import { calculateWeeklyNutritionSummary } from '@/lib/weeklyStats';
-import { getDateDaysBefore, getEndOfWeek, getStartOfWeek } from '@/lib/utils/dateUtils';
+import { getDateDaysBefore, getEndOfWeek, getRequestLocalDate, getStartOfWeek } from '@/lib/utils/dateUtils';
 
 export async function GET(request) {
   const userId = await getCurrentUserId(request);
@@ -16,7 +16,7 @@ export async function GET(request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+  const date = searchParams.get('date') || getRequestLocalDate(request);
   const weekStart = getStartOfWeek(date);
   const weekEnd = getEndOfWeek(date);
   const rollingWeightStart = getDateDaysBefore(date, 6);

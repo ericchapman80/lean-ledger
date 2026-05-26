@@ -7,6 +7,7 @@ import {
   calculateWeeklyCalorieAdherence,
   getDietStyleCarbGuidance,
 } from '@/lib/trendAnalytics.js';
+import { formatDate } from '@/lib/utils/dateUtils.js';
 
 describe('calculateRollingAverage', () => {
   it('computes rolling averages while ignoring null values', () => {
@@ -172,5 +173,39 @@ describe('buildTrendAnalytics', () => {
     expect(result.summary.hydrationAdherencePercentage).toBe(0);
     expect(result.summary.hydrationTarget).toBeGreaterThan(0);
     expect(result.summary.weeklyAverageHydration).toBe(100);
+  });
+
+  it('keeps trend grouping on the user local date key near UTC midnight', () => {
+    const localDate = formatDate('2026-05-26T02:16:00.000Z', { timeZone: 'America/New_York' });
+    const result = buildTrendAnalytics({
+      startDate: localDate,
+      endDate: localDate,
+      mealTrends: [
+        { date: '2026-05-25', protein: 160, carbs: 30, fat: 90, calories: 1800, mealCount: 3 },
+      ],
+      weightLogs: [],
+      healthMetrics: [],
+      beverageEntries: [
+        { date: '2026-05-25', recordedAt: '2026-05-25T22:16', amountFlOz: 24, countsTowardHydration: true },
+      ],
+      profile: {
+        weight: 100,
+        dietStyle: 'keto',
+        activeMacros: { protein: 200, calories: 2200, carbs: 35 },
+      },
+      weeklyStats: {
+        dailyTargets: { calories: 2200 },
+        weeklyTargets: { calories: 15400 },
+        consumed: { calories: 1800 },
+        remaining: { calories: 13600 },
+        focus: { sevenDayAverageWeight: null },
+        elapsedDays: 1,
+      },
+    });
+
+    expect(localDate).toBe('2026-05-25');
+    expect(result.dailySeries).toHaveLength(1);
+    expect(result.dailySeries[0].date).toBe('2026-05-25');
+    expect(result.dailySeries[0].hydrationOunces).toBe(24);
   });
 });

@@ -35,9 +35,9 @@ const MANUAL_GROUPS = [
   },
 ];
 
-function getEmptyFormData() {
+function getEmptyFormData(date = getTodayDate()) {
   return {
-    recordedAt: `${getTodayDate()}T07:00`,
+    recordedAt: date ? `${date}T07:00` : '',
     ...Object.fromEntries(HEALTH_METRIC_FIELDS.map((field) => [field.key, ''])),
   };
 }
@@ -47,7 +47,7 @@ export default function HealthPage() {
   const [error, setError] = useState(null);
   const [profile, setProfile] = useState(null);
   const [metrics, setMetrics] = useState([]);
-  const [formData, setFormData] = useState(getEmptyFormData());
+  const [formData, setFormData] = useState(() => getEmptyFormData(typeof window === 'undefined' ? '' : getTodayDate()));
   const [submitting, setSubmitting] = useState(false);
   const [csvData, setCsvData] = useState({ headers: [], rows: [] });
   const [mapping, setMapping] = useState({});
@@ -72,6 +72,11 @@ export default function HealthPage() {
   };
 
   useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    if (!formData.recordedAt) {
+      setFormData(getEmptyFormData());
+    }
+  }, [formData.recordedAt]);
 
   const csvPreview = useMemo(() => {
     if (csvData.rows.length === 0) return [];
