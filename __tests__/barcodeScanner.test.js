@@ -1,7 +1,44 @@
 import { describe, expect, it } from 'vitest';
-import { getCameraEnvironmentDetails, getCameraErrorDetails } from '@/lib/barcodeScanner.js';
+import {
+  getBarcodeSupportDetails,
+  getCameraEnvironmentDetails,
+  getCameraErrorDetails,
+  getScannerFailureDetails,
+} from '@/lib/barcodeScanner.js';
 
 describe('barcode scanner camera permission messaging', () => {
+  it('prefers the native BarcodeDetector path when available', () => {
+    const result = getBarcodeSupportDetails({
+      hasBarcodeDetector: true,
+      hasFallbackScanner: true,
+    });
+
+    expect(result.mode).toBe('native');
+    expect(result.code).toBe('native_supported');
+  });
+
+  it('falls back to the compatibility scanner when native support is missing', () => {
+    const result = getBarcodeSupportDetails({
+      hasBarcodeDetector: false,
+      hasFallbackScanner: true,
+    });
+
+    expect(result.mode).toBe('fallback');
+    expect(result.code).toBe('native_unsupported_fallback_available');
+    expect(result.message).toContain('compatibility scanner');
+  });
+
+  it('returns manual-only guidance when no scanner path is available', () => {
+    const result = getBarcodeSupportDetails({
+      hasBarcodeDetector: false,
+      hasFallbackScanner: false,
+    });
+
+    expect(result.mode).toBe('manual_only');
+    expect(result.code).toBe('scanner_unavailable');
+    expect(result.message).toContain('Enter the barcode manually');
+  });
+
   it('returns iPhone-friendly recovery steps for denied permissions', () => {
     const result = getCameraErrorDetails({ name: 'NotAllowedError' });
 
@@ -51,5 +88,20 @@ describe('barcode scanner camera permission messaging', () => {
 
     expect(result.code).toBe('unsupported_browser_context');
     expect(result.steps[1]).toContain('private or incognito mode');
+  });
+
+  it('returns a fallback-specific scanner failure diagnostic', () => {
+    const result = getScannerFailureDetails({ code: 'native_unsupported_fallback_available' });
+
+    expect(result.code).toBe('native_unsupported_fallback_available');
+    expect(result.title).toBe('Using compatibility scanner');
+    expect(result.canRetry).toBe(true);
+  });
+
+  it('returns a generic manual-fallback scanner error', () => {
+    const result = getScannerFailureDetails(new Error('decode failed'));
+
+    expect(result.code).toBe('scanner_failed');
+    expect(result.message).toContain('enter the barcode manually');
   });
 });
