@@ -1,5 +1,15 @@
-import { useState, useRef, useEffect } from 'react';
-import { getCameraEnvironmentDetails, getCameraErrorDetails } from '@/lib/barcodeScanner';
+import { useEffect, useRef, useState } from 'react';
+import {
+  getBarcodeSupportDetails,
+  getCameraEnvironmentDetails,
+  getCameraErrorDetails,
+  getPreferredCameraConstraints,
+  getScannerFailureDetails,
+  loadZxingBrowser,
+  NATIVE_BARCODE_FORMATS,
+} from '@/lib/barcodeScanner';
+
+const NATIVE_SCAN_INTERVAL_MS = 500;
 
 export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, onAddManual }) {
   const [scanning, setScanning] = useState(false);
@@ -8,11 +18,33 @@ export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, o
   const [error, setError] = useState(null);
   const [cameraHelp, setCameraHelp] = useState(null);
   const [manualEntry, setManualEntry] = useState('');
+  const [scannerMode, setScannerMode] = useState('idle');
+  const [scannerStatus, setScannerStatus] = useState(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const nativeDetectorRef = useRef(null);
+  const nativeIntervalRef = useRef(null);
+  const zxingControlsRef = useRef(null);
+  const zxingReaderRef = useRef(null);
+  const closingRef = useRef(false);
   const insecureContext = typeof window !== 'undefined' ? !window.isSecureContext : false;
 
+  const clearNativeLoop = () => {
+    if (nativeIntervalRef.current) {
+      window.clearInterval(nativeIntervalRef.current);
+      nativeIntervalRef.current = null;
+    }
+  };
+
+  const clearFallbackLoop = () => {
+    zxingControlsRef.current?.stop?.();
+    zxingControlsRef.current = null;
+    zxingReaderRef.current = null;
+  };
+
   const stopCamera = () => {
+    clearNativeLoop();
+    clearFallbackLoop();
     if (videoRef.current) {
       videoRef.current.pause?.();
       videoRef.current.srcObject = null;
@@ -23,9 +55,19 @@ export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, o
     }
     setScanning(false);
     setReady(false);
+    setStarting(false);
+    setScannerMode('idle');
+  };
+
+  const finishWithCode = (rawValue) => {
+    if (!rawValue || closingRef.current) return;
+    closingRef.current = true;
+    stopCamera();
+    onScanSuccess(rawValue);
   };
 
   useEffect(() => {
+    closingRef.current = false;
     const handlePageHide = () => stopCamera();
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -62,11 +104,102 @@ export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, o
     attachStream();
   }, [scanning]);
 
+  useEffect(() => {
+    const startNativeScanner = async () => {
+      if (!ready || scannerMode !== 'native' || !videoRef.current || nativeIntervalRef.current) return;
+
+      try {
+        if (!nativeDetectorRef.current) {
+          nativeDetectorRef.current = new window.BarcodeDetector({ formats: NATIVE_BARCODE_FORMATS });
+        }
+      } catch (err) {
+        console.error('Native detector setup failed:', err);
+        const details = getScannerFailureDetails({ code: 'native_unsupported_fallback_available' });
+        setCameraHelp(details);
+        setError(details.message);
+        setScannerMode('fallback');
+        return;
+      }
+
+      nativeIntervalRef.current = window.setInterval(async () => {
+        if (!videoRef.current || closingRef.current) return;
+
+        try {
+          const detections = await nativeDetectorRef.current.detect(videoRef.current);
+          if (detections.length > 0) {
+            finishWithCode(detections[0].rawValue);
+          }
+        } catch (err) {
+          console.error('Native barcode scan failed:', err);
+        }
+      }, NATIVE_SCAN_INTERVAL_MS);
+    };
+
+    startNativeScanner();
+
+    return () => clearNativeLoop();
+  }, [ready, scannerMode]);
+
+  useEffect(() => {
+    const startFallbackScanner = async () => {
+      if (!ready || scannerMode !== 'fallback' || !videoRef.current || zxingControlsRef.current) return;
+
+      try {
+        const {
+          BarcodeFormat,
+          BrowserMultiFormatReader,
+        } = await loadZxingBrowser();
+
+        const reader = new BrowserMultiFormatReader();
+        reader.possibleFormats = [
+          BarcodeFormat.EAN_13,
+          BarcodeFormat.EAN_8,
+          BarcodeFormat.UPC_A,
+          BarcodeFormat.UPC_E,
+          BarcodeFormat.CODE_128,
+          BarcodeFormat.CODE_39,
+        ];
+        zxingReaderRef.current = reader;
+        zxingControlsRef.current = await reader.decodeFromStream(
+          streamRef.current,
+          videoRef.current,
+          (result, scanError) => {
+            if (result?.getText?.()) {
+              finishWithCode(result.getText());
+              return;
+            }
+
+            if (!scanError || scanError?.name === 'NotFoundException') {
+              return;
+            }
+
+            console.error('ZXing scan error:', scanError);
+            const details = getScannerFailureDetails(scanError);
+            setCameraHelp(details);
+            setError(details.message);
+          }
+        );
+      } catch (err) {
+        console.error('Fallback scanner failed to start:', err);
+        const details = getScannerFailureDetails({ code: 'scanner_unavailable' });
+        setCameraHelp(details);
+        setError(details.message);
+        setScannerMode('manual_only');
+      }
+    };
+
+    startFallbackScanner();
+
+    return () => clearFallbackLoop();
+  }, [ready, scannerMode]);
+
   const startCamera = async () => {
     try {
       setStarting(true);
       setError(null);
       setCameraHelp(null);
+      setScannerStatus(null);
+      closingRef.current = false;
       stopCamera();
 
       const environmentDetails = getCameraEnvironmentDetails({
@@ -81,15 +214,26 @@ export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, o
         return;
       }
 
+      const support = getBarcodeSupportDetails({
+        hasBarcodeDetector: typeof window !== 'undefined' && 'BarcodeDetector' in window,
+        hasFallbackScanner: true,
+      });
+      setScannerMode(support.mode);
+      setScannerStatus(support);
+
+      if (support.mode === 'manual_only') {
+        setCameraHelp(support);
+        setError(support.message);
+        return;
+      }
+
+      if (support.mode === 'fallback') {
+        setCameraHelp(support);
+      }
+
       let stream;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-          },
-        });
+        stream = await navigator.mediaDevices.getUserMedia(getPreferredCameraConstraints());
       } catch {
         stream = await navigator.mediaDevices.getUserMedia({ video: true });
       }
@@ -119,65 +263,21 @@ export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, o
     }
   };
 
+  const handleSearchFood = () => {
+    stopCamera();
+    onSearchFood?.();
+  };
+
+  const handleAddManual = () => {
+    stopCamera();
+    onAddManual?.();
+  };
+
   const handleOpenSettings = () => {
     try {
       window.location.href = 'app-settings:';
     } catch {
       // Best effort only; fallback instructions remain visible.
-    }
-  };
-
-  const captureBarcode = async () => {
-    if (!videoRef.current || !ready || !videoRef.current.videoWidth || !videoRef.current.videoHeight) {
-      setError('Camera preview is not ready yet. Wait a moment and try again.');
-      return;
-    }
-
-    setError(null);
-    const video = videoRef.current;
-
-    if ('BarcodeDetector' in window) {
-      try {
-        const barcodeDetector = new window.BarcodeDetector({
-          formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'],
-        });
-
-        const directDetections = await barcodeDetector.detect(video);
-        if (directDetections.length > 0) {
-          stopCamera();
-          onScanSuccess(directDetections[0].rawValue);
-          return;
-        }
-      } catch (err) {
-        console.error('Direct video barcode detection failed:', err);
-      }
-    }
-
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0);
-
-    // Convert to blob and use Barcode Detection API if available
-    if ('BarcodeDetector' in window) {
-      try {
-        const barcodeDetector = new window.BarcodeDetector({
-          formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39']
-        });
-        const barcodes = await barcodeDetector.detect(canvas);
-        
-        if (barcodes.length > 0) {
-          stopCamera();
-          onScanSuccess(barcodes[0].rawValue);
-        } else {
-          setError('No barcode detected. Move closer, improve lighting, keep the barcode flat and centered, then try again.');
-        }
-      } catch (err) {
-        setError('Barcode detection failed. Please enter manually.');
-      }
-    } else {
-      setError('Barcode scanning not supported on this device. Please enter manually.');
     }
   };
 
@@ -189,7 +289,7 @@ export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, o
           Scan the barcode to automatically lookup nutritional information
         </p>
         <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginTop: '8px' }}>
-          Best results: use bright light, hold the barcode flat, and fill the center of the frame.
+          Best results: use the rear camera, keep the barcode flat, and center it inside the frame.
         </p>
         {insecureContext ? (
           <p style={{ color: 'var(--danger-color)', fontSize: '13px', marginTop: '8px' }}>
@@ -198,20 +298,20 @@ export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, o
         ) : null}
       </div>
 
-      {error && (
+      {error ? (
         <div style={{
           padding: '12px',
           backgroundColor: '#ffebee',
           borderLeft: '4px solid var(--danger-color)',
           borderRadius: '4px',
           marginBottom: '16px',
-          fontSize: '14px'
+          fontSize: '14px',
         }}>
           {error}
         </div>
-      )}
+      ) : null}
 
-      {cameraHelp && (
+      {cameraHelp ? (
         <div style={{
           padding: '14px',
           backgroundColor: '#fff8e1',
@@ -221,12 +321,14 @@ export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, o
         }}>
           <p style={{ margin: '0 0 8px', fontWeight: 700 }}>{cameraHelp.title}</p>
           <div style={{ display: 'grid', gap: '6px', color: 'var(--text-secondary)', fontSize: '14px' }}>
-            {cameraHelp.steps.map((step) => (
+            {cameraHelp.steps?.map((step) => (
               <p key={step} style={{ margin: 0 }}>{step}</p>
             ))}
-            <p style={{ margin: '4px 0 0', fontSize: '13px' }}>
-              “Try Open Settings” is best-effort only and may not work on every iPhone browser.
-            </p>
+            {cameraHelp.code === 'permission_denied' ? (
+              <p style={{ margin: '4px 0 0', fontSize: '13px' }}>
+                “Try Open Settings” is best-effort only and may not work on every iPhone browser.
+              </p>
+            ) : null}
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
             {cameraHelp.canRetry ? (
@@ -234,12 +336,14 @@ export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, o
                 {starting ? 'Retrying...' : 'Retry Camera'}
               </button>
             ) : null}
-            <button onClick={handleOpenSettings} className="btn btn-outline" type="button">
-              Try Open Settings
-            </button>
+            {cameraHelp.code === 'permission_denied' ? (
+              <button onClick={handleOpenSettings} className="btn btn-outline" type="button">
+                Try Open Settings
+              </button>
+            ) : null}
           </div>
         </div>
-      )}
+      ) : null}
 
       {!scanning ? (
         <div>
@@ -249,16 +353,16 @@ export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, o
             style={{ width: '100%', marginBottom: '16px' }}
             disabled={starting}
           >
-            {starting ? 'Starting Camera...' : '📷 Start Camera Scanner'}
+            {starting ? 'Starting Camera...' : 'Start Scanner'}
           </button>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
             {onSearchFood ? (
-              <button type="button" onClick={onSearchFood} className="btn btn-outline" style={{ flex: '1 1 160px' }}>
+              <button type="button" onClick={handleSearchFood} className="btn btn-outline" style={{ flex: '1 1 160px' }}>
                 Search Food
               </button>
             ) : null}
             {onAddManual ? (
-              <button type="button" onClick={onAddManual} className="btn btn-outline" style={{ flex: '1 1 160px' }}>
+              <button type="button" onClick={handleAddManual} className="btn btn-outline" style={{ flex: '1 1 160px' }}>
                 Add Food Manually
               </button>
             ) : null}
@@ -266,37 +370,74 @@ export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, o
         </div>
       ) : (
         <div style={{ marginBottom: '16px' }}>
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            onLoadedMetadata={() => setReady(true)}
+          <div
             style={{
-              width: '100%',
-              maxHeight: '300px',
-              borderRadius: '8px',
+              position: 'relative',
+              borderRadius: '12px',
+              overflow: 'hidden',
               backgroundColor: '#000',
-              marginBottom: '12px'
+              marginBottom: '12px',
             }}
-          />
-          <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '12px' }}>
-            {ready ? 'Camera ready. Center the barcode, then capture.' : 'Starting camera preview...'}
+          >
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              onLoadedMetadata={() => setReady(true)}
+              style={{
+                width: '100%',
+                maxHeight: '320px',
+                display: 'block',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                inset: '18% 12%',
+                border: '3px solid rgba(255,255,255,0.92)',
+                borderRadius: '14px',
+                boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.28)',
+                pointerEvents: 'none',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                left: '14%',
+                right: '14%',
+                top: '50%',
+                height: '2px',
+                background: 'rgba(46, 204, 113, 0.9)',
+                boxShadow: '0 0 12px rgba(46, 204, 113, 0.75)',
+                pointerEvents: 'none',
+              }}
+            />
+          </div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '6px' }}>
+            {ready ? 'Point the rear camera at the barcode. Scanning runs automatically.' : 'Starting camera preview...'}
           </p>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button
-              onClick={captureBarcode}
-              className="btn btn-primary"
-              style={{ flex: 1 }}
-              disabled={!ready}
-            >
-              📸 Capture Barcode
+          {scannerStatus ? (
+            <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '12px' }}>
+              {scannerStatus.message}
+            </p>
+          ) : null}
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <button onClick={stopCamera} className="btn btn-outline" type="button" style={{ flex: '1 1 150px' }}>
+              Stop Scanner
             </button>
-            <button
-              onClick={stopCamera}
-              className="btn btn-outline"
-            >
-              Stop
+            <button onClick={handleClose} className="btn btn-outline" type="button" style={{ flex: '1 1 150px' }}>
+              Cancel
             </button>
+            {onSearchFood ? (
+              <button onClick={handleSearchFood} className="btn btn-outline" type="button" style={{ flex: '1 1 150px' }}>
+                Search Food
+              </button>
+            ) : null}
+            {onAddManual ? (
+              <button onClick={handleAddManual} className="btn btn-outline" type="button" style={{ flex: '1 1 150px' }}>
+                Add Food Manually
+              </button>
+            ) : null}
           </div>
         </div>
       )}
@@ -304,10 +445,10 @@ export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, o
       <div style={{
         borderTop: '1px solid var(--border-color)',
         paddingTop: '16px',
-        marginTop: '16px'
+        marginTop: '16px',
       }}>
         <p style={{ marginBottom: '12px', fontWeight: '600' }}>
-          Or enter barcode manually:
+          Enter Barcode Manually
         </p>
         <form onSubmit={handleManualSubmit}>
           <div style={{ display: 'flex', gap: '12px' }}>
@@ -318,26 +459,14 @@ export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, o
               className="form-input"
               placeholder="e.g., 012345678901"
               pattern="[0-9]*"
-              inputMode="numeric"
+              style={{ flex: 1 }}
             />
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={!manualEntry.trim()}
-            >
+            <button type="submit" className="btn btn-secondary">
               Lookup
             </button>
           </div>
         </form>
       </div>
-
-      <button
-        onClick={handleClose}
-        className="btn btn-outline"
-        style={{ width: '100%', marginTop: '16px' }}
-      >
-        Cancel
-      </button>
     </div>
   );
 }
