@@ -78,6 +78,54 @@ describe('intake duplicate helpers', () => {
     expect(payload.recordedAt).toMatch(/^2026-05-25T\d{2}:\d{2}$/);
   });
 
+  it('preserves the original beverage time when duplicating onto a different day', () => {
+    const payload = buildBeverageDuplicatePayload(sampleBeverage, '2026-05-26');
+
+    expect(payload.recordedAt).toBe('2026-05-26T09:15');
+  });
+
+  it('falls back to default duplicate values when optional beverage fields are missing', () => {
+    const payload = buildBeverageDuplicatePayload({
+      amount: 12,
+      countsTowardHydration: 0,
+      recordedAt: null,
+    }, '2026-05-25');
+
+    expect(payload).toMatchObject({
+      amount: 12,
+      unit: 'fl_oz',
+      beverageType: 'water',
+      countsTowardHydration: false,
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      caffeineMg: null,
+    });
+    expect(payload.recordedAt).toMatch(/^2026-05-25T\d{2}:\d{2}$/);
+  });
+
+  it('falls back to default duplicate values when optional meal fields are missing', () => {
+    expect(buildMealDuplicatePayload({
+      mealName: 'Plain Chicken',
+      protein: 32,
+      carbs: 0,
+      fat: 4,
+      calories: 180,
+    }, '2026-05-25')).toEqual({
+      date: '2026-05-25',
+      mealName: 'Plain Chicken',
+      mealType: 'breakfast',
+      portionAmount: null,
+      portionUnit: null,
+      portionGrams: null,
+      protein: 32,
+      fat: 4,
+      carbs: 0,
+      calories: 180,
+    });
+  });
+
   it('duplicate food updates meal and day totals when included in the log', () => {
     const duplicateMeal = {
       ...sampleMeal,

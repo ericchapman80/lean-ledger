@@ -83,6 +83,52 @@ describe('mealEditor helpers', () => {
     });
   });
 
+  it('falls back to the current form values when no snapshot exists', () => {
+    expect(getCalculatedMealMacros({
+      protein: '24',
+      carbs: '8',
+      fat: '3',
+      calories: '155',
+    }, null)).toEqual({
+      protein: '24',
+      carbs: '8',
+      fat: '3',
+      calories: '155',
+    });
+  });
+
+  it('recalculates from portion amount when grams are unavailable but units still match', () => {
+    const snapshot = createMealMacroSnapshot({
+      ...baseMeal,
+      portionGrams: null,
+    });
+
+    expect(getCalculatedMealMacros({
+      portionAmount: '1.5',
+      portionUnit: 'cup',
+    }, snapshot)).toEqual({
+      protein: '30',
+      carbs: '13.5',
+      fat: '0',
+      calories: '180',
+    });
+  });
+
+  it('keeps original macros when no comparable portion values are available', () => {
+    const snapshot = createMealMacroSnapshot(baseMeal);
+
+    expect(getCalculatedMealMacros({
+      portionAmount: '2',
+      portionUnit: 'tablespoon',
+      portionGrams: '',
+    }, snapshot)).toEqual({
+      protein: '20',
+      carbs: '9',
+      fat: '0',
+      calories: '120',
+    });
+  });
+
   it('updates meal totals after an edited food value changes', () => {
     const totals = calculateMealTotals([
       { mealName: 'Edited Yogurt', protein: 24.5, carbs: 10, fat: 1.25, calories: 140 },
