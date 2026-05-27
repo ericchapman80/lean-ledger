@@ -75,10 +75,11 @@ test.describe('dashboard and meals flows', () => {
     await page.locator('input[type="date"]').fill(testDate);
 
     await expect(page.getByRole('heading', { name: 'Daily Dashboard' })).toBeVisible();
-    await expect(page.getByText('Meals Today')).toBeVisible();
-    await expect(page.getByText('Foods Logged')).toBeVisible();
-    await expect(page.getByText(/^2$/)).toBeVisible();
-    await expect(page.getByText(/^3$/)).toBeVisible();
+    const quickStatsCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Quick Stats' }) });
+    await expect(quickStatsCard.getByText('Meals Today')).toBeVisible();
+    await expect(quickStatsCard.getByText('Foods Logged')).toBeVisible();
+    await expect(quickStatsCard.locator('p').filter({ hasText: /^2$/ })).toBeVisible();
+    await expect(quickStatsCard.locator('p').filter({ hasText: /^3$/ })).toBeVisible();
     await expect(page.getByText('Breakfast • Lunch')).toBeVisible();
   });
 
