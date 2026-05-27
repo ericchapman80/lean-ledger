@@ -20,21 +20,40 @@ let passed = 0;
 let failed = 0;
 const failures = [];
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function request(method, path, body) {
   const headers = { 'Content-Type': 'application/json' };
   if (bypassSecret) {
     headers['x-vercel-protection-bypass'] = bypassSecret;
     headers['x-vercel-set-bypass-cookie'] = 'true';
   }
-  const res = await fetch(`${baseUrl}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const text = await res.text();
-  let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-  return { status: res.status, data };
+  const maxAttempts = readOnly || method === 'GET' ? 5 : 1;
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(`${baseUrl}${path}`, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      return { status: res.status, data };
+    } catch (error) {
+      lastError = error;
+      if (attempt === maxAttempts) {
+        throw error;
+      }
+      await delay(attempt * 1000);
+    }
+  }
+
+  throw lastError;
 }
 
 function assert(label, condition, detail) {
