@@ -181,6 +181,7 @@ jobs:
     needs: deploy-preview
     runs-on: ubuntu-latest
     env:
+      NODE_OPTIONS: --dns-result-order=ipv4first
       PLAYWRIGHT_BASE_URL: ${{ needs.deploy-preview.outputs.deployment-url }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
@@ -298,6 +299,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     env:
+      NODE_OPTIONS: --dns-result-order=ipv4first
       PLAYWRIGHT_BASE_URL: ${{ needs.deploy-production.outputs.target-url }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
