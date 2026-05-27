@@ -178,6 +178,26 @@ And for production, if the CLI exports blank values:
 3. copy the production connection string manually
 4. place it in `.env.production.local`
 
+### Carb-detail rollout order
+
+Use this order when rolling out the `fiber` and `sugar_alcohols` schema update:
+
+1. run `npm run init-db:local`
+2. run `npm test`
+3. run `npm run build`
+4. run `npm run init-db:preview`
+5. verify the Vercel Preview deployment
+6. run `npm run init-db:prod` intentionally
+7. deploy production
+
+Existing `meals.carbs` values remain total carbs. The new `fiber` and `sugar_alcohols` columns are nullable, and net carbs are derived dynamically:
+
+```sql
+greatest(carbs - coalesce(fiber, 0) - coalesce(sugar_alcohols, 0), 0)
+```
+
+No destructive rename or drop is required.
+
 Formal migration command:
 
 ```bash
@@ -197,6 +217,27 @@ Reasons:
 - accidental production schema changes become much harder to reason about and roll back
 
 Run schema changes as deliberate migration/init steps, not as part of the build command.
+
+### Verification queries
+
+Confirm the new columns exist:
+
+```sql
+select column_name, data_type
+from information_schema.columns
+where table_name = 'meals'
+and column_name in ('fiber', 'sugar_alcohols');
+```
+
+Check recent meal values and derived net carbs:
+
+```sql
+select id, meal_name, carbs, fiber, sugar_alcohols,
+greatest(carbs - coalesce(fiber, 0) - coalesce(sugar_alcohols, 0), 0) as net_carbs
+from meals
+order by created_at desc
+limit 20;
+```
 
 ## 6. What the Pipeline Does
 

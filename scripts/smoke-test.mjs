@@ -14,15 +14,21 @@ const baseUrl = (args.find((arg) => !arg.startsWith('--')) || 'http://localhost:
 const readOnly = args.includes('--read-only');
 const today = new Date().toISOString().split('T')[0];
 const SMOKE_TAG = '[smoke]';
+const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
 
 let passed = 0;
 let failed = 0;
 const failures = [];
 
 async function request(method, path, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (bypassSecret) {
+    headers['x-vercel-protection-bypass'] = bypassSecret;
+    headers['x-vercel-set-bypass-cookie'] = 'true';
+  }
   const res = await fetch(`${baseUrl}${path}`, {
     method,
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();

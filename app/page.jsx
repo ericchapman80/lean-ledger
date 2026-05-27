@@ -18,6 +18,7 @@ import {
   getPreferredBeverageUnit,
   summarizeBeverageEntries,
 } from '@/lib/beverages';
+import { getPrimaryCarbLabel } from '@/lib/carbUtils';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import ProgressBar from '@/components/ProgressBar';
@@ -159,6 +160,15 @@ export default function Dashboard() {
     target: targets.calories,
     dietStyle: profile.dietStyle,
   });
+  const carbTracking = stats.carbTracking || {
+    label: getPrimaryCarbLabel(profile.dietStyle),
+    current: totals.carbs,
+    target: targets.carbs,
+    totalCarbs: totals.carbs,
+    fiber: totals.fiber || 0,
+    sugarAlcohols: totals.sugarAlcohols || 0,
+    netCarbs: totals.netCarbs || totals.carbs,
+  };
 
   const handleCheckInSubmit = async (e) => {
     e.preventDefault();
@@ -203,7 +213,7 @@ export default function Dashboard() {
 
       <div className="grid grid-4" style={{ marginBottom: '32px' }}>
         <MacroCard label="Protein" current={totals.protein} target={targets.protein} icon="🥩" macroKey="protein" dietStyle={profile.dietStyle} />
-        <MacroCard label="Carbs"   current={totals.carbs}   target={targets.carbs}   icon="🍞" macroKey="carbs" dietStyle={profile.dietStyle} />
+        <MacroCard label={carbTracking.label} current={carbTracking.current} target={carbTracking.target} icon="🍞" macroKey="carbs" dietStyle={profile.dietStyle} />
         <MacroCard label="Fat"     current={totals.fat}     target={targets.fat}     icon="🥑" macroKey="fat" dietStyle={profile.dietStyle} />
         <div className="card">
           <div style={{ textAlign: 'center' }}>
@@ -226,7 +236,14 @@ export default function Dashboard() {
         <div className="card">
           <h2 style={{ marginBottom: '24px' }}>Today's Progress</h2>
           <ProgressBar label="Protein"  current={totals.protein}  target={targets.protein} macroKey="protein" dietStyle={profile.dietStyle} />
-          <ProgressBar label="Carbs"    current={totals.carbs}    target={targets.carbs} macroKey="carbs" dietStyle={profile.dietStyle} />
+          <ProgressBar label={carbTracking.label} current={carbTracking.current} target={carbTracking.target} macroKey="carbs" dietStyle={profile.dietStyle} />
+          {(carbTracking.totalCarbs > 0 || carbTracking.fiber > 0 || carbTracking.sugarAlcohols > 0) ? (
+            <p style={{ marginTop: '-4px', marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '13px' }}>
+              Total {Math.round(carbTracking.totalCarbs)}g • Fiber {Math.round(carbTracking.fiber)}g
+              {carbTracking.sugarAlcohols > 0 ? ` • Sugar Alcohols ${Math.round(carbTracking.sugarAlcohols)}g` : ''}
+              {` • Net ${Math.round(carbTracking.netCarbs)}g`}
+            </p>
+          ) : null}
           <ProgressBar label="Fat"      current={totals.fat}      target={targets.fat} macroKey="fat" dietStyle={profile.dietStyle} />
           <ProgressBar label="Calories" current={totals.calories} target={targets.calories} macroKey="calories" dietStyle={profile.dietStyle} />
           <div style={{ marginBottom: '16px' }}>

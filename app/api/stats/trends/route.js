@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
+import { calculateNetCarbs } from '@/lib/carbUtils';
 import * as Meal from '@/lib/models/meal';
 import * as Beverage from '@/lib/models/beverageEntry';
 import { calculateBeverageNutritionTotals } from '@/lib/beverages';
@@ -19,11 +20,14 @@ export async function GET(request) {
 
   const byDate = meals.reduce((acc, m) => {
     if (!acc[m.date]) {
-      acc[m.date] = { protein: 0, fat: 0, carbs: 0, calories: 0, mealCount: 0 };
+      acc[m.date] = { protein: 0, fat: 0, carbs: 0, fiber: 0, sugarAlcohols: 0, netCarbs: 0, calories: 0, mealCount: 0 };
     }
     acc[m.date].protein  += m.protein;
     acc[m.date].fat      += m.fat;
     acc[m.date].carbs    += m.carbs;
+    acc[m.date].fiber    += Number(m.fiber || 0);
+    acc[m.date].sugarAlcohols += Number(m.sugarAlcohols || 0);
+    acc[m.date].netCarbs += calculateNetCarbs(m.carbs, m.fiber, m.sugarAlcohols);
     acc[m.date].calories += m.calories;
     acc[m.date].mealCount += 1;
     return acc;
@@ -31,12 +35,13 @@ export async function GET(request) {
 
   for (const beverage of beverages) {
     if (!byDate[beverage.date]) {
-      byDate[beverage.date] = { protein: 0, fat: 0, carbs: 0, calories: 0, mealCount: 0 };
+      byDate[beverage.date] = { protein: 0, fat: 0, carbs: 0, fiber: 0, sugarAlcohols: 0, netCarbs: 0, calories: 0, mealCount: 0 };
     }
     const beverageTotals = calculateBeverageNutritionTotals([beverage]);
     byDate[beverage.date].protein += beverageTotals.protein;
     byDate[beverage.date].fat += beverageTotals.fat;
     byDate[beverage.date].carbs += beverageTotals.carbs;
+    byDate[beverage.date].netCarbs += beverageTotals.carbs;
     byDate[beverage.date].calories += beverageTotals.calories;
   }
 

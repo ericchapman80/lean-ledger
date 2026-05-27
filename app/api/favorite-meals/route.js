@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
+import { optionalNumberOrNull } from '@/lib/carbUtils';
 import * as FavoriteMeal from '@/lib/models/favoriteMeal';
 
 function isMissingFavoriteMealsTable(error) {
@@ -24,7 +25,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const userId = await getCurrentUserId(request);
-    const { name, mealType, protein, fat, carbs, calories, items } = await request.json();
+    const { name, mealType, protein, fat, carbs, fiber, sugarAlcohols, calories, items } = await request.json();
 
     if (!name || !mealType || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'Name, meal type, and items are required' }, { status: 400 });
@@ -37,6 +38,8 @@ export async function POST(request) {
       protein: Number(protein),
       fat: Number(fat),
       carbs: Number(carbs),
+      fiber: optionalNumberOrNull(fiber),
+      sugarAlcohols: optionalNumberOrNull(sugarAlcohols),
       calories: Number(calories),
       items: items.map((item) => ({
         foodName: item.foodName,
@@ -46,6 +49,8 @@ export async function POST(request) {
         protein: Number(item.protein),
         fat: Number(item.fat),
         carbs: Number(item.carbs),
+        fiber: optionalNumberOrNull(item.fiber),
+        sugarAlcohols: optionalNumberOrNull(item.sugarAlcohols),
         calories: Number(item.calories),
       })),
     });

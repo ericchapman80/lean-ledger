@@ -24,7 +24,14 @@ export async function GET(request) {
   const beverages = await Beverage.findByUserAndDateRange(userId, weekStart, weekEnd);
   const weights = await Weight.findByUserAndDateRange(userId, rollingWeightStart, date);
   const { activeMacros: targets } = enrichProfile(user);
-  const summary = calculateWeeklyNutritionSummary({ date, targets, meals, beverages, weights });
+  const summary = calculateWeeklyNutritionSummary({
+    date,
+    targets,
+    meals,
+    beverages,
+    weights,
+    dietStyle: user.dietStyle,
+  });
 
   return NextResponse.json(summary);
 }

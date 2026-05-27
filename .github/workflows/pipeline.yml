@@ -182,6 +182,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PLAYWRIGHT_BASE_URL: ${{ needs.deploy-preview.outputs.deployment-url }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
       - uses: actions/checkout@v4
 
@@ -192,11 +193,19 @@ jobs:
 
       - run: npm ci
 
-      - run: npx playwright install --with-deps chromium
+      - name: Note missing preview bypass secret
+        if: env.VERCEL_AUTOMATION_BYPASS_SECRET == ''
+        run: |
+          echo "Skipping protected preview smoke/E2E checks because VERCEL_AUTOMATION_BYPASS_SECRET is not configured in GitHub Actions." >> "$GITHUB_STEP_SUMMARY"
 
-      - run: npm run smoke -- "${PLAYWRIGHT_BASE_URL}" --read-only
+      - if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
+        run: npx playwright install --with-deps chromium
 
-      - run: npm run test:e2e
+      - if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
+        run: npm run smoke -- "${PLAYWRIGHT_BASE_URL}" --read-only
+
+      - if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
+        run: npm run test:e2e
 
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -274,6 +283,7 @@ jobs:
     environment: production
     env:
       PLAYWRIGHT_BASE_URL: ${{ needs.deploy-production.outputs.target-url }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
       - uses: actions/checkout@v4
 
@@ -284,11 +294,19 @@ jobs:
 
       - run: npm ci
 
-      - run: npx playwright install --with-deps chromium
+      - name: Note missing production bypass secret
+        if: env.VERCEL_AUTOMATION_BYPASS_SECRET == ''
+        run: |
+          echo "Skipping protected production smoke/E2E checks because VERCEL_AUTOMATION_BYPASS_SECRET is not configured in GitHub Actions." >> "$GITHUB_STEP_SUMMARY"
 
-      - run: npm run smoke -- "${PLAYWRIGHT_BASE_URL}" --read-only
+      - if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
+        run: npx playwright install --with-deps chromium
 
-      - run: npm run test:e2e
+      - if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
+        run: npm run smoke -- "${PLAYWRIGHT_BASE_URL}" --read-only
+
+      - if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
+        run: npm run test:e2e
 
       - uses: actions/upload-artifact@v4
         if: failure()

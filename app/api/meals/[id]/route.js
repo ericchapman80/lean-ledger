@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import * as Meal from '@/lib/models/meal';
+import { optionalNumberOrNull } from '@/lib/carbUtils';
 
 export async function PUT(request, { params }) {
   const { id } = await params;
@@ -17,6 +18,8 @@ export async function PUT(request, { params }) {
     protein,
     fat,
     carbs,
+    fiber = existing.fiber,
+    sugarAlcohols = existing.sugarAlcohols,
     calories,
   } = await request.json();
   if (!mealName || protein == null || fat == null || carbs == null || calories == null) {
@@ -32,6 +35,8 @@ export async function PUT(request, { params }) {
     protein: Number(protein),
     fat: Number(fat),
     carbs: Number(carbs),
+    fiber: optionalNumberOrNull(fiber),
+    sugarAlcohols: optionalNumberOrNull(sugarAlcohols),
     calories: Number(calories),
   });
   return NextResponse.json(meal);
