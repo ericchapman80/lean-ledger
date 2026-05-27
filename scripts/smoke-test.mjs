@@ -9,6 +9,10 @@
 //
 // Safe to re-run: uses tagged meal/weight names so we can clean up.
 
+import dns from 'node:dns';
+
+dns.setDefaultResultOrder('ipv4first');
+
 const args = process.argv.slice(2);
 const baseUrl = (args.find((arg) => !arg.startsWith('--')) || 'http://localhost:3000').replace(/\/$/, '');
 const readOnly = args.includes('--read-only');
