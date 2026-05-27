@@ -23,7 +23,8 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
     command: 'npm run dev -- --hostname 127.0.0.1',
     url: `${baseURL}/api/health`,
-    reuseExistingServer: !process.env.CI,
+    // CI already starts the app manually in the local-functional job.
+    reuseExistingServer: true,
     stdout: 'pipe',
     stderr: 'pipe',
   },
