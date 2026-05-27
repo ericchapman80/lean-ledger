@@ -12,6 +12,8 @@ const baseMeal = {
   portionGrams: 227,
   protein: 20,
   carbs: 9,
+  fiber: 4,
+  sugarAlcohols: 1,
   fat: 0,
   calories: 120,
 };
@@ -41,12 +43,17 @@ describe('mealEditor helpers', () => {
       portionGrams: '454',
       protein: '20',
       carbs: '9',
+      fiber: '4',
+      sugarAlcohols: '1',
       fat: '0',
       calories: '120',
     }, snapshot, false);
 
     expect(updated.protein).toBe('40');
     expect(updated.carbs).toBe('18');
+    expect(updated.fiber).toBe('8');
+    expect(updated.sugarAlcohols).toBe('2');
+    expect(updated.netCarbs).toBe('8');
     expect(updated.calories).toBe('240');
   });
 
@@ -58,12 +65,15 @@ describe('mealEditor helpers', () => {
       portionGrams: '454',
       protein: '26',
       carbs: '13',
+      fiber: '6',
+      sugarAlcohols: '1',
       fat: '2',
       calories: '170',
     }, snapshot, true);
 
     expect(updated.protein).toBe('26');
     expect(updated.carbs).toBe('13');
+    expect(updated.fiber).toBe('6');
     expect(updated.calories).toBe('170');
   });
 
@@ -78,6 +88,9 @@ describe('mealEditor helpers', () => {
     expect(recalculated).toEqual({
       protein: '10',
       carbs: '4.5',
+      fiber: '2',
+      sugarAlcohols: '0.5',
+      netCarbs: '2',
       fat: '0',
       calories: '60',
     });
@@ -87,11 +100,16 @@ describe('mealEditor helpers', () => {
     expect(getCalculatedMealMacros({
       protein: '24',
       carbs: '8',
+      fiber: '6',
+      sugarAlcohols: '1',
       fat: '3',
       calories: '155',
     }, null)).toEqual({
       protein: '24',
       carbs: '8',
+      fiber: '6',
+      sugarAlcohols: '1',
+      netCarbs: '1',
       fat: '3',
       calories: '155',
     });
@@ -109,6 +127,9 @@ describe('mealEditor helpers', () => {
     }, snapshot)).toEqual({
       protein: '30',
       carbs: '13.5',
+      fiber: '6',
+      sugarAlcohols: '1.5',
+      netCarbs: '6',
       fat: '0',
       calories: '180',
     });
@@ -124,6 +145,9 @@ describe('mealEditor helpers', () => {
     }, snapshot)).toEqual({
       protein: '20',
       carbs: '9',
+      fiber: '4',
+      sugarAlcohols: '1',
+      netCarbs: '4',
       fat: '0',
       calories: '120',
     });
@@ -131,14 +155,17 @@ describe('mealEditor helpers', () => {
 
   it('updates meal totals after an edited food value changes', () => {
     const totals = calculateMealTotals([
-      { mealName: 'Edited Yogurt', protein: 24.5, carbs: 10, fat: 1.25, calories: 140 },
-      { mealName: 'Eggs', protein: 12, carbs: 1, fat: 10, calories: 140 },
+      { mealName: 'Edited Yogurt', protein: 24.5, carbs: 10, fiber: 8, sugarAlcohols: 0, fat: 1.25, calories: 140 },
+      { mealName: 'Eggs', protein: 12, carbs: 1, fiber: 0, sugarAlcohols: 0, fat: 10, calories: 140 },
     ]);
 
     expect(totals).toEqual({
       protein: 36.5,
       carbs: 11,
-      fat: 11.3,
+      fiber: 8,
+      sugarAlcohols: 0,
+      netCarbs: 3,
+      fat: 11.25,
       calories: 280,
     });
   });

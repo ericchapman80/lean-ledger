@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS meals (
   protein     DOUBLE PRECISION NOT NULL,
   fat         DOUBLE PRECISION NOT NULL,
   carbs       DOUBLE PRECISION NOT NULL,
+  fiber       DOUBLE PRECISION,
+  sugar_alcohols DOUBLE PRECISION,
   calories    DOUBLE PRECISION NOT NULL,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
@@ -44,6 +46,8 @@ CREATE TABLE IF NOT EXISTS favorite_meals (
   protein     DOUBLE PRECISION NOT NULL,
   fat         DOUBLE PRECISION NOT NULL,
   carbs       DOUBLE PRECISION NOT NULL,
+  fiber       DOUBLE PRECISION,
+  sugar_alcohols DOUBLE PRECISION,
   calories    DOUBLE PRECISION NOT NULL,
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()
@@ -59,6 +63,8 @@ CREATE TABLE IF NOT EXISTS favorite_meal_items (
   protein         DOUBLE PRECISION NOT NULL,
   fat             DOUBLE PRECISION NOT NULL,
   carbs           DOUBLE PRECISION NOT NULL,
+  fiber           DOUBLE PRECISION,
+  sugar_alcohols  DOUBLE PRECISION,
   calories        DOUBLE PRECISION NOT NULL,
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
@@ -187,7 +193,25 @@ ALTER TABLE meals
 ALTER TABLE meals
   ADD COLUMN IF NOT EXISTS portion_grams DOUBLE PRECISION;
 
+ALTER TABLE meals
+  ADD COLUMN IF NOT EXISTS fiber DOUBLE PRECISION;
+
+ALTER TABLE meals
+  ADD COLUMN IF NOT EXISTS sugar_alcohols DOUBLE PRECISION;
+
 CREATE INDEX IF NOT EXISTS idx_meals_user_type_date ON meals(user_id, meal_type, date);
+
+ALTER TABLE favorite_meals
+  ADD COLUMN IF NOT EXISTS fiber DOUBLE PRECISION;
+
+ALTER TABLE favorite_meals
+  ADD COLUMN IF NOT EXISTS sugar_alcohols DOUBLE PRECISION;
+
+ALTER TABLE favorite_meal_items
+  ADD COLUMN IF NOT EXISTS fiber DOUBLE PRECISION;
+
+ALTER TABLE favorite_meal_items
+  ADD COLUMN IF NOT EXISTS sugar_alcohols DOUBLE PRECISION;
 
 ALTER TABLE water_entries
   ADD COLUMN IF NOT EXISTS amount DOUBLE PRECISION;

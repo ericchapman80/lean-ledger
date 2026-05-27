@@ -14,6 +14,8 @@ const sampleMeal = {
   portionGrams: 225,
   protein: 42,
   carbs: 18,
+  fiber: 10,
+  sugarAlcohols: 2,
   fat: 11,
   calories: 340,
   createdAt: '2026-05-24T12:00:00.000Z',
@@ -57,6 +59,8 @@ describe('intake duplicate helpers', () => {
       protein: 42,
       fat: 11,
       carbs: 18,
+      fiber: 10,
+      sugarAlcohols: 2,
       calories: 340,
     });
   });
@@ -122,6 +126,8 @@ describe('intake duplicate helpers', () => {
       protein: 32,
       fat: 4,
       carbs: 0,
+      fiber: null,
+      sugarAlcohols: null,
       calories: 180,
     });
   });
@@ -145,6 +151,9 @@ describe('intake duplicate helpers', () => {
       calories: 680,
       protein: 84,
       carbs: 36,
+      fiber: 20,
+      sugarAlcohols: 4,
+      netCarbs: 12,
       fat: 22,
     });
   });

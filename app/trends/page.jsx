@@ -115,6 +115,7 @@ export default function Trends() {
   }));
   const advancedMetricGroups = getAvailableAdvancedMetricGroups(chartData);
   const preferredWaterUnit = getPreferredWaterUnit(profile.units);
+  const carbLabel = analytics.summary.carbLabel || 'Carbs';
   const hasWaistData = chartData.some((entry) => entry.waistMeasurement != null);
   const hasWorkoutData = chartData.some((entry) => entry.workoutCompleted != null);
   const hasHydrationData = chartData.some((entry) => entry.hydrationOunces != null);
@@ -334,9 +335,11 @@ export default function Trends() {
 
       {chartData.some((entry) => entry.carbs > 0) ? (
         <div className="card" style={{ marginBottom: '32px' }}>
-          <h2 style={{ marginBottom: '8px' }}>Keto / Flex Carb Visualization</h2>
+          <h2 style={{ marginBottom: '8px' }}>{carbLabel} Trend</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
-            Keto weekdays stay tighter. Flexible weekends can run higher, but still within the weekly plan.
+            {analytics.summary.usesNetCarbs
+              ? 'Net carbs are calculated as total carbs minus fiber and sugar alcohols.'
+              : 'Balanced mode tracks total carbs directly. Fiber and net carbs remain available as supporting detail.'}
           </p>
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={chartData}>
@@ -345,7 +348,7 @@ export default function Trends() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="carbs" name="Net Carbs" radius={[4, 4, 0, 0]}>
+              <Bar dataKey="carbs" name={carbLabel} radius={[4, 4, 0, 0]}>
                 {chartData.map((entry) => (
                   <Cell
                     key={entry.date}
@@ -355,18 +358,18 @@ export default function Trends() {
                   />
                 ))}
               </Bar>
-              <Line type="monotone" dataKey="carbTargetMax" stroke="#2c3e50" strokeWidth={2} dot={false} name="Carb Target Max" />
+              <Line type="monotone" dataKey="carbTargetMax" stroke="#2c3e50" strokeWidth={2} dot={false} name={`${carbLabel} Target Max`} />
             </ComposedChart>
           </ResponsiveContainer>
           <div style={{ display: 'grid', gap: '8px', marginTop: '16px', color: 'var(--text-secondary)', fontSize: '14px' }}>
             <p style={{ margin: 0 }}>Blue bars: keto-style days in range.</p>
             <p style={{ margin: 0 }}>Amber bars: flexible weekend days in range.</p>
-            <p style={{ margin: 0 }}>Red bars: carbs landed outside the selected diet style target.</p>
+            <p style={{ margin: 0 }}>Red bars: {carbLabel.toLowerCase()} landed outside the selected diet style target.</p>
           </div>
         </div>
       ) : (
         <div style={{ marginBottom: '32px' }}>
-          <EmptyTrendCard title="Keto / Flex Carb Visualization" body="Log meals to compare daily net carbs against your selected diet style target." />
+          <EmptyTrendCard title={`${carbLabel} Trend`} body={`Log meals to compare daily ${carbLabel.toLowerCase()} against your selected diet style target.`} />
         </div>
       )}
 

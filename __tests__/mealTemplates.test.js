@@ -61,6 +61,9 @@ describe('mealTemplates helpers', () => {
       calories: 260,
       protein: 32,
       carbs: 10,
+      fiber: 0,
+      sugarAlcohols: 0,
+      netCarbs: 10,
       fat: 10,
     });
   });

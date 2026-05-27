@@ -57,6 +57,7 @@ describe('calculateMacrosForPortion', () => {
     servingUnit: 'ml',
     proteinPer100g: 3.4,
     carbsPer100g: 5,
+    fiberPer100g: 1.2,
     fatPer100g: 3.3,
     caloriesPer100g: 61,
   };
@@ -74,6 +75,8 @@ describe('calculateMacrosForPortion', () => {
     expect(result.portionGrams).toBeCloseTo(236.59, 2);
     expect(result.protein).toBeCloseTo(8.04, 2);
     expect(result.carbs).toBeCloseTo(11.83, 2);
+    expect(result.fiber).toBeCloseTo(2.84, 2);
+    expect(result.netCarbs).toBeCloseTo(8.99, 2);
   });
 
   it('scales macros for solid units', () => {

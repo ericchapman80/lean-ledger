@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { searchFood, getCommonRestaurantItems } from '@/lib/foodLookup';
+import { calculateNetCarbs } from '@/lib/carbUtils';
 import Loading from './Loading';
 
 export default function FoodSearch({ onSelectFood, onClose }) {
@@ -57,8 +58,13 @@ export default function FoodSearch({ onSelectFood, onClose }) {
       // Ensure we have per100g values for portion calculation
       proteinPer100g: food.proteinPer100g || food.protein,
       carbsPer100g: food.carbsPer100g || food.carbs,
+      fiberPer100g: food.fiberPer100g || food.fiber || 0,
+      sugarAlcoholsPer100g: food.sugarAlcoholsPer100g || food.sugarAlcohols || 0,
       fatPer100g: food.fatPer100g || food.fat,
-      caloriesPer100g: food.caloriesPer100g || food.calories
+      caloriesPer100g: food.caloriesPer100g || food.calories,
+      fiber: food.fiber || 0,
+      sugarAlcohols: food.sugarAlcohols || 0,
+      netCarbs: food.netCarbs ?? calculateNetCarbs(food.carbs, food.fiber, food.sugarAlcohols),
     });
   };
 
@@ -198,6 +204,9 @@ export default function FoodSearch({ onSelectFood, onClose }) {
                       <span>{food.calories} cal</span>
                       <span>P: {food.protein}g</span>
                       <span>C: {food.carbs}g</span>
+                      {(food.fiber || food.sugarAlcohols) ? (
+                        <span>Net: {food.netCarbs ?? calculateNetCarbs(food.carbs, food.fiber, food.sugarAlcohols)}g</span>
+                      ) : null}
                       <span>F: {food.fat}g</span>
                     </div>
                     

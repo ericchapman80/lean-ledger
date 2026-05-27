@@ -2,6 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { beverageApi, favoriteMealsApi, mealsApi, profileApi } from '@/lib/api';
+import {
+  calculateNetCarbs,
+  getPrimaryCarbLabel,
+  getPrimaryCarbValue,
+  hasDetailedCarbData,
+  usesNetCarbs,
+} from '@/lib/carbUtils';
 import { getDateDaysBefore, getTodayDate } from '@/lib/utils/dateUtils';
 import { calculateCaloriesFromMacros } from '@/lib/utils/macroUtils';
 import { formatPortionAmount } from '@/lib/foodPortions';
@@ -50,6 +57,8 @@ function getEmptyFormData(mealType = 'breakfast') {
     protein: '',
     fat: '',
     carbs: '',
+    fiber: '',
+    sugarAlcohols: '',
     calories: '',
   };
 }
@@ -91,6 +100,24 @@ function formatFoodPortion(meal) {
     return `${human} • ${formatPortionAmount(meal.portionGrams)}g`;
   }
   return human;
+}
+
+function formatCarbDetail(meal, dietStyle) {
+  const primaryLabel = getPrimaryCarbLabel(dietStyle);
+  const primaryValue = Math.round(getPrimaryCarbValue(meal, dietStyle));
+  const details = [
+    `${primaryLabel === 'Net Carbs' ? 'Net' : 'C'} ${primaryValue}`,
+    `Total ${Math.round(meal.carbs || 0)}`,
+  ];
+
+  if (Number(meal.fiber || 0) > 0) {
+    details.push(`Fiber ${Math.round(meal.fiber)}`);
+  }
+  if (Number(meal.sugarAlcohols || 0) > 0) {
+    details.push(`Sugar Alcohols ${Math.round(meal.sugarAlcohols)}`);
+  }
+
+  return details.join(' • ');
 }
 
 function InlineActionButton({ children, onClick, danger = false }) {
@@ -205,7 +232,7 @@ export default function Meals() {
       if (['portionAmount', 'portionUnit', 'portionGrams'].includes(name)) {
         return applyPortionDrivenMacroUpdate(updated, mealMacroSnapshot, manualMacroOverride);
       }
-      if (['protein', 'carbs', 'fat', 'calories'].includes(name)) {
+      if (['protein', 'carbs', 'fiber', 'sugarAlcohols', 'fat', 'calories'].includes(name)) {
         setManualMacroOverride(true);
         return updated;
       }
@@ -233,6 +260,8 @@ export default function Meals() {
         protein: parseFloat(formData.protein),
         fat: parseFloat(formData.fat),
         carbs: parseFloat(formData.carbs),
+        fiber: formData.fiber === '' ? null : parseFloat(formData.fiber),
+        sugarAlcohols: formData.sugarAlcohols === '' ? null : parseFloat(formData.sugarAlcohols),
         calories: parseFloat(formData.calories),
       };
       if (editingMeal) {
@@ -265,6 +294,8 @@ export default function Meals() {
       protein: meal.protein.toString(),
       fat: meal.fat.toString(),
       carbs: meal.carbs.toString(),
+      fiber: meal.fiber?.toString() || '',
+      sugarAlcohols: meal.sugarAlcohols?.toString() || '',
       calories: meal.calories.toString(),
     });
     setIsModalOpen(true);
@@ -342,6 +373,8 @@ export default function Meals() {
         protein: mealData.protein,
         fat: mealData.fat,
         carbs: mealData.carbs,
+        fiber: mealData.fiber,
+        sugarAlcohols: mealData.sugarAlcohols,
         calories: mealData.calories,
       });
       setScannedProduct(null);
@@ -487,6 +520,9 @@ export default function Meals() {
 
   const macrosAreDerived = hasDerivedPortionData(formData);
   const calculatedMealMacros = mealMacroSnapshot ? getCalculatedMealMacros(formData, mealMacroSnapshot) : null;
+  const netCarbsPreview = calculateNetCarbs(formData.carbs, formData.fiber, formData.sugarAlcohols);
+  const primaryCarbLabel = getPrimaryCarbLabel(profile?.dietStyle);
+  const primaryCarbBasis = usesNetCarbs(profile?.dietStyle);
 
   const handleResetMealMacros = () => {
     if (!calculatedMealMacros) return;
@@ -855,8 +891,15 @@ export default function Meals() {
                   <p style={{ margin: '4px 0 0', fontSize: '24px', fontWeight: 'bold' }}>{section.totals.protein}g</p>
                 </div>
                 <div>
-                  <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '12px' }}>Carbs</p>
-                  <p style={{ margin: '4px 0 0', fontSize: '24px', fontWeight: 'bold' }}>{section.totals.carbs}g</p>
+                  <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '12px' }}>{primaryCarbLabel}</p>
+                  <p style={{ margin: '4px 0 0', fontSize: '24px', fontWeight: 'bold' }}>
+                    {Math.round(primaryCarbBasis ? section.totals.netCarbs : section.totals.carbs)}g
+                  </p>
+                  {primaryCarbBasis ? (
+                    <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '12px' }}>
+                      Total {Math.round(section.totals.carbs)}g • Fiber {Math.round(section.totals.fiber)}g
+                    </p>
+                  ) : null}
                 </div>
                 <div>
                   <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '12px' }}>Fat</p>
@@ -888,8 +931,15 @@ export default function Meals() {
                       <div style={{ textAlign: 'right' }}>
                         <p style={{ margin: 0, fontWeight: 700 }}>{Math.round(meal.calories)} cal</p>
                         <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)', fontSize: '12px' }}>
-                          P {Math.round(meal.protein)} • C {Math.round(meal.carbs)} • F {Math.round(meal.fat)}
+                          P {Math.round(meal.protein)} • {formatCarbDetail(meal, profile?.dietStyle)} • F {Math.round(meal.fat)}
                         </p>
+                        {hasDetailedCarbData(meal) ? (
+                          <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)', fontSize: '12px' }}>
+                            Total Carbs: {Math.round(meal.carbs)}g • Fiber: {Math.round(meal.fiber || 0)}g
+                            {Number(meal.sugarAlcohols || 0) > 0 ? ` • Sugar Alcohols: ${Math.round(meal.sugarAlcohols)}g` : ''}
+                            {` • Net Carbs: ${Math.round(meal.netCarbs || calculateNetCarbs(meal.carbs, meal.fiber, meal.sugarAlcohols))}g`}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
@@ -979,8 +1029,16 @@ export default function Meals() {
               <input type="number" name="protein" value={formData.protein} onChange={handleInputChange} className="form-input" step="0.01" min="0" required />
             </div>
             <div className="form-group">
-              <label className="form-label">Carbs (g)</label>
+              <label className="form-label">Total Carbs (g)</label>
               <input type="number" name="carbs" value={formData.carbs} onChange={handleInputChange} className="form-input" step="0.01" min="0" required />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Fiber (g)</label>
+              <input type="number" name="fiber" value={formData.fiber} onChange={handleInputChange} className="form-input" step="0.01" min="0" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Sugar Alcohols (g)</label>
+              <input type="number" name="sugarAlcohols" value={formData.sugarAlcohols} onChange={handleInputChange} className="form-input" step="0.01" min="0" />
             </div>
             <div className="form-group">
               <label className="form-label">Fat (g)</label>
@@ -991,6 +1049,11 @@ export default function Meals() {
               <input type="number" name="calories" value={formData.calories} onChange={handleInputChange} className="form-input" step="1" min="0" required />
             </div>
           </div>
+
+          <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: '0 0 12px' }}>
+            Net carbs are calculated as total carbs minus fiber and sugar alcohols.
+            {' '}Current net carbs: <strong>{netCarbsPreview}g</strong>.
+          </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '24px' }}>
             <button type="submit" className="btn btn-primary">
@@ -1060,7 +1123,7 @@ export default function Meals() {
                   </div>
                 </div>
                 <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
-                  {Math.round(favoriteMeal.calories)} cal • P {Math.round(favoriteMeal.protein)} • C {Math.round(favoriteMeal.carbs)} • F {Math.round(favoriteMeal.fat)}
+                  {Math.round(favoriteMeal.calories)} cal • P {Math.round(favoriteMeal.protein)} • {formatCarbDetail(favoriteMeal, profile?.dietStyle)} • F {Math.round(favoriteMeal.fat)}
                 </p>
               </div>
             ))}

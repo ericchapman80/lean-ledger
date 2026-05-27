@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
 import * as Meal from '@/lib/models/meal';
+import { optionalNumberOrNull } from '@/lib/carbUtils';
 import { getRequestLocalDate } from '@/lib/utils/dateUtils';
 
 export async function GET(request) {
@@ -32,6 +33,8 @@ export async function POST(request) {
     protein,
     fat,
     carbs,
+    fiber = null,
+    sugarAlcohols = null,
     calories,
   } = await request.json();
 
@@ -52,6 +55,8 @@ export async function POST(request) {
     protein: Number(protein),
     fat: Number(fat),
     carbs: Number(carbs),
+    fiber: optionalNumberOrNull(fiber),
+    sugarAlcohols: optionalNumberOrNull(sugarAlcohols),
     calories: Number(calories),
   });
   return NextResponse.json(meal, { status: 201 });

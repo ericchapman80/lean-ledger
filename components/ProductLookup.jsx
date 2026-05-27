@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { calculateNetCarbs } from '@/lib/carbUtils';
 import {
   buildPortionSummary,
   calculateMacrosForPortion,
@@ -46,6 +47,9 @@ export default function ProductLookup({ product, onAddToMeal, onBack }) {
   const [macros, setMacros] = useState(() => ({
     protein: product.protein,
     carbs: product.carbs,
+    fiber: product.fiber || 0,
+    sugarAlcohols: product.sugarAlcohols || 0,
+    netCarbs: product.netCarbs ?? calculateNetCarbs(product.carbs, product.fiber, product.sugarAlcohols),
     fat: product.fat,
     calories: product.calories,
     portionGrams: product.servingGrams || 100,
@@ -71,6 +75,8 @@ export default function ProductLookup({ product, onAddToMeal, onBack }) {
       portionGrams: macros.portionGrams,
       protein: macros.protein,
       carbs: macros.carbs,
+      fiber: macros.fiber,
+      sugarAlcohols: macros.sugarAlcohols,
       fat: macros.fat,
       calories: macros.calories,
     });
@@ -222,8 +228,22 @@ export default function ProductLookup({ product, onAddToMeal, onBack }) {
               <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '4px 0 0' }}>{macros.protein}g</p>
             </div>
             <div>
-              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>Carbs</p>
+              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>Total Carbs</p>
               <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '4px 0 0' }}>{macros.carbs}g</p>
+            </div>
+            <div>
+              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>Fiber</p>
+              <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '4px 0 0' }}>{macros.fiber}g</p>
+            </div>
+            {macros.sugarAlcohols > 0 ? (
+              <div>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>Sugar Alcohols</p>
+                <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '4px 0 0' }}>{macros.sugarAlcohols}g</p>
+              </div>
+            ) : null}
+            <div>
+              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>Net Carbs</p>
+              <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '4px 0 0' }}>{macros.netCarbs}g</p>
             </div>
             <div>
               <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>Fat</p>
@@ -241,8 +261,13 @@ export default function ProductLookup({ product, onAddToMeal, onBack }) {
               color: 'var(--text-secondary)',
             }}
           >
-            Per 100g: {product.caloriesPer100g} cal • P: {product.proteinPer100g}g • C: {product.carbsPer100g}g • F: {product.fatPer100g}g
+            Per 100g: {product.caloriesPer100g} cal • P: {product.proteinPer100g}g • C: {product.carbsPer100g}g • Fiber: {product.fiberPer100g || 0}g
+            {product.sugarAlcoholsPer100g ? ` • Sugar Alcohols: ${product.sugarAlcoholsPer100g}g` : ''}
+            {` • Net: ${calculateNetCarbs(product.carbsPer100g, product.fiberPer100g, product.sugarAlcoholsPer100g)}g • F: ${product.fatPer100g}g`}
           </div>
+          <p style={{ margin: '12px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+            Net carbs are calculated as total carbs minus fiber and sugar alcohols.
+          </p>
         </div>
       </div>
 
