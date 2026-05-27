@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { beverageApi, favoriteMealsApi, mealsApi, profileApi } from '@/lib/api';
+import { beverageApi, favoriteFoodsApi, favoriteMealsApi, mealsApi, profileApi } from '@/lib/api';
 import {
   calculateNetCarbs,
   getPrimaryCarbLabel,
@@ -38,6 +38,7 @@ import {
   groupMealsByType,
   MEAL_TYPE_OPTIONS,
 } from '@/lib/mealTemplates';
+import { buildFavoriteFoodPayload, buildMealFromFavoriteFood } from '@/lib/favoriteFoods';
 import { buildBeverageDuplicatePayload, buildMealDuplicatePayload } from '@/lib/intakeDuplicates';
 import { lookupByBarcode } from '@/lib/foodLookup';
 import Loading from '@/components/Loading';
@@ -148,6 +149,7 @@ export default function Meals() {
   const [meals, setMeals] = useState([]);
   const [recentMeals, setRecentMeals] = useState([]);
   const [favoriteMeals, setFavoriteMeals] = useState([]);
+  const [favoriteFoods, setFavoriteFoods] = useState([]);
   const [beverageEntries, setBeverageEntries] = useState([]);
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [selectedMealType, setSelectedMealType] = useState('breakfast');
@@ -155,7 +157,9 @@ export default function Meals() {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
+  const [isFavoriteFoodsOpen, setIsFavoriteFoodsOpen] = useState(false);
   const [favoriteDraft, setFavoriteDraft] = useState(null);
+  const [favoriteFoodDraft, setFavoriteFoodDraft] = useState(null);
   const [scannedProduct, setScannedProduct] = useState(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [editingMeal, setEditingMeal] = useState(null);
@@ -173,17 +177,19 @@ export default function Meals() {
       setLoading(true);
       setError(null);
       const yesterday = getDateDaysBefore(selectedDate, 1);
-      const [profileData, mealData, recentMealData, favoriteMealData, beverageData] = await Promise.all([
+      const [profileData, mealData, recentMealData, favoriteMealData, favoriteFoodData, beverageData] = await Promise.all([
         profileApi.getProfile(),
         mealsApi.getMeals({ date: selectedDate }),
         mealsApi.getMeals({ startDate: yesterday, endDate: selectedDate }),
         favoriteMealsApi.getFavoriteMeals(),
+        favoriteFoodsApi.getFavoriteFoods(),
         beverageApi.getBeverages({ date: selectedDate }),
       ]);
       setProfile(profileData);
       setMeals(mealData);
       setRecentMeals(recentMealData);
       setFavoriteMeals(favoriteMealData);
+      setFavoriteFoods(favoriteFoodData);
       setBeverageEntries(beverageData);
       setBeverageForm(getDefaultBeverageForm(selectedDate, profileData.units));
       setEditingBeverage(null);
@@ -392,6 +398,13 @@ export default function Meals() {
     });
   };
 
+  const handleSaveFavoriteFood = (meal) => {
+    setFavoriteFoodDraft({
+      meal,
+      name: meal.mealName,
+    });
+  };
+
   const submitFavoriteDraft = async () => {
     if (!favoriteDraft?.name?.trim()) return;
     try {
@@ -400,6 +413,19 @@ export default function Meals() {
       );
       setFavoriteDraft(null);
       fetchMeals();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const submitFavoriteFoodDraft = async () => {
+    if (!favoriteFoodDraft?.name?.trim()) return;
+    try {
+      await favoriteFoodsApi.createFavoriteFood(
+        buildFavoriteFoodPayload(favoriteFoodDraft.meal, favoriteFoodDraft.name.trim()),
+      );
+      setFavoriteFoodDraft(null);
+      await fetchMeals();
     } catch (err) {
       alert(err.message);
     }
@@ -416,6 +442,17 @@ export default function Meals() {
     }
   };
 
+  const addFavoriteFood = async (favoriteFood, mealType = selectedMealType) => {
+    try {
+      await mealsApi.createMeal(buildMealFromFavoriteFood(favoriteFood, selectedDate, mealType));
+      setIsFavoriteFoodsOpen(false);
+      setActionMessage(`Added ${favoriteFood.name}`);
+      await fetchMeals();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const removeFavoriteMeal = async (id) => {
     if (!confirm('Delete this favorite meal?')) return;
     try {
@@ -426,11 +463,31 @@ export default function Meals() {
     }
   };
 
+  const removeFavoriteFood = async (id) => {
+    if (!confirm('Delete this favorite food?')) return;
+    try {
+      await favoriteFoodsApi.deleteFavoriteFood(id);
+      await fetchMeals();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const repeatSection = async (section) => {
     try {
       const payloads = buildRepeatMeals(section.items, selectedDate);
       await Promise.all(payloads.map((payload) => mealsApi.createMeal(payload)));
       fetchMeals();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleAddMealAgainToday = async (meal) => {
+    try {
+      await mealsApi.createMeal(buildMealDuplicatePayload(meal, getTodayDate()));
+      setActionMessage(`Added ${meal.mealName} to today`);
+      await fetchMeals();
     } catch (err) {
       alert(err.message);
     }
@@ -558,6 +615,9 @@ export default function Meals() {
           <button onClick={() => setIsFavoritesOpen(true)} className="btn btn-outline" style={{ flex: '0 1 auto' }}>
             Favorite Meals
           </button>
+          <button onClick={() => setIsFavoriteFoodsOpen(true)} className="btn btn-outline" style={{ flex: '0 1 auto' }}>
+            Favorite Foods
+          </button>
         </div>
       </div>
 
@@ -585,6 +645,9 @@ export default function Meals() {
           </button>
           <button onClick={() => openAddModal(selectedMealType)} className="btn btn-primary" style={{ flex: '1 1 160px' }}>
             Add Food Manually
+          </button>
+          <button onClick={() => setIsFavoriteFoodsOpen(true)} className="btn btn-outline" style={{ flex: '1 1 160px' }}>
+            Add Favorite Food
           </button>
         </div>
         <p style={{ margin: '12px 0 0', color: 'var(--text-secondary)', fontSize: '14px' }}>
@@ -837,9 +900,12 @@ export default function Meals() {
           <p style={{ color: 'var(--text-secondary)', marginBottom: '16px' }}>
             Start with breakfast, lunch, dinner, or a quick snack. Favorite meals and quick water keep daily intake logging fast.
           </p>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: favoriteMeals.length > 0 ? '16px' : 0 }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: favoriteMeals.length > 0 || favoriteFoods.length > 0 ? '16px' : 0 }}>
             <button onClick={() => openFoodSearch(selectedMealType)} className="btn btn-primary">Search Food</button>
             <button onClick={() => openAddModal(selectedMealType)} className="btn btn-outline">Add Manually</button>
+            {favoriteFoods.length > 0 ? (
+              <button onClick={() => setIsFavoriteFoodsOpen(true)} className="btn btn-outline">Add Favorite Food</button>
+            ) : null}
           </div>
           {favoriteMeals.length > 0 && (
             <div>
@@ -854,6 +920,24 @@ export default function Meals() {
                     style={{ flex: '1 1 180px' }}
                   >
                     {favoriteMeal.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {favoriteFoods.length > 0 && (
+            <div style={{ marginTop: favoriteMeals.length > 0 ? '16px' : 0 }}>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '8px', fontSize: '14px' }}>Start from a saved favorite food:</p>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {favoriteFoods.slice(0, 3).map((favoriteFood) => (
+                  <button
+                    key={favoriteFood.id}
+                    type="button"
+                    onClick={() => addFavoriteFood(favoriteFood)}
+                    className="btn btn-outline"
+                    style={{ flex: '1 1 180px' }}
+                  >
+                    {favoriteFood.name}
                   </button>
                 ))}
               </div>
@@ -944,7 +1028,12 @@ export default function Meals() {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
                       <InlineActionButton onClick={() => handleEdit(meal)}>Edit food</InlineActionButton>
-                      <InlineActionButton onClick={() => handleDuplicateMeal(meal)}>Duplicate</InlineActionButton>
+                      {selectedDate === getTodayDate() ? (
+                        <InlineActionButton onClick={() => handleDuplicateMeal(meal)}>Duplicate</InlineActionButton>
+                      ) : (
+                        <InlineActionButton onClick={() => handleAddMealAgainToday(meal)}>Add Again Today</InlineActionButton>
+                      )}
+                      <InlineActionButton onClick={() => handleSaveFavoriteFood(meal)}>Favorite</InlineActionButton>
                       <InlineActionButton onClick={() => handleDelete(meal.id)} danger>Delete</InlineActionButton>
                     </div>
                   </div>
@@ -1131,6 +1220,40 @@ export default function Meals() {
         )}
       </Modal>
 
+      <Modal isOpen={isFavoriteFoodsOpen} onClose={() => setIsFavoriteFoodsOpen(false)} title="Favorite Foods">
+        {favoriteFoods.length === 0 ? (
+          <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+            No favorite foods yet. Favorite an item from your intake log to reuse it without duplicate/edit work.
+          </p>
+        ) : (
+          <div style={{ display: 'grid', gap: '12px' }}>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+              Add to current target meal: <strong>{getMealTypeLabel(selectedMealType)}</strong>
+            </p>
+            {favoriteFoods.map((favoriteFood) => (
+              <div key={favoriteFood.id} className="card" style={{ boxShadow: 'none', padding: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', marginBottom: '8px' }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 4px' }}>{favoriteFood.name}</h3>
+                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
+                      Default: {getMealTypeLabel(favoriteFood.defaultMealType || 'breakfast')}
+                      {formatFoodPortion(favoriteFood) ? ` • ${formatFoodPortion(favoriteFood)}` : ''}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+                    <InlineActionButton onClick={() => addFavoriteFood(favoriteFood)}>Add to {getMealTypeLabel(selectedMealType)}</InlineActionButton>
+                    <InlineActionButton onClick={() => removeFavoriteFood(favoriteFood.id)} danger>Delete</InlineActionButton>
+                  </div>
+                </div>
+                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  {Math.round(favoriteFood.calories)} cal • P {Math.round(favoriteFood.protein)} • {formatCarbDetail(favoriteFood, profile?.dietStyle)} • F {Math.round(favoriteFood.fat)}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
+
       <Modal isOpen={!!favoriteDraft} onClose={() => setFavoriteDraft(null)} title="Save Favorite Meal">
         {favoriteDraft && (
           <div style={{ display: 'grid', gap: '16px' }}>
@@ -1149,6 +1272,28 @@ export default function Meals() {
             </p>
             <button type="button" onClick={submitFavoriteDraft} className="btn btn-primary">Save Favorite Meal</button>
             <button type="button" onClick={() => setFavoriteDraft(null)} className="btn btn-outline">Cancel</button>
+          </div>
+        )}
+      </Modal>
+
+      <Modal isOpen={!!favoriteFoodDraft} onClose={() => setFavoriteFoodDraft(null)} title="Save Favorite Food">
+        {favoriteFoodDraft && (
+          <div style={{ display: 'grid', gap: '16px' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Favorite Food Name</label>
+              <input
+                type="text"
+                value={favoriteFoodDraft.name}
+                onChange={(e) => setFavoriteFoodDraft((current) => ({ ...current, name: e.target.value }))}
+                className="form-input"
+                placeholder="e.g., Oikos Triple Zero"
+              />
+            </div>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+              This saves one food item with its portion details, carb details, and macro snapshot for quick re-adding on any day.
+            </p>
+            <button type="button" onClick={submitFavoriteFoodDraft} className="btn btn-primary">Save Favorite Food</button>
+            <button type="button" onClick={() => setFavoriteFoodDraft(null)} className="btn btn-outline">Cancel</button>
           </div>
         )}
       </Modal>
