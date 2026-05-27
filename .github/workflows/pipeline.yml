@@ -201,6 +201,22 @@ jobs:
       - if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
         run: npx playwright install --with-deps chromium
 
+      - name: Wait for preview deployment reachability
+        if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
+        shell: bash
+        run: |
+          for attempt in {1..24}; do
+            if curl -fsS \
+              -H "x-vercel-protection-bypass: ${VERCEL_AUTOMATION_BYPASS_SECRET}" \
+              -H "x-vercel-set-bypass-cookie: true" \
+              "${PLAYWRIGHT_BASE_URL}/api/health" >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Preview deployment did not become reachable in time."
+          exit 1
+
       - if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
         run: npm run smoke -- "${PLAYWRIGHT_BASE_URL}" --read-only
 
@@ -301,6 +317,22 @@ jobs:
 
       - if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
         run: npx playwright install --with-deps chromium
+
+      - name: Wait for production deployment reachability
+        if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
+        shell: bash
+        run: |
+          for attempt in {1..24}; do
+            if curl -fsS \
+              -H "x-vercel-protection-bypass: ${VERCEL_AUTOMATION_BYPASS_SECRET}" \
+              -H "x-vercel-set-bypass-cookie: true" \
+              "${PLAYWRIGHT_BASE_URL}/api/health" >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Production deployment did not become reachable in time."
+          exit 1
 
       - if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
         run: npm run smoke -- "${PLAYWRIGHT_BASE_URL}" --read-only
