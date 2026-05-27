@@ -38,6 +38,7 @@ import {
   groupMealsByType,
   MEAL_TYPE_OPTIONS,
 } from '@/lib/mealTemplates';
+import { buildFavoriteMealSuggestions, getMealSectionSignature } from '@/lib/mealSuggestions';
 import { buildBeverageDuplicatePayload, buildMealDuplicatePayload } from '@/lib/intakeDuplicates';
 import { lookupByBarcode } from '@/lib/foodLookup';
 import Loading from '@/components/Loading';
@@ -140,6 +141,8 @@ function InlineActionButton({ children, onClick, danger = false }) {
   );
 }
 
+const RECENT_MEAL_LOOKBACK_DAYS = 14;
+
 export default function Meals() {
   const initialDate = typeof window === 'undefined' ? '' : getTodayDate();
   const [loading, setLoading] = useState(true);
@@ -167,16 +170,17 @@ export default function Meals() {
   const [beverageEditorOpen, setBeverageEditorOpen] = useState(false);
   const [savingBeverage, setSavingBeverage] = useState(false);
   const [actionMessage, setActionMessage] = useState('');
+  const [dismissedSuggestionKeys, setDismissedSuggestionKeys] = useState([]);
 
   const fetchMeals = async () => {
     try {
       setLoading(true);
       setError(null);
-      const yesterday = getDateDaysBefore(selectedDate, 1);
+      const recentStartDate = getDateDaysBefore(selectedDate, RECENT_MEAL_LOOKBACK_DAYS);
       const [profileData, mealData, recentMealData, favoriteMealData, beverageData] = await Promise.all([
         profileApi.getProfile(),
         mealsApi.getMeals({ date: selectedDate }),
-        mealsApi.getMeals({ startDate: yesterday, endDate: selectedDate }),
+        mealsApi.getMeals({ startDate: recentStartDate, endDate: selectedDate }),
         favoriteMealsApi.getFavoriteMeals(),
         beverageApi.getBeverages({ date: selectedDate }),
       ]);
@@ -212,12 +216,28 @@ export default function Meals() {
     return () => clearTimeout(timeoutId);
   }, [actionMessage]);
 
+  useEffect(() => {
+    setDismissedSuggestionKeys([]);
+  }, [selectedDate]);
+
   const groupedMeals = useMemo(() => groupMealsByType(meals), [meals]);
   const groupedYesterdayMeals = useMemo(() => {
     const yesterday = getDateDaysBefore(selectedDate, 1);
     return groupMealsByType(recentMeals.filter((meal) => meal.date === yesterday));
   }, [recentMeals, selectedDate]);
   const lastMealSection = useMemo(() => findMostRecentMealSection(recentMeals), [recentMeals]);
+  const favoriteSuggestions = useMemo(() => buildFavoriteMealSuggestions({
+    meals,
+    recentMeals,
+    favoriteMeals,
+    selectedDate,
+  }), [favoriteMeals, meals, recentMeals, selectedDate]);
+  const visibleFavoriteSuggestions = useMemo(() => (
+    favoriteSuggestions.filter((suggestion) => !dismissedSuggestionKeys.includes(`${suggestion.mealType}::${suggestion.signature}`))
+  ), [dismissedSuggestionKeys, favoriteSuggestions]);
+  const favoriteSuggestionMap = useMemo(() => new Map(
+    visibleFavoriteSuggestions.map((suggestion) => [`${suggestion.mealType}::${suggestion.signature}`, suggestion]),
+  ), [visibleFavoriteSuggestions]);
   const preferredBeverageUnit = getPreferredBeverageUnit(profile?.units);
   const beverageSummary = useMemo(() => summarizeBeverageEntries(beverageEntries, {
     preferredUnit: preferredBeverageUnit,
@@ -390,6 +410,11 @@ export default function Meals() {
       name: `${section.label} Favorite`,
       items: section.items,
     });
+  };
+
+  const handleDismissFavoriteSuggestion = (suggestion) => {
+    const key = `${suggestion.mealType}::${suggestion.signature}`;
+    setDismissedSuggestionKeys((current) => [...current, key]);
   };
 
   const submitFavoriteDraft = async () => {
@@ -864,6 +889,42 @@ export default function Meals() {
         <div style={{ display: 'grid', gap: '16px' }}>
           {groupedMeals.map((section) => (
             <div key={section.mealType} className="card">
+              {favoriteSuggestionMap.get(`${section.mealType}::${getMealSectionSignature(section.items)}`) ? (
+                <div
+                  style={{
+                    marginBottom: '16px',
+                    padding: '12px 14px',
+                    borderRadius: '12px',
+                    background: 'rgba(46, 125, 50, 0.08)',
+                    border: '1px solid rgba(46, 125, 50, 0.2)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    alignItems: 'flex-start',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ margin: '0 0 4px', fontWeight: 700 }}>Smart favorite suggestion</p>
+                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                      You&apos;ve logged this {section.label.toLowerCase()} {favoriteSuggestionMap.get(`${section.mealType}::${getMealSectionSignature(section.items)}`).occurrences} times in the last {RECENT_MEAL_LOOKBACK_DAYS} days. Save it for faster re-adding.
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button type="button" onClick={() => handleSaveFavorite(section)} className="btn btn-outline" style={{ padding: '8px 12px' }}>
+                      Save Favorite
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDismissFavoriteSuggestion(favoriteSuggestionMap.get(`${section.mealType}::${getMealSectionSignature(section.items)}`))}
+                      className="btn btn-outline"
+                      style={{ padding: '8px 12px' }}
+                    >
+                      Not Now
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '16px' }}>
                 <div>
                   <h2 style={{ margin: '0 0 4px' }}>{section.label}</h2>
