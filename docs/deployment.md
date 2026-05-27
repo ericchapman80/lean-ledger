@@ -44,9 +44,12 @@ Add these GitHub repository secrets:
 - `VERCEL_TOKEN`
 - `VERCEL_ORG_ID`
 - `VERCEL_PROJECT_ID`
+- `VERCEL_AUTOMATION_BYPASS_SECRET`
 - `PROD_DATABASE_URL`
 
 `PROD_DATABASE_URL` is only for the daily backup workflow. It should be the Neon production connection string.
+
+`VERCEL_AUTOMATION_BYPASS_SECRET` is used by post-deploy smoke tests and Playwright checks when Vercel Deployment Protection is enabled on Preview or Production. Without it, the workflows skip protected post-deploy browser checks instead of failing on a Vercel auth wall.
 
 Add this GitHub repository variable:
 
@@ -58,6 +61,16 @@ In Vercel, set:
 
 - `DATABASE_URL` for the `Preview` environment to the Neon preview branch
 - `DATABASE_URL` for the `Production` environment to the Neon production branch
+
+If Deployment Protection is enabled in Vercel, also create a Protection Bypass secret for automation and store that same value in the GitHub repository secret `VERCEL_AUTOMATION_BYPASS_SECRET`.
+
+Recommended protected-preview setup:
+
+1. in Vercel, open the `lean-ledger` project
+2. go to the Deployment Protection settings for Preview
+3. create or copy the automation bypass secret
+4. in GitHub, save it as `VERCEL_AUTOMATION_BYPASS_SECRET`
+5. rerun a PR pipeline and confirm `preview-post-deploy` executes smoke/E2E checks instead of skipping
 
 To refresh a local preview env file from Vercel:
 
@@ -148,6 +161,15 @@ Recommended:
 1. create a `preview` Neon branch from production after the initial prod migration
 2. use that branch as the Vercel Preview database
 3. periodically reset or re-branch preview if test data becomes noisy
+
+### Preview protection and post-deploy verification
+
+When Preview Deployment Protection is enabled, GitHub Actions cannot hit the deployed preview app unless `VERCEL_AUTOMATION_BYPASS_SECRET` is configured. The workflow behavior is:
+
+- secret present: post-deploy smoke and Playwright checks run against the protected preview URL
+- secret missing: post-deploy smoke and Playwright checks are skipped with a workflow summary note
+
+This prevents false CI failures from Vercel auth, but it also means you do not have true preview browser verification until the secret is configured.
 
 ## 5. Local and CI Migration Commands
 

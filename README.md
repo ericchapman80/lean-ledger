@@ -131,6 +131,7 @@ npm run init-db:preview
 
 Uses `.env.preview.local` and should point at a dedicated Neon preview branch or database.
 In practice, Preview env pulls usually work correctly through `vercel env pull`.
+If Vercel Preview Deployment Protection is enabled, add `VERCEL_AUTOMATION_BYPASS_SECRET` to GitHub repo secrets so post-deploy smoke tests and Playwright can reach the protected preview URL.
 
 ### Neon production
 
@@ -153,6 +154,19 @@ Builds should not mutate schema because that can:
 - mutate production during what should be a read/build-only phase
 
 Use migrations or init commands as deliberate operational steps outside the Vercel build itself.
+
+### Protected preview and production verification
+
+The CI workflow supports Vercel Deployment Protection bypass for automation.
+
+Required GitHub secrets for full hosted verification:
+
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+- `VERCEL_AUTOMATION_BYPASS_SECRET`
+
+If `VERCEL_AUTOMATION_BYPASS_SECRET` is missing, protected post-deploy smoke/E2E checks are skipped rather than failing on Vercel auth. That keeps CI green, but it is not full deployed-app coverage.
 
 ### Confirm which DB you're connected to
 
