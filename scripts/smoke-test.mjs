@@ -10,6 +10,7 @@
 // Safe to re-run: uses tagged meal/weight names so we can clean up.
 
 import dns from 'node:dns';
+import { execFile } from 'node:child_process/promises';
 
 dns.setDefaultResultOrder('ipv4first');
 
@@ -28,17 +29,54 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function request(method, path, body) {
+function buildHeaders() {
   const headers = { 'Content-Type': 'application/json' };
   if (bypassSecret) {
     headers['x-vercel-protection-bypass'] = bypassSecret;
     headers['x-vercel-set-bypass-cookie'] = 'true';
   }
+  return headers;
+}
+
+async function curlRequest(method, path, body, headers) {
+  const args = ['-4', '-sS', '-L', '-X', method];
+
+  for (const [key, value] of Object.entries(headers)) {
+    args.push('-H', `${key}: ${value}`);
+  }
+
+  if (body) {
+    args.push('--data', JSON.stringify(body));
+  }
+
+  args.push('-w', '\n__STATUS__:%{http_code}', `${baseUrl}${path}`);
+
+  const { stdout } = await execFile('curl', args);
+  const separator = '\n__STATUS__:';
+  const index = stdout.lastIndexOf(separator);
+  if (index === -1) {
+    throw new Error('curl response missing HTTP status');
+  }
+
+  const text = stdout.slice(0, index);
+  const status = Number.parseInt(stdout.slice(index + separator.length).trim(), 10);
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  return { status, data };
+}
+
+async function request(method, path, body) {
+  const headers = buildHeaders();
   const maxAttempts = readOnly || method === 'GET' ? 5 : 1;
   let lastError = null;
+  const useCurl = readOnly && baseUrl.startsWith('https://') && Boolean(bypassSecret);
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
+      if (useCurl) {
+        return await curlRequest(method, path, body, headers);
+      }
+
       const res = await fetch(`${baseUrl}${path}`, {
         method,
         headers,
