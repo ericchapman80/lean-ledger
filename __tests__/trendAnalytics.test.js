@@ -107,6 +107,40 @@ describe('buildTrendAnalytics', () => {
     expect(result.summary.previousWeekChange).toBe(-1.2);
   });
 
+  it('keeps moving average calculations in canonical kg for presentation-layer conversion', () => {
+    const result = buildTrendAnalytics({
+      startDate: '2026-05-18',
+      endDate: '2026-05-24',
+      mealTrends: [],
+      weightLogs: [
+        { date: '2026-05-18', weight: 102.4 },
+        { date: '2026-05-19', weight: 102.5 },
+        { date: '2026-05-20', weight: 102.6 },
+        { date: '2026-05-21', weight: 102.7 },
+        { date: '2026-05-22', weight: 102.8 },
+        { date: '2026-05-23', weight: 102.9 },
+        { date: '2026-05-24', weight: 103.0 },
+      ],
+      profile: {
+        weight: 102.7,
+        dietStyle: 'balanced',
+        activeMacros: { protein: 200, calories: 2200, carbs: 180 },
+      },
+      weeklyStats: {
+        dailyTargets: { calories: 2200 },
+        weeklyTargets: { calories: 15400 },
+        consumed: { calories: 0 },
+        remaining: { calories: 15400 },
+        focus: { sevenDayAverageWeight: 102.7 },
+        elapsedDays: 7,
+      },
+    });
+
+    expect(result.dailySeries[6].sevenDayAverageWeight).toBe(102.7);
+    expect(result.summary.currentWeight).toBe(103);
+    expect(result.summary.sevenDayAverageWeight).toBe(102.7);
+  });
+
   it('adds waist, workout, hydration, and recovery signals when health data exists', () => {
     const result = buildTrendAnalytics({
       startDate: '2026-05-18',

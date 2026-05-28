@@ -69,6 +69,24 @@ CREATE TABLE IF NOT EXISTS favorite_meal_items (
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS favorite_foods (
+  id              SERIAL PRIMARY KEY,
+  user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name            TEXT NOT NULL,
+  default_meal_type TEXT DEFAULT 'breakfast',
+  portion_amount  DOUBLE PRECISION,
+  portion_unit    TEXT,
+  portion_grams   DOUBLE PRECISION,
+  protein         DOUBLE PRECISION NOT NULL,
+  fat             DOUBLE PRECISION NOT NULL,
+  carbs           DOUBLE PRECISION NOT NULL,
+  fiber           DOUBLE PRECISION,
+  sugar_alcohols  DOUBLE PRECISION,
+  calories        DOUBLE PRECISION NOT NULL,
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS weight_logs (
   id          SERIAL PRIMARY KEY,
   user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -141,6 +159,7 @@ CREATE INDEX IF NOT EXISTS idx_health_metrics_user_date ON health_metrics(user_i
 CREATE INDEX IF NOT EXISTS idx_health_metrics_user_recorded_at ON health_metrics(user_id, recorded_at);
 CREATE INDEX IF NOT EXISTS idx_favorite_meals_user_created_at ON favorite_meals(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_favorite_meal_items_template_id ON favorite_meal_items(favorite_meal_id);
+CREATE INDEX IF NOT EXISTS idx_favorite_foods_user_created_at ON favorite_foods(user_id, created_at DESC);
 
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_goal_check;
 ALTER TABLE users
@@ -211,6 +230,15 @@ ALTER TABLE favorite_meal_items
   ADD COLUMN IF NOT EXISTS fiber DOUBLE PRECISION;
 
 ALTER TABLE favorite_meal_items
+  ADD COLUMN IF NOT EXISTS sugar_alcohols DOUBLE PRECISION;
+
+ALTER TABLE favorite_foods
+  ADD COLUMN IF NOT EXISTS default_meal_type TEXT DEFAULT 'breakfast';
+
+ALTER TABLE favorite_foods
+  ADD COLUMN IF NOT EXISTS fiber DOUBLE PRECISION;
+
+ALTER TABLE favorite_foods
   ADD COLUMN IF NOT EXISTS sugar_alcohols DOUBLE PRECISION;
 
 ALTER TABLE water_entries

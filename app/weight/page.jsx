@@ -4,7 +4,14 @@ import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { weightApi, profileApi } from '@/lib/api';
 import { getTodayDate, formatDisplayDate } from '@/lib/utils/dateUtils';
-import { kgToLbs, lbsToKg, formatWeight } from '@/lib/utils/unitUtils';
+import {
+  formatDisplayWeightValue,
+  formatWeight,
+  formatWeightChange,
+  getWeightDisplayValue,
+  getWeightUnit,
+  lbsToKg,
+} from '@/lib/utils/unitUtils';
 import { getGoalDescription } from '@/lib/utils/macroUtils';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
@@ -53,7 +60,7 @@ export default function Weight() {
 
   const chartData = [...weights].reverse().map((w) => ({
     date: formatDisplayDate(w.date),
-    weight: profile?.units === 'imperial' ? kgToLbs(w.weight) : w.weight,
+    weight: getWeightDisplayValue(w.weight, profile?.units || 'metric'),
   }));
 
   const weightChange = weights.length >= 2
@@ -61,7 +68,7 @@ export default function Weight() {
     : 0;
 
   const units = profile?.units || 'metric';
-  const weightLabel = units === 'imperial' ? 'lbs' : 'kg';
+  const weightLabel = getWeightUnit(units);
 
   return (
     <div className="container" style={{ padding: '40px 20px' }}>
@@ -107,8 +114,7 @@ export default function Weight() {
                          : weightChange > 0 ? 'var(--danger-color)'
                          : 'var(--text-primary)',
                   }}>
-                    {weightChange > 0 ? '+' : ''}
-                    {units === 'imperial' ? kgToLbs(weightChange).toFixed(1) : weightChange.toFixed(1)} {weightLabel}
+                    {formatWeightChange(weightChange, units)}
                   </p>
                 </div>
               )}
@@ -130,8 +136,12 @@ export default function Weight() {
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
-              <YAxis domain={['dataMin - 2', 'dataMax + 2']} />
-              <Tooltip />
+              <YAxis
+                domain={['dataMin - 2', 'dataMax + 2']}
+                tickFormatter={(value) => formatDisplayWeightValue(value, units)}
+                label={{ value: weightLabel, angle: -90, position: 'insideLeft' }}
+              />
+              <Tooltip formatter={(value) => formatDisplayWeightValue(value, units)} />
               <Line type="monotone" dataKey="weight" stroke="var(--primary-color)" strokeWidth={3}
                 dot={{ fill: 'var(--primary-color)', r: 5 }} />
             </LineChart>
@@ -155,14 +165,14 @@ export default function Weight() {
                 {weights.map((weight, index) => {
                   const prevWeight = index < weights.length - 1 ? weights[index + 1].weight : weight.weight;
                   const change = weight.weight - prevWeight;
-                  const displayWeight = units === 'imperial' ? kgToLbs(weight.weight) : weight.weight;
-                  const displayChange = units === 'imperial' ? kgToLbs(change) : change;
+                  const displayWeight = getWeightDisplayValue(weight.weight, units);
+                  const displayChange = getWeightDisplayValue(change, units);
 
                   return (
                     <tr key={weight.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                       <td style={{ padding: '12px' }}>{formatDisplayDate(weight.date)}</td>
                       <td style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold' }}>
-                        {displayWeight.toFixed(1)}
+                        {formatDisplayWeightValue(displayWeight, units)}
                       </td>
                       <td style={{
                         padding: '12px', textAlign: 'right',
@@ -171,7 +181,7 @@ export default function Weight() {
                              : 'inherit',
                       }}>
                         {index < weights.length - 1 && (
-                          <>{displayChange > 0 ? '+' : ''}{displayChange.toFixed(1)}</>
+                          <>{displayChange > 0 ? '+' : ''}{formatDisplayWeightValue(displayChange, units)}</>
                         )}
                       </td>
                     </tr>
