@@ -88,6 +88,13 @@ Production can behave differently when the database is attached through a Vercel
 
 If that happens, build `.env.production.local` manually from Neon Connection Details instead of relying on CLI export.
 
+GitHub Actions handles this differently from local verification:
+
+- preview deploys normalize `DATABASE_URL` from the pulled Vercel env file
+- production deploys first try the pulled Vercel env file, then fall back to the GitHub secret `PROD_DATABASE_URL` if Vercel exports blank integration-managed values
+
+That fallback is intentional for CI only. It prevents production migrations from failing when Vercel runtime secrets exist but `vercel pull --environment=production` exports empty DB values.
+
 If you move deployment ownership to GitHub Actions, disable Vercel's automatic Git-based production deployment to avoid duplicate deploys.
 
 ## 3. One-Time Local Postgres -> Neon Production Migration
