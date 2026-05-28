@@ -4,12 +4,16 @@ import {
   cmToInches,
   feetInchesToCm,
   flOzToMl,
+  formatDisplayWeightValue,
   formatHeight,
   kgToLbs,
   lbsToKg,
   inchesToCm,
   mlToFlOz,
   formatWeight,
+  formatWeightChange,
+  getWeightDisplayValue,
+  getWeightLabel,
 } from '@/lib/utils/unitUtils.js';
 import { getDateDaysBefore, getElapsedWeekDays, getEndOfWeek, getStartOfWeek } from '@/lib/utils/dateUtils.js';
 
@@ -54,11 +58,28 @@ describe('kg/lbs round-trip', () => {
 });
 
 describe('formatWeight', () => {
-  it('formats imperial in lbs', () => {
-    expect(formatWeight(75, 'imperial')).toMatch(/lbs$/);
+  it('formats imperial in lb', () => {
+    expect(formatWeight(102.7, 'imperial')).toBe('226.4 lb');
   });
   it('formats metric in kg', () => {
     expect(formatWeight(75, 'metric')).toBe('75 kg');
+  });
+
+  it('converts display values exactly once for chart values and axis labels', () => {
+    expect(getWeightDisplayValue(102.7, 'imperial')).toBe(226.4);
+    expect(formatDisplayWeightValue(226.4, 'imperial')).toBe('226.4 lb');
+    expect(getWeightDisplayValue(102.7, 'metric')).toBe(102.7);
+    expect(formatDisplayWeightValue(102.7, 'metric')).toBe('102.7 kg');
+  });
+
+  it('formats canonical kg weight changes in the user display unit', () => {
+    expect(formatWeightChange(-0.5, 'imperial')).toBe('-1.1 lb');
+    expect(formatWeightChange(0.5, 'metric')).toBe('+0.5 kg');
+  });
+
+  it('uses explicit singular unit labels', () => {
+    expect(getWeightLabel('imperial')).toBe('Weight (lb)');
+    expect(getWeightLabel('metric')).toBe('Weight (kg)');
   });
 });
 
