@@ -9,6 +9,13 @@
 //
 // Safe to re-run: uses tagged meal/weight names so we can clean up.
 
+import dns from 'node:dns';
+import { execFile as execFileCallback } from 'node:child_process';
+import { promisify } from 'node:util';
+
+dns.setDefaultResultOrder('ipv4first');
+const execFile = promisify(execFileCallback);
+
 const args = process.argv.slice(2);
 const baseUrl = (args.find((arg) => !arg.startsWith('--')) || 'http://localhost:3000').replace(/\/$/, '');
 const readOnly = args.includes('--read-only');
@@ -20,21 +27,76 @@ let passed = 0;
 let failed = 0;
 const failures = [];
 
-async function request(method, path, body) {
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function buildHeaders() {
   const headers = { 'Content-Type': 'application/json' };
   if (bypassSecret) {
     headers['x-vercel-protection-bypass'] = bypassSecret;
-    headers['x-vercel-set-bypass-cookie'] = 'true';
   }
-  const res = await fetch(`${baseUrl}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const text = await res.text();
+  return headers;
+}
+
+async function curlRequest(method, path, body, headers) {
+  const args = ['-4', '-sS', '-X', method];
+
+  for (const [key, value] of Object.entries(headers)) {
+    args.push('-H', `${key}: ${value}`);
+  }
+
+  if (body) {
+    args.push('--data', JSON.stringify(body));
+  }
+
+  args.push('-w', '\n__STATUS__:%{http_code}', `${baseUrl}${path}`);
+
+  const { stdout } = await execFile('curl', args);
+  const separator = '\n__STATUS__:';
+  const index = stdout.lastIndexOf(separator);
+  if (index === -1) {
+    throw new Error('curl response missing HTTP status');
+  }
+
+  const text = stdout.slice(0, index);
+  const status = Number.parseInt(stdout.slice(index + separator.length).trim(), 10);
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-  return { status: res.status, data };
+  return { status, data };
+}
+
+async function request(method, path, body) {
+  const headers = buildHeaders();
+  const maxAttempts = readOnly || method === 'GET' ? 5 : 1;
+  let lastError = null;
+  const useCurl = readOnly && baseUrl.startsWith('https://') && Boolean(bypassSecret);
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      if (useCurl) {
+        return await curlRequest(method, path, body, headers);
+      }
+
+      const res = await fetch(`${baseUrl}${path}`, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      return { status: res.status, data };
+    } catch (error) {
+      lastError = error;
+      if (attempt === maxAttempts) {
+        throw error;
+      }
+      await delay(attempt * 1000);
+    }
+  }
+
+  throw lastError;
 }
 
 function assert(label, condition, detail) {
@@ -105,7 +167,11 @@ await step('Meals: fetch today', async () => {
   const r = await request('GET', `/api/meals?date=${today}`);
   assert('GET /api/meals → 200', r.status === 200);
   assert('Array response', Array.isArray(r.data));
-  assert('Includes smoke meal', r.data?.some((m) => m.id === mealId));
+  if (readOnly) {
+    assert('Meals route returns entries or an empty list', Array.isArray(r.data));
+  } else {
+    assert('Includes smoke meal', r.data?.some((m) => m.id === mealId));
+  }
 });
 
 if (!readOnly) {
@@ -124,7 +190,11 @@ await step('Stats: daily', async () => {
   const r = await request('GET', `/api/stats/daily/${today}`);
   assert('GET /api/stats/daily/:date → 200', r.status === 200);
   assert('Includes totals + targets + progress', r.data?.totals && r.data?.targets && r.data?.progress);
-  assert('mealCount > 0', r.data?.mealCount > 0);
+  if (readOnly) {
+    assert('mealCount is present', typeof r.data?.mealCount === 'number');
+  } else {
+    assert('mealCount > 0', r.data?.mealCount > 0);
+  }
 });
 
 await step('Stats: trends (last 7d)', async () => {
