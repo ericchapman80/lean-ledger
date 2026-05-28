@@ -10,9 +10,11 @@
 // Safe to re-run: uses tagged meal/weight names so we can clean up.
 
 import dns from 'node:dns';
-import { execFile } from 'node:child_process/promises';
+import { execFile as execFileCallback } from 'node:child_process';
+import { promisify } from 'node:util';
 
 dns.setDefaultResultOrder('ipv4first');
+const execFile = promisify(execFileCallback);
 
 const args = process.argv.slice(2);
 const baseUrl = (args.find((arg) => !arg.startsWith('--')) || 'http://localhost:3000').replace(/\/$/, '');
