@@ -35,13 +35,12 @@ function buildHeaders() {
   const headers = { 'Content-Type': 'application/json' };
   if (bypassSecret) {
     headers['x-vercel-protection-bypass'] = bypassSecret;
-    headers['x-vercel-set-bypass-cookie'] = 'true';
   }
   return headers;
 }
 
 async function curlRequest(method, path, body, headers) {
-  const args = ['-4', '-sS', '-L', '-X', method];
+  const args = ['-4', '-sS', '-X', method];
 
   for (const [key, value] of Object.entries(headers)) {
     args.push('-H', `${key}: ${value}`);
