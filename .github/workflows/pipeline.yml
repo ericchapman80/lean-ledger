@@ -151,13 +151,29 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      - name: Migrate preview database
+      - name: Normalize preview database env
         shell: bash
         run: |
           set -a
           source .vercel/.env.preview.local
           set +a
-          npm run migrate-db
+          if [ -z "${DATABASE_URL:-}" ] && [ -n "${POSTGRES_URL:-}" ]; then
+            export DATABASE_URL="$POSTGRES_URL"
+          fi
+          if [ -z "${DATABASE_URL_UNPOOLED:-}" ] && [ -n "${POSTGRES_URL_NON_POOLING:-}" ]; then
+            export DATABASE_URL_UNPOOLED="$POSTGRES_URL_NON_POOLING"
+          fi
+          {
+            echo "DATABASE_URL=$DATABASE_URL"
+            echo "DATABASE_URL_UNPOOLED=${DATABASE_URL_UNPOOLED:-}"
+          } >> "$GITHUB_ENV"
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "Preview DATABASE_URL is not available after Vercel env pull."
+            exit 1
+          fi
+
+      - name: Migrate preview database
+        run: npm run migrate-db
 
       - name: Build preview deployment
         run: npx vercel build --token=${{ secrets.VERCEL_TOKEN }}
@@ -241,6 +257,8 @@ jobs:
     outputs:
       deployment-url: ${{ steps.deploy.outputs.url }}
       target-url: ${{ steps.target.outputs.url }}
+    env:
+      PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -257,13 +275,32 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      - name: Migrate production database
+      - name: Normalize production database env
         shell: bash
         run: |
           set -a
           source .vercel/.env.production.local
           set +a
-          npm run migrate-db
+          if [ -z "${DATABASE_URL:-}" ] && [ -n "${POSTGRES_URL:-}" ]; then
+            export DATABASE_URL="$POSTGRES_URL"
+          fi
+          if [ -z "${DATABASE_URL_UNPOOLED:-}" ] && [ -n "${POSTGRES_URL_NON_POOLING:-}" ]; then
+            export DATABASE_URL_UNPOOLED="$POSTGRES_URL_NON_POOLING"
+          fi
+          if [ -z "${DATABASE_URL:-}" ] && [ -n "${PROD_DATABASE_URL:-}" ]; then
+            export DATABASE_URL="$PROD_DATABASE_URL"
+          fi
+          {
+            echo "DATABASE_URL=$DATABASE_URL"
+            echo "DATABASE_URL_UNPOOLED=${DATABASE_URL_UNPOOLED:-}"
+          } >> "$GITHUB_ENV"
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "Production DATABASE_URL is not available after Vercel env pull or PROD_DATABASE_URL fallback."
+            exit 1
+          fi
+
+      - name: Migrate production database
+        run: npm run migrate-db
 
       - name: Build production deployment
         run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
