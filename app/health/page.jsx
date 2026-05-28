@@ -6,7 +6,7 @@ import { healthMetricsApi, profileApi } from '@/lib/api';
 import {
   CSV_IMPORT_FIELDS,
   HEALTH_METRIC_FIELDS,
-  getHealthMetricDisplayValue,
+  formatHealthMetricDisplayValue,
   getHealthMetricFieldMeta,
   getHealthMetricInputProps,
   inferColumnMapping,
@@ -296,7 +296,10 @@ export default function HealthPage() {
                           <td style={{ padding: '10px', fontSize: '14px', color: 'var(--text-secondary)' }}>
                             {Object.entries(row.mapped)
                               .filter(([key, value]) => key !== 'recordedAt' && key !== 'date' && value != null)
-                              .map(([key, value]) => `${HEALTH_METRIC_FIELDS.find((field) => field.key === key)?.label || key}: ${value}`)
+                              .map(([key, value]) => {
+                                const field = HEALTH_METRIC_FIELDS.find((metric) => metric.key === key);
+                                return `${field?.label || key}: ${formatHealthMetricDisplayValue(key, value, displayUnits)}`;
+                              })
                               .join(', ') || 'No mapped metrics'}
                           </td>
                           <td style={{ padding: '10px', color: row.valid ? 'var(--success-color)' : 'var(--danger-color)' }}>
@@ -365,11 +368,11 @@ export default function HealthPage() {
                     <tr key={metric.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                       <td style={{ padding: '12px' }}>{formatDisplayDate(metric.date)}</td>
                       <td style={{ padding: '12px', textAlign: 'right' }}>
-                        {metric.weight != null ? getHealthMetricDisplayValue('weight', metric.weight, displayUnits)?.toFixed(1) : '—'}
+                        {formatHealthMetricDisplayValue('weight', metric.weight, displayUnits)}
                       </td>
                       <td style={{ padding: '12px', textAlign: 'right' }}>{metric.bodyFatPercent ?? '—'}</td>
                       <td style={{ padding: '12px', textAlign: 'right' }}>
-                        {metric.muscleMass != null ? getHealthMetricDisplayValue('muscleMass', metric.muscleMass, displayUnits)?.toFixed(1) : '—'}
+                        {formatHealthMetricDisplayValue('muscleMass', metric.muscleMass, displayUnits)}
                       </td>
                       <td style={{ padding: '12px', textAlign: 'right' }}>{metric.sleepHours ?? '—'}</td>
                     </tr>

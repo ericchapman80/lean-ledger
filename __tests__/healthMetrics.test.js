@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  formatHealthMetricDisplayUnitValue,
+  formatHealthMetricDisplayValue,
   getHealthMetricDisplayValue,
   getHealthMetricFieldMeta,
   getHealthMetricInputProps,
@@ -148,6 +150,12 @@ describe('unit-aware health metric helpers', () => {
     expect(getHealthMetricDisplayValue('weight', 75, 'imperial')).toBeCloseTo(165.3, 1);
     expect(getHealthMetricDisplayValue('muscleMass', 40, 'imperial')).toBeCloseTo(88.2, 1);
     expect(getHealthMetricDisplayValue('waistMeasurement', 32, 'metric')).toBeCloseTo(81.3, 1);
+  });
+
+  it('formats advanced metric displays with explicit preferred units', () => {
+    expect(formatHealthMetricDisplayValue('weight', 102.7, 'imperial')).toBe('226.4 lb');
+    expect(formatHealthMetricDisplayValue('weight', 102.7, 'metric')).toBe('102.7 kg');
+    expect(formatHealthMetricDisplayUnitValue('muscleMass', 88.2, 'imperial')).toBe('88.2 lb');
   });
 
   it('exposes unit-aware input limits for profile preference propagation', () => {

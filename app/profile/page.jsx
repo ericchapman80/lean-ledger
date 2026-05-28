@@ -9,12 +9,12 @@ import {
   getDietStyleDescription,
   getGoalDescription,
 } from '@/lib/utils/macroUtils';
-import { cmToFeetInches, feetInchesToCm, kgToLbs, lbsToKg, formatHeight, formatWeight } from '@/lib/utils/unitUtils';
+import { cmToFeetInches, feetInchesToCm, kgToLbs, lbsToKg, formatHeight, formatWeight, getWeightUnit } from '@/lib/utils/unitUtils';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 
 const LEAN_RECOMP_HELPER_TEXT = 'Lean Recomp prioritizes fat loss while preserving or building muscle. Focus on strength performance, waist trend, and weekly average weight instead of day-to-day scale swings.';
-const LEAN_RECOMP_PROTEIN_HELPER = 'If you are around 231 lbs and strength training, a typical Lean Recomp protein target lands around 180–220g per day.';
+const LEAN_RECOMP_PROTEIN_HELPER = 'If you are around 231 lb and strength training, a typical Lean Recomp protein target lands around 180–220g per day.';
 
 function MacroSummaryCard({
   title,
@@ -193,7 +193,7 @@ export default function Profile() {
               <select value={formData.units}
                 onChange={(e) => setFormData((p) => ({ ...p, units: e.target.value }))}
                 className="form-select" required>
-                <option value="imperial">Imperial (lbs, feet/inches)</option>
+                <option value="imperial">Imperial (lb, feet/inches)</option>
                 <option value="metric">Metric (kg, cm)</option>
               </select>
             </div>
@@ -239,7 +239,7 @@ export default function Profile() {
               )}
 
               <div className="form-group">
-                <label className="form-label">Weight {formData.units === 'imperial' ? '(lbs)' : '(kg)'}</label>
+                <label className="form-label">Weight ({getWeightUnit(formData.units)})</label>
                 <input type="number" value={formData.weight}
                   onChange={(e) => setFormData((p) => ({ ...p, weight: e.target.value }))}
                   className="form-input" step="0.1" min="1"

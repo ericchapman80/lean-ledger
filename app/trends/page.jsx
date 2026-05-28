@@ -16,10 +16,16 @@ import {
   YAxis,
 } from 'recharts';
 import { beverageApi, healthMetricsApi, profileApi, statsApi, weightApi } from '@/lib/api';
-import { getAvailableAdvancedMetricGroups, HEALTH_METRIC_FIELDS } from '@/lib/healthMetrics';
+import {
+  formatHealthMetricDisplayUnitValue,
+  getAvailableAdvancedMetricGroups,
+  getHealthMetricFieldMeta,
+  HEALTH_METRIC_FIELDS,
+} from '@/lib/healthMetrics';
 import { buildTrendAnalytics } from '@/lib/trendAnalytics';
-import { formatDisplayDate, getDateDaysBefore, getTodayDate } from '@/lib/utils/dateUtils';
-import { formatWeight } from '@/lib/utils/unitUtils';
+import { getDateDaysBefore, getTodayDate } from '@/lib/utils/dateUtils';
+import { buildTrendChartData } from '@/lib/trendDisplay';
+import { formatDisplayWeightValue, formatWeight, formatWeightChange, getWeightUnit } from '@/lib/utils/unitUtils';
 import { formatWaterFromFlOz, getPreferredWaterUnit } from '@/lib/water';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
@@ -96,10 +102,7 @@ export default function Trends() {
   if (error) return <ErrorMessage error={error} onRetry={fetchTrends} />;
   if (!analytics || !profile || !weeklyStats) return <ErrorMessage error="No data available" />;
 
-  const chartData = analytics.dailySeries.map((entry) => ({
-    ...entry,
-    displayDate: formatDisplayDate(entry.date),
-  }));
+  const chartData = buildTrendChartData(analytics.dailySeries, profile.units);
 
   const calorieBudgetChart = [
     {
@@ -115,6 +118,7 @@ export default function Trends() {
   }));
   const advancedMetricGroups = getAvailableAdvancedMetricGroups(chartData);
   const preferredWaterUnit = getPreferredWaterUnit(profile.units);
+  const weightUnit = getWeightUnit(profile.units);
   const carbLabel = analytics.summary.carbLabel || 'Carbs';
   const hasWaistData = chartData.some((entry) => entry.waistMeasurement != null);
   const hasWorkoutData = chartData.some((entry) => entry.workoutCompleted != null);
@@ -125,6 +129,9 @@ export default function Trends() {
     || entry.hungerLevel != null
     || entry.sorenessLevel != null
   ));
+  const formatAdvancedMetricTooltip = (value, _name, item) => (
+    formatHealthMetricDisplayUnitValue(item?.dataKey, value, profile.units)
+  );
 
   return (
     <div className="container" style={{ padding: '40px 20px' }}>
@@ -164,7 +171,7 @@ export default function Trends() {
           label="7-Day Average"
           value={analytics.summary.sevenDayAverageWeight != null ? formatWeight(analytics.summary.sevenDayAverageWeight, profile.units) : 'Not enough data'}
           helper={analytics.summary.previousWeekChange != null
-            ? `${analytics.summary.previousWeekChange > 0 ? '+' : ''}${analytics.summary.previousWeekChange} ${profile.units === 'imperial' ? 'lbs' : 'kg'} vs previous week`
+            ? `${formatWeightChange(analytics.summary.previousWeekChange, profile.units)} vs previous week`
             : 'Need at least two weeks of weight logs for comparison.'}
         />
         <SummaryCard
@@ -189,8 +196,11 @@ export default function Trends() {
             <ComposedChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="displayDate" minTickGap={24} />
-              <YAxis />
-              <Tooltip />
+              <YAxis
+                tickFormatter={(value) => formatDisplayWeightValue(value, profile.units)}
+                label={{ value: weightUnit, angle: -90, position: 'insideLeft' }}
+              />
+              <Tooltip formatter={(value) => formatDisplayWeightValue(value, profile.units)} />
               <Legend />
               <Bar dataKey="weight" fill="rgba(33, 150, 243, 0.25)" name="Scale Weight" radius={[4, 4, 0, 0]} />
               <Line type="monotone" dataKey="sevenDayAverageWeight" stroke="#1f6feb" strokeWidth={3} dot={false} name="7-Day Average" />
@@ -490,10 +500,14 @@ export default function Trends() {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="displayDate" minTickGap={24} />
                       <YAxis />
-                      <Tooltip />
+                      <Tooltip formatter={formatAdvancedMetricTooltip} />
                       <Legend />
                       {group.fields.map((fieldKey, index) => {
                         const field = HEALTH_METRIC_FIELDS.find((metric) => metric.key === fieldKey);
+                        const fieldMeta = getHealthMetricFieldMeta(fieldKey, profile.units);
+                        const displayName = fieldMeta?.unit
+                          ? `${field?.label || fieldKey} (${fieldMeta.unit})`
+                          : field?.label || fieldKey;
                         const colors = ['#1f6feb', '#e74c3c', '#16a085', '#8e44ad'];
                         return (
                           <Line
@@ -503,7 +517,7 @@ export default function Trends() {
                             stroke={colors[index % colors.length]}
                             strokeWidth={2}
                             dot={false}
-                            name={field?.label || fieldKey}
+                            name={displayName}
                           />
                         );
                       })}
