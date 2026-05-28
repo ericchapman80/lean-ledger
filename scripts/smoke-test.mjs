@@ -167,7 +167,11 @@ await step('Meals: fetch today', async () => {
   const r = await request('GET', `/api/meals?date=${today}`);
   assert('GET /api/meals → 200', r.status === 200);
   assert('Array response', Array.isArray(r.data));
-  assert('Includes smoke meal', r.data?.some((m) => m.id === mealId));
+  if (readOnly) {
+    assert('Meals route returns entries or an empty list', Array.isArray(r.data));
+  } else {
+    assert('Includes smoke meal', r.data?.some((m) => m.id === mealId));
+  }
 });
 
 if (!readOnly) {
@@ -186,7 +190,11 @@ await step('Stats: daily', async () => {
   const r = await request('GET', `/api/stats/daily/${today}`);
   assert('GET /api/stats/daily/:date → 200', r.status === 200);
   assert('Includes totals + targets + progress', r.data?.totals && r.data?.targets && r.data?.progress);
-  assert('mealCount > 0', r.data?.mealCount > 0);
+  if (readOnly) {
+    assert('mealCount is present', typeof r.data?.mealCount === 'number');
+  } else {
+    assert('mealCount > 0', r.data?.mealCount > 0);
+  }
 });
 
 await step('Stats: trends (last 7d)', async () => {
