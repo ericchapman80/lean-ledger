@@ -96,7 +96,7 @@ describe('water helpers', () => {
         caffeineMg: 0,
       },
       '2026-05-26': {
-        hydrationFlOz: 32,
+        hydrationFlOz: 30.4,
         totalFluidsFlOz: 32,
         calories: 0,
         protein: 0,
@@ -128,7 +128,24 @@ describe('water helpers', () => {
   it('adds keto hydration helper guidance when applicable', () => {
     expect(getHydrationHelperCopy({ dietStyle: 'keto_flexible', workoutCompleted: true })).toEqual([
       'Hydration and electrolytes matter more during low-carb eating.',
+      'Hydration totals weight beverages by type instead of treating every drink as full water.',
       'Training days usually need extra fluids to support performance and recovery.',
+    ]);
+  });
+
+  it('uses hydration multipliers for beverages that count partially', () => {
+    const summary = summarizeBeverageEntries([
+      { beverageType: 'black_coffee', countsTowardHydration: true, amountFlOz: 20, calories: 0, protein: 0, carbs: 0, fat: 0 },
+      { beverageType: 'diet_drink', countsTowardHydration: true, amountFlOz: 10, calories: 0, protein: 0, carbs: 0, fat: 0 },
+      { beverageType: 'milk', countsTowardHydration: true, amountFlOz: 8, calories: 120, protein: 8, carbs: 12, fat: 5 },
+    ], { weightKg: 104.8 });
+
+    expect(summary.totalFluidsFlOz).toBe(38);
+    expect(summary.hydrationFlOz).toBe(32);
+    expect(summary.hydrationDetails).toEqual([
+      expect.objectContaining({ beverageType: 'black_coffee', hydrationMultiplier: 0.95, hydrationContributionFlOz: 19 }),
+      expect.objectContaining({ beverageType: 'diet_drink', hydrationMultiplier: 0.9, hydrationContributionFlOz: 9 }),
+      expect.objectContaining({ beverageType: 'milk', hydrationMultiplier: 0.5, hydrationContributionFlOz: 4 }),
     ]);
   });
 
@@ -154,8 +171,8 @@ describe('water helpers', () => {
       { beverageType: 'black_coffee', countsTowardHydration: true, amountFlOz: 12, calories: 0, protein: 0, carbs: 0, fat: 0 },
     ], { weightKg: 104.8 });
 
-    expect(withTwoEntries.hydrationFlOz).toBe(28);
-    expect(afterDelete.hydrationFlOz).toBe(12);
+    expect(withTwoEntries.hydrationFlOz).toBe(27.4);
+    expect(afterDelete.hydrationFlOz).toBe(11.4);
   });
 
   it('updates macro totals when a beverage with macros is edited', () => {

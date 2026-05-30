@@ -138,6 +138,12 @@ function formatFavoriteBeverageDetails(entry, preferredBeverageUnit) {
   return details;
 }
 
+function formatHydrationContribution(entry, preferredBeverageUnit) {
+  const contribution = entry.hydrationContributionFlOz ?? 0;
+  if (contribution <= 0) return 'does not add to hydration total';
+  return `${formatBeverageFromFlOz(contribution, preferredBeverageUnit)} hydration credit`;
+}
+
 function InlineActionButton({ children, onClick, danger = false }) {
   return (
     <button
@@ -796,7 +802,7 @@ export default function Meals() {
           <div>
             <h2 style={{ margin: '0 0 6px' }}>Hydration &amp; Beverages</h2>
             <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
-              Water counts toward hydration. Other beverages can support hydration, macros, or both.
+              Water counts fully. Other beverages can contribute partially to hydration based on beverage type.
             </p>
           </div>
           <div style={{ textAlign: 'right' }}>
@@ -953,6 +959,11 @@ export default function Meals() {
           <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
             Total fluids: {beverageSummary.display.totalFluids}
           </p>
+          {beverageSummary.display.totalFluids !== beverageSummary.display.consumed ? (
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+              Weighted hydration: {beverageSummary.display.consumed}
+            </p>
+          ) : null}
           {hydrationHelper.map((message) => (
             <p key={message} style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
               {message}
@@ -980,7 +991,7 @@ export default function Meals() {
                   </p>
                   <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
                     {formatBeverageFromFlOz(entry.amountFlOz, preferredBeverageUnit)}
-                    {entry.countsTowardHydration ? ' • counts toward hydration' : ''}
+                    {entry.countsTowardHydration ? ` • ${formatHydrationContribution(entry, preferredBeverageUnit)}` : ' • does not add to hydration total'}
                   </p>
                   {(entry.calories || entry.protein || entry.carbs || entry.fat) ? (
                     <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)', fontSize: '12px' }}>

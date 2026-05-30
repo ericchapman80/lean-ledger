@@ -173,7 +173,7 @@ describe('intake duplicate helpers', () => {
       weightKg: 75,
     });
 
-    expect(summary.hydrationFlOz).toBe(32);
+    expect(summary.hydrationFlOz).toBe(8);
   });
 
   it('duplicate beverage with macros updates daily macro totals', () => {
