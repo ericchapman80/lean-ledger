@@ -44,6 +44,12 @@ This roadmap area should clearly guide future product decisions around these pri
 
 ### 1. Favorite Meals / Meal Templates
 
+- **Status: shipped on main**
+  - save favorite meals
+  - add favorite meals back to the current day
+  - repeat last meal
+  - repeat yesterday’s breakfast/lunch/dinner
+
 - **Allow users to**:
   - save reusable meals
   - quickly re-add meals
@@ -55,6 +61,11 @@ This roadmap area should clearly guide future product decisions around these pri
 
 ### 2. Smart Favorite Meal Detection
 
+- **Status: shipped on main**
+  - repeated meal sections are detected from recent intake history
+  - duplicate favorite suggestions are suppressed when an equivalent favorite already exists
+  - users can save immediately or dismiss the prompt for the selected day
+
 - **Detect repeated meal combinations automatically.**
 - **Example**:
   - “You’ve logged this breakfast 5 times. Save as a favorite meal?”
@@ -62,6 +73,8 @@ This roadmap area should clearly guide future product decisions around these pri
   - Reduces friction and helps users build sustainable routines without manual organization work.
 
 ### 3. Meal-Level Macro Feedback
+
+- **Status: now in progress**
 
 - **Add lightweight meal quality insights.**
 - **Examples**:
@@ -89,6 +102,13 @@ This roadmap area should clearly guide future product decisions around these pri
   - This supports sustainable behavior change and gives users meaningful insight into eating patterns.
 
 ### 5. Repeat & Quick-Add UX
+
+- **Status: partially shipped on main**
+  - repeat last meal
+  - repeat yesterday’s breakfast/lunch/dinner
+  - add favorite meal
+  - add favorite food / add again today
+  - future work remains around even faster frequent-meal shortcuts
 
 - **Improve rapid logging workflows.**
 - **Examples**:
@@ -314,6 +334,368 @@ Hydration intelligence should be treated as a **high-priority Phase 2 direction*
 
 **Goal:** Let multiple users sign in with Google and have their own private macro data.
 
+### Research snapshot (updated 2026-05-27)
+
+Primary docs checked:
+
+- Auth.js Next.js installation: `https://authjs.dev/getting-started/installation?framework=next-js`
+- Auth.js Neon adapter: `https://authjs.dev/getting-started/adapters/neon`
+- Auth.js Google provider: `https://authjs.dev/getting-started/providers/google`
+- Auth.js resource protection/session access: `https://authjs.dev/getting-started/session-management/protecting`
+- Auth.js deployment/env vars: `https://authjs.dev/getting-started/deployment`
+
+Current Auth.js guidance uses:
+
+- `next-auth@beta` for Auth.js v5-style Next.js integration.
+- A root `auth.js` / `auth.ts` that exports `handlers`, `auth`, `signIn`, and `signOut`.
+- `app/api/auth/[...nextauth]/route.js` that re-exports `GET` and `POST` from `handlers`.
+- `AUTH_SECRET`, `AUTH_GOOGLE_ID`, and `AUTH_GOOGLE_SECRET` env var names. `NEXTAUTH_*` still appears in older NextAuth examples, but the current Auth.js docs recommend the `AUTH_*` prefix.
+- `AUTH_URL` is usually unnecessary in v5 because the host is inferred from request headers; set it only if inference fails or a custom base path is used.
+- On Vercel, `AUTH_TRUST_HOST=true` is usually inferred, but can be set explicitly if redirects or callback host detection behave oddly.
+- Next.js 16 renamed `middleware.ts` to `proxy.ts`; this app is currently Next 15, so use `middleware.js` for route protection unless Next is upgraded first.
+
+### Recommended architecture
+
+Use a single canonical `users` table for both Auth.js identity and Lean Ledger profile data.
+
+Why:
+
+- Existing app tables already use `user_id REFERENCES users(id) ON DELETE CASCADE`.
+- `getCurrentUserId(request)` is already the user boundary used by API routes.
+- Keeping a single `users` table avoids a second app profile table and avoids translating between an Auth.js user id and a separate Lean Ledger profile id on every request.
+- Auth.js's Neon adapter expects a `users` table with `id`, `name`, `email`, `emailVerified`, and `image`. Lean Ledger can extend that same table with profile columns.
+
+Target ownership:
+
+- `users`: auth identity plus Lean Ledger profile/onboarding state.
+- `accounts`: OAuth provider account linkage, managed by Auth.js.
+- `sessions`: database sessions if using database session strategy, managed by Auth.js.
+- `verification_token`: required by adapter schema and useful if email/magic-link auth is ever added.
+- App data tables remain unchanged: `meals`, `weight_logs`, `water_entries`, `health_metrics`, `favorite_meals`, `favorite_foods`, etc. They continue to scope by `user_id`.
+
+Recommended session strategy:
+
+- Prefer database sessions while using the Neon adapter. This keeps server-side revocation possible and matches the adapter model.
+- If serverless connection pressure becomes an issue, reassess JWT sessions later, but database sessions are the simpler initial mental model.
+
+### Code changes
+
+Install dependencies:
+
+```sh
+npm install next-auth@beta @auth/neon-adapter
+```
+
+`@neondatabase/serverless` is already installed. The Auth.js Neon docs say to create the Neon `Pool` inside the request handler, not at module scope:
+
+```js
+// auth.js
+import NextAuth from 'next-auth';
+import Google from 'next-auth/providers/google';
+import NeonAdapter from '@auth/neon-adapter';
+import { Pool } from '@neondatabase/serverless';
+
+export const { handlers, auth, signIn, signOut } = NextAuth(() => {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  return {
+    adapter: NeonAdapter(pool),
+    session: { strategy: 'database' },
+    providers: [Google],
+  };
+});
+```
+
+Add:
+
+- `auth.js`
+- `app/api/auth/[...nextauth]/route.js`
+- `app/login/page.jsx`
+- `middleware.js`
+- sign-in/sign-out UI in `components/Header.jsx`
+- optional small `lib/sessionUser.js` helper if `lib/auth.js` starts doing more than one thing
+
+Update `lib/auth.js#getCurrentUserId(request)`:
+
+```js
+import { auth } from '@/auth';
+
+export async function getCurrentUserId() {
+  const session = await auth();
+  const id = Number(session?.user?.id);
+  if (!Number.isInteger(id)) {
+    const error = new Error('Unauthenticated');
+    error.status = 401;
+    throw error;
+  }
+  return id;
+}
+```
+
+Also add a route-handler wrapper or `try/catch` pattern so unauthenticated API requests return `401` instead of a generic `500`.
+
+Session shape note:
+
+- Ensure `session.user.id` is present. With Auth.js, this is commonly done in a `session` callback by copying `user.id` onto `session.user.id`.
+- Keep `id` numeric if using the existing integer `users.id` primary key.
+
+Profile flow:
+
+- Authenticated user without profile fields should be allowed to reach `/profile`.
+- Most other app pages should redirect to `/profile` until required profile fields are completed.
+- `/api/profile` should return `404` or a structured `{ needsProfile: true }` for signed-in users with missing profile data.
+- After profile save, continue using the existing profile update/create logic, but `createWithId` should not be used for users already created by Auth.js. Instead, update the nullable profile columns on the existing user row.
+
+Route protection:
+
+- `middleware.js` protects pages and redirects unauthenticated users to `/login`.
+- API routes still verify the session close to the data access through `getCurrentUserId`; middleware is not enough by itself.
+- Allow unauthenticated access to `/login`, `/api/auth/*`, static assets, and possibly `/api/health`.
+- Keep post-deploy smoke tests in mind: `/api/health` should remain public, and read-only smoke checks may need an auth-aware mode or a test user session once all other APIs are protected.
+
+### Data migration plan
+
+Current blocker: Lean Ledger's `users` table requires `age`, `height`, `weight`, `gender`, `activity_level`, and `goal` as `NOT NULL`. Auth.js creates a user immediately after OAuth sign-in before the profile form exists, so those profile columns must become nullable.
+
+Recommended migration:
+
+```sql
+-- 003_add_authjs_google_multi_tenancy.sql
+
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS name VARCHAR(255),
+  ADD COLUMN IF NOT EXISTS email VARCHAR(255),
+  ADD COLUMN IF NOT EXISTS "emailVerified" TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS image TEXT;
+
+ALTER TABLE users
+  ALTER COLUMN age DROP NOT NULL,
+  ALTER COLUMN height DROP NOT NULL,
+  ALTER COLUMN weight DROP NOT NULL,
+  ALTER COLUMN gender DROP NOT NULL,
+  ALTER COLUMN activity_level DROP NOT NULL,
+  ALTER COLUMN goal DROP NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique
+  ON users(email)
+  WHERE email IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS accounts (
+  id SERIAL PRIMARY KEY,
+  "userId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type VARCHAR(255) NOT NULL,
+  provider VARCHAR(255) NOT NULL,
+  "providerAccountId" VARCHAR(255) NOT NULL,
+  refresh_token TEXT,
+  access_token TEXT,
+  expires_at BIGINT,
+  id_token TEXT,
+  scope TEXT,
+  session_state TEXT,
+  token_type TEXT,
+  UNIQUE (provider, "providerAccountId")
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id SERIAL PRIMARY KEY,
+  "userId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires TIMESTAMPTZ NOT NULL,
+  "sessionToken" VARCHAR(255) NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS verification_token (
+  identifier TEXT NOT NULL,
+  expires TIMESTAMPTZ NOT NULL,
+  token TEXT NOT NULL,
+  PRIMARY KEY (identifier, token)
+);
+
+CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts("userId");
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions("userId");
+```
+
+Potential compatibility issue:
+
+- Auth.js Neon adapter documentation shows `verification_token` singular, not `verification_tokens` plural.
+- It also shows camel-cased quoted columns like `"userId"`, `"providerAccountId"`, `"sessionToken"`, and `"emailVerified"`. Use the adapter's exact names unless a custom adapter is written.
+
+Existing single-user data migration options:
+
+1. **Claim existing data on first known Google account**: before enabling public sign-in, set `users.email`, `users.name`, and optionally `users."emailVerified"` for `id = 1` to the owner's Google identity. When that account signs in, Auth.js should link or find the existing user by email, then all existing `user_id = 1` data remains owned by that account.
+2. **Manual owner migration after first sign-in**: let Auth.js create a new user row, then transactionally update all app tables from `user_id = 1` to the new `users.id`, then delete or archive `users.id = 1`.
+3. **Wipe/reset production data**: simplest technically, only acceptable if the existing data is disposable.
+
+Recommended for this app: option 1. It preserves history, keeps foreign keys intact, and avoids rewriting every app table.
+
+### Risk controls and migration runbook
+
+High-risk controls:
+
+- **Data isolation bugs**
+  - Add integration tests that create User A and User B, then verify each API only returns the current session user's data.
+  - Cover all user-owned tables: `meals`, `weight_logs`, `water_entries`, `health_metrics`, `favorite_meals`, `favorite_meal_items` through parent ownership, and `favorite_foods`.
+  - Never accept `userId` from the client. Every route should derive ownership from `getCurrentUserId()`.
+  - Keep query methods shaped as `findByUser...`, `remove(id, userId)`, or equivalent.
+  - Add a code review checklist item: every query touching user-owned data must filter by `user_id` or join through a user-owned parent.
+
+- **Existing data ownership**
+  - Treat the owner account claim as an explicit deployment step, not an assumption.
+  - Before enabling sign-in publicly, set `users.email`, `users.name`, and optionally `users."emailVerified"` for `id = 1` to the owner's Google identity.
+  - Verify after first sign-in that `accounts."userId"` points to `users.id = 1`.
+  - Keep a fallback reassignment SQL script ready in case Auth.js creates a new user row instead of linking to `id = 1`.
+
+- **Profile onboarding mismatch**
+  - Make Lean Ledger profile columns nullable in the auth migration.
+  - Add a `hasCompletedProfile(user)` helper for required fields: `age`, `height`, `weight`, `gender`, `activityLevel`, and `goal`.
+  - Allow incomplete users to access `/profile` and `/api/profile`.
+  - Redirect incomplete users from Dashboard, Intake, Weight, Trends, Health, and advanced flows to `/profile`.
+  - Keep macro calculations away from incomplete profile rows; return a structured incomplete-profile response instead of throwing.
+
+- **CI/smoke breakage after auth**
+  - Keep `/api/health` public.
+  - Split smoke tests into public and authenticated modes.
+  - For authenticated smoke, seed a dedicated test user/session or add a test-only bypass that is gated by an env var never enabled in production.
+  - Update post-deploy checks before merging auth enforcement.
+
+Medium-risk controls:
+
+- **Auth.js schema naming**
+  - Use the adapter's exact table/column names: `verification_token`, `"userId"`, `"providerAccountId"`, `"sessionToken"`, and `"emailVerified"`.
+  - Do not rename those columns to local snake_case unless also writing a custom adapter.
+
+- **Session/database behavior**
+  - Start with database sessions for easier revocation and simpler mental model.
+  - Follow the Auth.js Neon pattern of creating the `Pool` inside the request handler.
+  - Watch Neon connection metrics after launch; switch to JWT sessions later only if database session overhead becomes a real issue.
+
+- **Route protection gaps**
+  - Use `middleware.js` for page redirects.
+  - Still enforce auth inside API routes via `getCurrentUserId()`.
+  - Standardize unauthenticated API responses as `401`.
+  - Only allow unauthenticated access to `/login`, `/api/auth/*`, static assets, and `/api/health`.
+
+- **Email-linking assumptions**
+  - Rehearse owner claim in preview using a copied DB.
+  - Confirm the signed-in session user id, the `accounts."userId"` value, and visibility of existing meals/weights before production.
+  - Do not open sign-in to additional users until owner data is verified.
+
+Lower-risk controls:
+
+- **Rollback complexity**
+  - Keep rollback simple: remove route protection and restore `getCurrentUserId()` to `return 1`.
+  - Do not immediately drop Auth.js tables during rollback.
+  - Leave profile columns nullable unless every row has complete profile data.
+
+- **UX friction**
+  - Build `/login` and `/profile` as first-class flows.
+  - Show signed-in state and sign-out in the header.
+  - After sign-in, route incomplete users directly to `/profile`.
+  - After profile save, route to Dashboard.
+
+- **Preview OAuth callback pain**
+  - Configure local and production Google OAuth callback URLs first.
+  - Use stable Vercel preview URLs only if needed.
+  - Keep non-auth preview smoke focused on `/api/health` until authenticated smoke is available.
+
+Database backup and migration plan:
+
+- Back up production with `npm run db:export`.
+- Confirm the export file exists and is restorable before touching production.
+- Keep Neon native backups/PITR enabled as the second rollback layer.
+- Run a row-count snapshot before migration:
+  - `users`
+  - `meals`
+  - `weight_logs`
+  - `water_entries`
+  - `health_metrics`
+  - `favorite_meals`
+  - `favorite_meal_items`
+  - `favorite_foods`
+- Confirm whether any rows exist for users other than `id = 1`.
+- Confirm the Google email that should claim existing data.
+- Apply the auth migration to preview first.
+- In preview, claim `users.id = 1` with the owner email.
+- Sign in through Google against preview and verify:
+  - session user id resolves to `1`
+  - `accounts."userId" = 1`
+  - existing meals, weights, beverages, health metrics, and favorites are visible
+  - incomplete-profile gating behaves correctly for a brand-new test user
+- Only then apply the production migration.
+- In production, update `users.id = 1` with the owner email before opening sign-in.
+- After production sign-in, repeat the same verification checks.
+
+Owner claim SQL shape:
+
+```sql
+UPDATE users
+SET
+  email = 'owner@example.com',
+  name = 'Owner Name',
+  "emailVerified" = NOW(),
+  updated_at = NOW()
+WHERE id = 1;
+```
+
+Fallback reassignment SQL shape if Auth.js creates a new owner row:
+
+```sql
+BEGIN;
+
+-- Replace 123 with the newly created Auth.js user id.
+UPDATE meals SET user_id = 123 WHERE user_id = 1;
+UPDATE favorite_meals SET user_id = 123 WHERE user_id = 1;
+UPDATE favorite_foods SET user_id = 123 WHERE user_id = 1;
+UPDATE weight_logs SET user_id = 123 WHERE user_id = 1;
+UPDATE water_entries SET user_id = 123 WHERE user_id = 1;
+UPDATE health_metrics SET user_id = 123 WHERE user_id = 1;
+
+COMMIT;
+```
+
+Use the fallback only after inspecting `users` and `accounts`; do not run it blindly.
+
+Rollback plan:
+
+- If auth launch fails before new users create data, remove route protection and restore `lib/auth.js` fallback to `return 1`.
+- Keep nullable profile columns; reverting those to `NOT NULL` is only safe after every user row has complete profile data.
+- Do not drop Auth.js tables immediately; they can remain inert while the app runs single-user again.
+- If production data ownership is wrong, prefer a targeted transaction that reassigns affected `user_id` values over broad deletes.
+- If the migration corrupts data or ownership in a way that cannot be fixed quickly, restore from the verified `npm run db:export` output or use Neon PITR.
+
+Safest implementation sequence:
+
+1. Add migrations and multi-user isolation tests in preview.
+2. Add Auth.js plumbing without enforcing protection everywhere.
+3. Claim `users.id = 1` with the owner's Google email.
+4. Verify login maps to existing data.
+5. Add profile-completion gating.
+6. Add API and page protection.
+7. Update smoke tests.
+8. Deploy production only after a DB export and preview rehearsal.
+
+### Testing plan
+
+Unit/integration:
+
+- `getCurrentUserId` returns the numeric session user id.
+- `getCurrentUserId` throws/returns `401` when no session exists.
+- `/api/profile` permits authenticated users with incomplete profile.
+- App data routes reject unauthenticated requests.
+- User A cannot read User B's meals, weights, beverages, health metrics, favorite meals, or favorite foods.
+
+E2E/manual:
+
+- Login page renders and Google sign-in starts.
+- First sign-in with no profile redirects to `/profile`.
+- Completing profile unlocks dashboard/intake/weight/trends.
+- Header shows signed-in user affordance and sign-out.
+- Sign-out redirects to `/login` and protected pages are inaccessible.
+- Existing owner account sees the previous `id = 1` data after migration.
+
+CI/smoke:
+
+- Keep `/api/health` public for deployment checks.
+- Either teach smoke tests to create/use an authenticated test session, or limit post-deploy read-only smoke to public health plus page shell checks until test auth is added.
+
 ### Why this is cheap to add later
 
 The schema is already multi-tenant: every per-user table foreign-keys to `users(id)`. The single-user assumption lives only in the application code. During the initial port, every API route handler reads the current user via a single helper:
@@ -343,9 +725,9 @@ To flip the app multi-tenant, change this **one file**. The route handlers don't
 | Step | Effort | Notes |
 |------|--------|-------|
 | Create Google Cloud OAuth 2.0 client | 15 min | console.cloud.google.com → APIs & Services → Credentials. Set authorized redirect URI to `https://<vercel-url>/api/auth/callback/google` (and `http://localhost:3000/api/auth/callback/google` for dev). Copy client ID + secret. |
-| `npm install next-auth @auth/neon-adapter` | 5 min | |
-| Create `app/api/auth/[...nextauth]/route.js` | 15 min | Configure Google provider, Neon adapter, JWT session strategy |
-| Add Auth.js schema tables to Neon | 5 min | Auth.js ships the SQL — 4 tables (`accounts`, `sessions`, `verification_tokens`, plus its own `users` table). Merge/reconcile with the existing `users` table that holds profile data (age/height/weight/goal). |
+| `npm install next-auth@beta @auth/neon-adapter` | 5 min | `@neondatabase/serverless` is already installed |
+| Create `app/api/auth/[...nextauth]/route.js` | 15 min | Configure Google provider, Neon adapter, and database session strategy |
+| Add Auth.js schema tables to Neon | 30 min | Add `accounts`, `sessions`, `verification_token`, and Auth.js columns to existing `users`; relax profile columns to nullable for first sign-in onboarding. |
 | Update `lib/auth.js#getCurrentUserId()` to read session | 10 min | One-file change; route handlers pick it up automatically |
 | Add login page + user menu in header | 60 min | `<button>Sign in with Google</button>`, dropdown with avatar/email/sign-out |
 | Add route protection middleware | 30 min | `middleware.js` at root, redirect unauthenticated users to `/login`, gate API routes |
@@ -354,10 +736,11 @@ To flip the app multi-tenant, change this **one file**. The route handlers don't
 ### Required env vars (production + local)
 
 ```
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-NEXTAUTH_SECRET=...  # generate with: openssl rand -base64 32
-NEXTAUTH_URL=https://lean-ledger.vercel.app
+AUTH_GOOGLE_ID=...
+AUTH_GOOGLE_SECRET=...
+AUTH_SECRET=...  # generate with: npm exec auth secret or openssl rand -base64 33
+AUTH_URL=https://lean-ledger.vercel.app  # usually optional in Auth.js v5; set if host inference fails
+AUTH_TRUST_HOST=true  # usually inferred on Vercel; useful fallback
 DATABASE_URL=...     # already configured for Neon
 ```
 
