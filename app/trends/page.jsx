@@ -51,6 +51,16 @@ function SummaryCard({ label, value, helper, accent }) {
   );
 }
 
+function formatMinutesFromMidnight(minutes) {
+  if (!Number.isFinite(minutes)) return 'Not enough data';
+  const normalizedMinutes = ((Math.round(minutes) % 1440) + 1440) % 1440;
+  const hours = Math.floor(normalizedMinutes / 60);
+  const mins = normalizedMinutes % 60;
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const displayHour = hours % 12 || 12;
+  return `${displayHour}:${String(mins).padStart(2, '0')} ${period}`;
+}
+
 export default function Trends() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -120,9 +130,16 @@ export default function Trends() {
   const preferredWaterUnit = getPreferredWaterUnit(profile.units);
   const weightUnit = getWeightUnit(profile.units);
   const carbLabel = analytics.summary.carbLabel || 'Carbs';
+  const mealBehavior = analytics.summary.mealBehavior || {};
   const hasWaistData = chartData.some((entry) => entry.waistMeasurement != null);
   const hasWorkoutData = chartData.some((entry) => entry.workoutCompleted != null);
   const hasHydrationData = chartData.some((entry) => entry.hydrationOunces != null);
+  const hasMealBehaviorData = chartData.some((entry) => (
+    entry.breakfastProtein != null
+    || entry.dinnerCalories != null
+    || entry.hadSnack
+    || entry.firstMealLoggedMinutes != null
+  ));
   const hasRecoveryData = chartData.some((entry) => (
     entry.sleepHours != null
     || entry.energyLevel != null
@@ -285,6 +302,100 @@ export default function Trends() {
           </div>
         </div>
       </div>
+
+      {hasMealBehaviorData && (
+        <>
+          <div className="card" style={{ marginBottom: '24px' }}>
+            <h2 style={{ marginBottom: '8px' }}>Meal Patterns</h2>
+            <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+              Spot repeatable meal behaviors: breakfast protein, snack frequency, dinner size, and how consistent your first meal timing stays.
+            </p>
+          </div>
+
+          <div className="grid grid-4" style={{ marginBottom: '32px' }}>
+            <SummaryCard
+              label="Avg Breakfast Protein"
+              value={mealBehavior.averageBreakfastProtein != null ? `${mealBehavior.averageBreakfastProtein}g` : 'No breakfasts yet'}
+              helper={mealBehavior.breakfastDays
+                ? `${mealBehavior.breakfastDays} breakfast days in this window`
+                : 'Log breakfast on multiple days to establish a pattern.'}
+              accent="#c0392b"
+            />
+            <SummaryCard
+              label="Snack Frequency"
+              value={`${mealBehavior.snackDays || 0} days`}
+              helper={`${mealBehavior.snackFrequencyPercentage || 0}% of tracked days included a snack`}
+              accent="#e67e22"
+            />
+            <SummaryCard
+              label="Avg Dinner Calories"
+              value={mealBehavior.averageDinnerCalories != null ? `${mealBehavior.averageDinnerCalories} kcal` : 'No dinners yet'}
+              helper={mealBehavior.dinnerCaloriesChange == null
+                ? 'Need dinner logs across the full period to compare direction.'
+                : mealBehavior.dinnerCaloriesChange === 0
+                  ? 'Dinner calories stayed steady across the window.'
+                  : `${mealBehavior.dinnerCaloriesChange > 0 ? '+' : ''}${mealBehavior.dinnerCaloriesChange} kcal vs the first half`}
+              accent="var(--primary-color)"
+            />
+            <SummaryCard
+              label="First Meal Timing"
+              value={mealBehavior.averageFirstMealVarianceMinutes != null
+                ? `±${mealBehavior.averageFirstMealVarianceMinutes} min`
+                : 'Not enough data'}
+              helper={mealBehavior.averageFirstMealMinutes != null
+                ? `${mealBehavior.mealTimingConsistencyLabel} around ${formatMinutesFromMidnight(mealBehavior.averageFirstMealMinutes)}`
+                : 'Log meals on multiple days to estimate timing consistency.'}
+              accent="#16a085"
+            />
+            <SummaryCard
+              label="High-Protein Streak"
+              value={`${mealBehavior.currentHighProteinMealStreak || 0} days`}
+              helper={mealBehavior.highProteinMealThreshold
+                ? `Longest streak: ${mealBehavior.longestHighProteinMealStreak || 0} days at ${mealBehavior.highProteinMealThreshold}g+ in one meal`
+                : 'Track meals consistently to establish a streak.'}
+              accent="#8e44ad"
+            />
+          </div>
+
+          {chartData.some((entry) => entry.breakfastProtein != null || entry.dinnerCalories != null) && (
+            <div className="grid grid-2" style={{ marginBottom: '32px' }}>
+              <div className="card">
+                <h2 style={{ marginBottom: '8px' }}>Breakfast Protein Trend</h2>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                  Breakfast protein is a strong signal for how anchored your day starts.
+                </p>
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="displayDate" minTickGap={24} />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="breakfastProtein" stroke="#c0392b" strokeWidth={3} dot={{ r: 3 }} name="Breakfast Protein" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="card">
+                <h2 style={{ marginBottom: '8px' }}>Dinner Calories Trend</h2>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                  Watch whether dinner is creeping up, staying steady, or tightening up over time.
+                </p>
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="displayDate" minTickGap={24} />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="dinnerCalories" stroke="#1f6feb" strokeWidth={3} dot={{ r: 3 }} name="Dinner Calories" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       {hasWaistData && (
         <div className="card" style={{ marginBottom: '32px' }}>

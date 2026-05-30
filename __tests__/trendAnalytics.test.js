@@ -273,4 +273,99 @@ describe('buildTrendAnalytics', () => {
     expect(result.summary.carbLabel).toBe('Carbs');
     expect(result.dailySeries[0].carbs).toBe(30);
   });
+
+  it('builds meal behavior analytics from meal-type breakdowns', () => {
+    const result = buildTrendAnalytics({
+      startDate: '2026-05-25',
+      endDate: '2026-05-28',
+      mealTrends: [
+        {
+          date: '2026-05-25',
+          protein: 150,
+          carbs: 110,
+          fiber: 12,
+          netCarbs: 98,
+          fat: 60,
+          calories: 1900,
+          mealCount: 4,
+          mealBreakdown: [
+            { mealType: 'breakfast', protein: 40, calories: 450, count: 2, loggedAt: ['2026-05-25T08:00:00.000Z'] },
+            { mealType: 'snack', protein: 20, calories: 250, count: 1, loggedAt: ['2026-05-25T14:00:00.000Z'] },
+            { mealType: 'dinner', protein: 45, calories: 600, count: 1, loggedAt: ['2026-05-25T18:30:00.000Z'] },
+          ],
+        },
+        {
+          date: '2026-05-26',
+          protein: 160,
+          carbs: 100,
+          fiber: 10,
+          netCarbs: 90,
+          fat: 65,
+          calories: 2000,
+          mealCount: 4,
+          mealBreakdown: [
+            { mealType: 'breakfast', protein: 30, calories: 420, count: 1, loggedAt: ['2026-05-26T08:20:00.000Z'] },
+            { mealType: 'lunch', protein: 42, calories: 500, count: 1, loggedAt: ['2026-05-26T12:00:00.000Z'] },
+            { mealType: 'dinner', protein: 35, calories: 650, count: 2, loggedAt: ['2026-05-26T18:50:00.000Z'] },
+          ],
+        },
+        {
+          date: '2026-05-27',
+          protein: 120,
+          carbs: 125,
+          fiber: 8,
+          netCarbs: 117,
+          fat: 55,
+          calories: 1850,
+          mealCount: 3,
+          mealBreakdown: [
+            { mealType: 'snack', protein: 18, calories: 180, count: 1, loggedAt: ['2026-05-27T09:00:00.000Z'] },
+            { mealType: 'dinner', protein: 34, calories: 700, count: 2, loggedAt: ['2026-05-27T19:10:00.000Z'] },
+          ],
+        },
+        {
+          date: '2026-05-28',
+          protein: 170,
+          carbs: 95,
+          fiber: 10,
+          netCarbs: 85,
+          fat: 70,
+          calories: 1950,
+          mealCount: 3,
+          mealBreakdown: [
+            { mealType: 'breakfast', protein: 50, calories: 500, count: 1, loggedAt: ['2026-05-28T08:10:00.000Z'] },
+            { mealType: 'dinner', protein: 38, calories: 550, count: 2, loggedAt: ['2026-05-28T18:40:00.000Z'] },
+          ],
+        },
+      ],
+      weightLogs: [],
+      profile: {
+        weight: 100,
+        dietStyle: 'balanced',
+        activeMacros: { protein: 200, calories: 2200, carbs: 180 },
+      },
+      weeklyStats: {
+        dailyTargets: { calories: 2200 },
+        weeklyTargets: { calories: 15400 },
+        consumed: { calories: 7700 },
+        remaining: { calories: 7700 },
+        focus: { sevenDayAverageWeight: null },
+        elapsedDays: 4,
+      },
+    });
+
+    expect(result.summary.mealBehavior.averageBreakfastProtein).toBe(40);
+    expect(result.summary.mealBehavior.snackDays).toBe(2);
+    expect(result.summary.mealBehavior.snackFrequencyPercentage).toBe(50);
+    expect(result.summary.mealBehavior.averageDinnerCalories).toBe(625);
+    expect(result.summary.mealBehavior.dinnerCaloriesChange).toBe(0);
+    expect(result.summary.mealBehavior.averageFirstMealVarianceMinutes).toBe(19);
+    expect(result.summary.mealBehavior.mealTimingConsistencyLabel).toBe('Tight timing');
+    expect(result.summary.mealBehavior.highProteinMealThreshold).toBe(40);
+    expect(result.summary.mealBehavior.currentHighProteinMealStreak).toBe(1);
+    expect(result.summary.mealBehavior.longestHighProteinMealStreak).toBe(2);
+    expect(result.dailySeries[0].breakfastProtein).toBe(40);
+    expect(result.dailySeries[1].dinnerCalories).toBe(650);
+    expect(result.dailySeries[2].hadSnack).toBe(true);
+  });
 });

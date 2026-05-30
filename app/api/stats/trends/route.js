@@ -20,7 +20,17 @@ export async function GET(request) {
 
   const byDate = meals.reduce((acc, m) => {
     if (!acc[m.date]) {
-      acc[m.date] = { protein: 0, fat: 0, carbs: 0, fiber: 0, sugarAlcohols: 0, netCarbs: 0, calories: 0, mealCount: 0 };
+      acc[m.date] = {
+        protein: 0,
+        fat: 0,
+        carbs: 0,
+        fiber: 0,
+        sugarAlcohols: 0,
+        netCarbs: 0,
+        calories: 0,
+        mealCount: 0,
+        mealBreakdown: {},
+      };
     }
     acc[m.date].protein  += m.protein;
     acc[m.date].fat      += m.fat;
@@ -30,12 +40,51 @@ export async function GET(request) {
     acc[m.date].netCarbs += calculateNetCarbs(m.carbs, m.fiber, m.sugarAlcohols);
     acc[m.date].calories += m.calories;
     acc[m.date].mealCount += 1;
+
+    const mealType = m.mealType || 'breakfast';
+    if (!acc[m.date].mealBreakdown[mealType]) {
+      acc[m.date].mealBreakdown[mealType] = {
+        mealType,
+        count: 0,
+        protein: 0,
+        fat: 0,
+        carbs: 0,
+        fiber: 0,
+        sugarAlcohols: 0,
+        netCarbs: 0,
+        calories: 0,
+        loggedAt: [],
+      };
+    }
+
+    const mealSection = acc[m.date].mealBreakdown[mealType];
+    mealSection.count += 1;
+    mealSection.protein += m.protein;
+    mealSection.fat += m.fat;
+    mealSection.carbs += m.carbs;
+    mealSection.fiber += Number(m.fiber || 0);
+    mealSection.sugarAlcohols += Number(m.sugarAlcohols || 0);
+    mealSection.netCarbs += calculateNetCarbs(m.carbs, m.fiber, m.sugarAlcohols);
+    mealSection.calories += m.calories;
+    if (m.createdAt) {
+      mealSection.loggedAt.push(m.createdAt);
+    }
     return acc;
   }, {});
 
   for (const beverage of beverages) {
     if (!byDate[beverage.date]) {
-      byDate[beverage.date] = { protein: 0, fat: 0, carbs: 0, fiber: 0, sugarAlcohols: 0, netCarbs: 0, calories: 0, mealCount: 0 };
+      byDate[beverage.date] = {
+        protein: 0,
+        fat: 0,
+        carbs: 0,
+        fiber: 0,
+        sugarAlcohols: 0,
+        netCarbs: 0,
+        calories: 0,
+        mealCount: 0,
+        mealBreakdown: {},
+      };
     }
     const beverageTotals = calculateBeverageNutritionTotals([beverage]);
     byDate[beverage.date].protein += beverageTotals.protein;
@@ -46,7 +95,14 @@ export async function GET(request) {
   }
 
   const trends = Object.entries(byDate)
-    .map(([date, stats]) => ({ date, ...stats }))
+    .map(([date, stats]) => ({
+      date,
+      ...stats,
+      mealBreakdown: Object.values(stats.mealBreakdown || {}).map((mealSection) => ({
+        ...mealSection,
+        loggedAt: mealSection.loggedAt.sort(),
+      })),
+    }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
   return NextResponse.json(trends);
