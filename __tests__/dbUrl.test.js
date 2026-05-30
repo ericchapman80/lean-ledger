@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getDatabaseUrl, withPublicSchemaSearchPath } from '../lib/dbUrl';
+import { getDatabaseUrl, isNeonPooledUrl, withPublicSchemaSearchPath } from '../lib/dbUrl';
 
 describe('withPublicSchemaSearchPath', () => {
   it('adds a public search_path option when none exists', () => {
@@ -30,5 +30,21 @@ describe('getDatabaseUrl', () => {
 
     expect(url).toContain('direct.example');
     expect(decodeURIComponent(url)).toContain('-csearch_path=public');
+  });
+
+  it('does not append search_path to pooled Neon URLs when no unpooled url exists', () => {
+    const url = getDatabaseUrl({
+      DATABASE_URL: 'postgresql://user:pass@ep-cool-darkness-pooler.neon.tech/neondb?sslmode=require',
+    });
+
+    expect(url).toContain('pooler.neon.tech');
+    expect(url).not.toContain('options=');
+  });
+});
+
+describe('isNeonPooledUrl', () => {
+  it('detects pooled Neon hosts', () => {
+    expect(isNeonPooledUrl('postgresql://user:pass@ep-cool-darkness-pooler.neon.tech/neondb')).toBe(true);
+    expect(isNeonPooledUrl('postgresql://user:pass@ep-cool-darkness.us-east-2.aws.neon.tech/neondb')).toBe(false);
   });
 });
