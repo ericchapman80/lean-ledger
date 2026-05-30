@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildFavoriteFoodPayload, buildMealFromFavoriteFood } from '@/lib/favoriteFoods.js';
+import { buildBeverageFromFavorite, buildFavoriteBeveragePayload } from '@/lib/favoriteBeverages.js';
 
 const sampleMeal = {
   mealName: 'Greek Yogurt',
@@ -13,6 +14,19 @@ const sampleMeal = {
   fiber: 0,
   sugarAlcohols: 0,
   calories: 120,
+};
+
+const sampleBeverage = {
+  beverageType: 'protein_shake',
+  amount: 16,
+  unit: 'fl_oz',
+  amountFlOz: 16,
+  countsTowardHydration: false,
+  calories: 160,
+  protein: 30,
+  carbs: 6,
+  fat: 3,
+  caffeineMg: 120,
 };
 
 describe('favorite food helpers', () => {
@@ -50,5 +64,44 @@ describe('favorite food helpers', () => {
       sugarAlcohols: 0,
       calories: 120,
     });
+  });
+});
+
+describe('favorite beverage helpers', () => {
+  it('builds favorite beverage payloads from a beverage entry', () => {
+    expect(buildFavoriteBeveragePayload(sampleBeverage, 'Post Workout Shake')).toEqual({
+      name: 'Post Workout Shake',
+      beverageType: 'protein_shake',
+      amount: 16,
+      unit: 'fl_oz',
+      amountFlOz: 16,
+      countsTowardHydration: false,
+      calories: 160,
+      protein: 30,
+      carbs: 6,
+      fat: 3,
+      caffeineMg: 120,
+    });
+  });
+
+  it('creates a new beverage payload from a favorite beverage', () => {
+    const payload = buildBeverageFromFavorite({
+      ...sampleBeverage,
+      id: 7,
+      name: 'Post Workout Shake',
+    }, '2026-05-30');
+
+    expect(payload).toMatchObject({
+      amount: 16,
+      unit: 'fl_oz',
+      beverageType: 'protein_shake',
+      countsTowardHydration: false,
+      calories: 160,
+      protein: 30,
+      carbs: 6,
+      fat: 3,
+      caffeineMg: 120,
+    });
+    expect(payload.recordedAt.startsWith('2026-05-30T')).toBe(true);
   });
 });
