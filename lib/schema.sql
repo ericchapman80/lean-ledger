@@ -87,6 +87,24 @@ CREATE TABLE IF NOT EXISTS favorite_foods (
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS favorite_beverages (
+  id                      SERIAL PRIMARY KEY,
+  user_id                 INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name                    TEXT NOT NULL,
+  beverage_type           TEXT NOT NULL DEFAULT 'water',
+  amount                  DOUBLE PRECISION NOT NULL,
+  unit                    TEXT NOT NULL,
+  amount_fl_oz            DOUBLE PRECISION NOT NULL,
+  counts_toward_hydration BOOLEAN NOT NULL DEFAULT TRUE,
+  calories                DOUBLE PRECISION NOT NULL DEFAULT 0,
+  protein                 DOUBLE PRECISION NOT NULL DEFAULT 0,
+  carbs                   DOUBLE PRECISION NOT NULL DEFAULT 0,
+  fat                     DOUBLE PRECISION NOT NULL DEFAULT 0,
+  caffeine_mg             DOUBLE PRECISION,
+  created_at              TIMESTAMPTZ DEFAULT NOW(),
+  updated_at              TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS weight_logs (
   id          SERIAL PRIMARY KEY,
   user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -160,6 +178,7 @@ CREATE INDEX IF NOT EXISTS idx_health_metrics_user_recorded_at ON health_metrics
 CREATE INDEX IF NOT EXISTS idx_favorite_meals_user_created_at ON favorite_meals(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_favorite_meal_items_template_id ON favorite_meal_items(favorite_meal_id);
 CREATE INDEX IF NOT EXISTS idx_favorite_foods_user_created_at ON favorite_foods(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_favorite_beverages_user_created_at ON favorite_beverages(user_id, created_at DESC);
 
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_goal_check;
 ALTER TABLE users

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { beverageApi, favoriteFoodsApi, favoriteMealsApi, mealsApi, profileApi } from '@/lib/api';
+import { beverageApi, favoriteBeveragesApi, favoriteFoodsApi, favoriteMealsApi, mealsApi, profileApi } from '@/lib/api';
 import {
   calculateNetCarbs,
   getPrimaryCarbLabel,
@@ -40,6 +40,7 @@ import {
 } from '@/lib/mealTemplates';
 import { buildFavoriteMealSuggestions, getMealSectionSignature } from '@/lib/mealSuggestions';
 import { buildFavoriteFoodPayload, buildMealFromFavoriteFood } from '@/lib/favoriteFoods';
+import { buildBeverageFromFavorite, buildFavoriteBeveragePayload } from '@/lib/favoriteBeverages';
 import { buildBeverageDuplicatePayload, buildMealDuplicatePayload } from '@/lib/intakeDuplicates';
 import { getMealFeedback } from '@/lib/mealFeedback';
 import { lookupByBarcode } from '@/lib/foodLookup';
@@ -123,6 +124,20 @@ function formatCarbDetail(meal, dietStyle) {
   return details.join(' • ');
 }
 
+function formatFavoriteBeverageDetails(entry, preferredBeverageUnit) {
+  const details = [formatBeverageFromFlOz(entry.amountFlOz, preferredBeverageUnit)];
+  if (entry.countsTowardHydration) {
+    details.push('counts toward hydration');
+  }
+  if (entry.calories || entry.protein || entry.carbs || entry.fat) {
+    details.push(`${Math.round(entry.calories)} cal • P ${Math.round(entry.protein)} • C ${Math.round(entry.carbs)} • F ${Math.round(entry.fat)}`);
+  }
+  if (entry.caffeineMg) {
+    details.push(`${Math.round(entry.caffeineMg)} mg caffeine`);
+  }
+  return details;
+}
+
 function InlineActionButton({ children, onClick, danger = false }) {
   return (
     <button
@@ -193,6 +208,7 @@ export default function Meals() {
   const [recentMeals, setRecentMeals] = useState([]);
   const [favoriteMeals, setFavoriteMeals] = useState([]);
   const [favoriteFoods, setFavoriteFoods] = useState([]);
+  const [favoriteBeverages, setFavoriteBeverages] = useState([]);
   const [beverageEntries, setBeverageEntries] = useState([]);
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [selectedMealType, setSelectedMealType] = useState('breakfast');
@@ -201,8 +217,10 @@ export default function Meals() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
   const [isFavoriteFoodsOpen, setIsFavoriteFoodsOpen] = useState(false);
+  const [isFavoriteBeveragesOpen, setIsFavoriteBeveragesOpen] = useState(false);
   const [favoriteDraft, setFavoriteDraft] = useState(null);
   const [favoriteFoodDraft, setFavoriteFoodDraft] = useState(null);
+  const [favoriteBeverageDraft, setFavoriteBeverageDraft] = useState(null);
   const [scannedProduct, setScannedProduct] = useState(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [editingMeal, setEditingMeal] = useState(null);
@@ -221,12 +239,13 @@ export default function Meals() {
       setLoading(true);
       setError(null);
       const recentStartDate = getDateDaysBefore(selectedDate, RECENT_MEAL_LOOKBACK_DAYS);
-      const [profileData, mealData, recentMealData, favoriteMealData, favoriteFoodData, beverageData] = await Promise.all([
+      const [profileData, mealData, recentMealData, favoriteMealData, favoriteFoodData, favoriteBeverageData, beverageData] = await Promise.all([
         profileApi.getProfile(),
         mealsApi.getMeals({ date: selectedDate }),
         mealsApi.getMeals({ startDate: recentStartDate, endDate: selectedDate }),
         favoriteMealsApi.getFavoriteMeals(),
         favoriteFoodsApi.getFavoriteFoods(),
+        favoriteBeveragesApi.getFavoriteBeverages(),
         beverageApi.getBeverages({ date: selectedDate }),
       ]);
       setProfile(profileData);
@@ -234,6 +253,7 @@ export default function Meals() {
       setRecentMeals(recentMealData);
       setFavoriteMeals(favoriteMealData);
       setFavoriteFoods(favoriteFoodData);
+      setFavoriteBeverages(favoriteBeverageData);
       setBeverageEntries(beverageData);
       setBeverageForm(getDefaultBeverageForm(selectedDate, profileData.units));
       setEditingBeverage(null);
@@ -518,6 +538,17 @@ export default function Meals() {
     }
   };
 
+  const addFavoriteBeverage = async (favoriteBeverage) => {
+    try {
+      await beverageApi.createBeverage(buildBeverageFromFavorite(favoriteBeverage, selectedDate));
+      setIsFavoriteBeveragesOpen(false);
+      setActionMessage(`Added ${favoriteBeverage.name}`);
+      await fetchMeals();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const removeFavoriteMeal = async (id) => {
     if (!confirm('Delete this favorite meal?')) return;
     try {
@@ -532,6 +563,16 @@ export default function Meals() {
     if (!confirm('Delete this favorite food?')) return;
     try {
       await favoriteFoodsApi.deleteFavoriteFood(id);
+      await fetchMeals();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const removeFavoriteBeverage = async (id) => {
+    if (!confirm('Delete this favorite beverage?')) return;
+    try {
+      await favoriteBeveragesApi.deleteFavoriteBeverage(id);
       await fetchMeals();
     } catch (err) {
       alert(err.message);
@@ -615,6 +656,33 @@ export default function Meals() {
     }
   };
 
+  const handleFavoriteBeverage = (entry) => {
+    const defaultName = BEVERAGE_TYPES.find((type) => type.key === entry.beverageType)?.label || 'Favorite Beverage';
+    setFavoriteBeverageDraft({
+      name: defaultName,
+      payload: buildFavoriteBeveragePayload(entry, defaultName),
+    });
+  };
+
+  const submitFavoriteBeverageDraft = async () => {
+    if (!favoriteBeverageDraft?.name?.trim()) {
+      alert('Enter a favorite beverage name.');
+      return;
+    }
+
+    try {
+      await favoriteBeveragesApi.createFavoriteBeverage({
+        ...favoriteBeverageDraft.payload,
+        name: favoriteBeverageDraft.name.trim(),
+      });
+      setFavoriteBeverageDraft(null);
+      setActionMessage(`Saved ${favoriteBeverageDraft.name.trim()}`);
+      await fetchMeals();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const resetBeverageEditor = () => {
     setEditingBeverage(null);
     setBeverageForm(getDefaultBeverageForm(selectedDate, profile?.units));
@@ -682,6 +750,9 @@ export default function Meals() {
           </button>
           <button onClick={() => setIsFavoriteFoodsOpen(true)} className="btn btn-outline" style={{ flex: '0 1 auto' }}>
             Favorite Foods
+          </button>
+          <button onClick={() => setIsFavoriteBeveragesOpen(true)} className="btn btn-outline" style={{ flex: '0 1 auto' }}>
+            Favorite Beverages
           </button>
         </div>
       </div>
@@ -753,6 +824,14 @@ export default function Meals() {
               {option.label}
             </button>
           ))}
+          <button
+            type="button"
+            className="btn btn-outline"
+            style={{ flex: '1 1 140px', padding: '10px 12px' }}
+            onClick={() => setIsFavoriteBeveragesOpen(true)}
+          >
+            Add Favorite Beverage
+          </button>
         </div>
 
         <details open={beverageEditorOpen}>
@@ -915,6 +994,7 @@ export default function Meals() {
                   </p>
                   <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '6px' }}>
                     <InlineActionButton onClick={() => handleEditBeverage(entry)}>Edit</InlineActionButton>
+                    <InlineActionButton onClick={() => handleFavoriteBeverage(entry)}>Favorite</InlineActionButton>
                     <InlineActionButton onClick={() => handleDuplicateBeverage(entry)}>Duplicate</InlineActionButton>
                     <InlineActionButton onClick={() => handleDeleteBeverage(entry.id)} danger>Delete</InlineActionButton>
                   </div>
@@ -1361,6 +1441,40 @@ export default function Meals() {
         )}
       </Modal>
 
+      <Modal isOpen={isFavoriteBeveragesOpen} onClose={() => setIsFavoriteBeveragesOpen(false)} title="Favorite Beverages">
+        {favoriteBeverages.length === 0 ? (
+          <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+            No favorite beverages yet. Favorite a beverage entry from your intake log to reuse it without rebuilding the hydration or macro details.
+          </p>
+        ) : (
+          <div style={{ display: 'grid', gap: '12px' }}>
+            {favoriteBeverages.map((favoriteBeverage) => (
+              <div key={favoriteBeverage.id} className="card" style={{ boxShadow: 'none', padding: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', marginBottom: '8px' }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 4px' }}>{favoriteBeverage.name}</h3>
+                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
+                      {BEVERAGE_TYPES.find((type) => type.key === favoriteBeverage.beverageType)?.label || 'Beverage'}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+                    <InlineActionButton onClick={() => addFavoriteBeverage(favoriteBeverage)}>Add Today</InlineActionButton>
+                    <InlineActionButton onClick={() => removeFavoriteBeverage(favoriteBeverage.id)} danger>Delete</InlineActionButton>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gap: '4px' }}>
+                  {formatFavoriteBeverageDetails(favoriteBeverage, preferredBeverageUnit).map((detail) => (
+                    <p key={detail} style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
+                      {detail}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
+
       <Modal isOpen={!!favoriteDraft} onClose={() => setFavoriteDraft(null)} title="Save Favorite Meal">
         {favoriteDraft && (
           <div style={{ display: 'grid', gap: '16px' }}>
@@ -1401,6 +1515,28 @@ export default function Meals() {
             </p>
             <button type="button" onClick={submitFavoriteFoodDraft} className="btn btn-primary">Save Favorite Food</button>
             <button type="button" onClick={() => setFavoriteFoodDraft(null)} className="btn btn-outline">Cancel</button>
+          </div>
+        )}
+      </Modal>
+
+      <Modal isOpen={!!favoriteBeverageDraft} onClose={() => setFavoriteBeverageDraft(null)} title="Save Favorite Beverage">
+        {favoriteBeverageDraft && (
+          <div style={{ display: 'grid', gap: '16px' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Favorite Beverage Name</label>
+              <input
+                type="text"
+                value={favoriteBeverageDraft.name}
+                onChange={(e) => setFavoriteBeverageDraft((current) => ({ ...current, name: e.target.value }))}
+                className="form-input"
+                placeholder="e.g., Morning Coffee"
+              />
+            </div>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+              This saves one beverage entry with its amount, hydration flag, and macro details for quick re-adding on any day.
+            </p>
+            <button type="button" onClick={submitFavoriteBeverageDraft} className="btn btn-primary">Save Favorite Beverage</button>
+            <button type="button" onClick={() => setFavoriteBeverageDraft(null)} className="btn btn-outline">Cancel</button>
           </div>
         )}
       </Modal>
