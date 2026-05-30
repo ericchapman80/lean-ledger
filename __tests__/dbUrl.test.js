@@ -45,6 +45,7 @@ describe('getDatabaseUrl', () => {
 describe('isNeonPooledUrl', () => {
   it('detects pooled Neon hosts', () => {
     expect(isNeonPooledUrl('postgresql://user:pass@ep-cool-darkness-pooler.neon.tech/neondb')).toBe(true);
+    expect(isNeonPooledUrl('postgresql://user:pass@ep-soft-shape-apiesx6x-pooler.c-7.us-east-1.aws.neon.tech/neondb')).toBe(true);
     expect(isNeonPooledUrl('postgresql://user:pass@ep-cool-darkness.us-east-2.aws.neon.tech/neondb')).toBe(false);
   });
 });
