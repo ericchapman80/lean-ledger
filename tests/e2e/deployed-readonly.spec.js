@@ -16,6 +16,6 @@ test.describe('deployed read-only checks', () => {
   test('intake page is reachable', async ({ page }) => {
     await page.goto('/meals');
 
-    await expect(page.getByRole('heading', { name: 'Intake' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Intake', exact: true })).toBeVisible();
   });
 });
