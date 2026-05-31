@@ -87,6 +87,22 @@ CREATE TABLE IF NOT EXISTS favorite_foods (
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_favorite_foods_user_exact_signature
+  ON favorite_foods(
+    user_id,
+    lower(btrim(name)),
+    coalesce(default_meal_type, ''),
+    coalesce(portion_amount, -1),
+    coalesce(portion_unit, ''),
+    coalesce(portion_grams, -1),
+    protein,
+    fat,
+    carbs,
+    coalesce(fiber, -1),
+    coalesce(sugar_alcohols, -1),
+    calories
+  );
+
 CREATE TABLE IF NOT EXISTS favorite_beverages (
   id                      SERIAL PRIMARY KEY,
   user_id                 INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -104,6 +120,22 @@ CREATE TABLE IF NOT EXISTS favorite_beverages (
   created_at              TIMESTAMPTZ DEFAULT NOW(),
   updated_at              TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_favorite_beverages_user_exact_signature
+  ON favorite_beverages(
+    user_id,
+    lower(btrim(name)),
+    beverage_type,
+    amount,
+    unit,
+    amount_fl_oz,
+    counts_toward_hydration,
+    calories,
+    protein,
+    carbs,
+    fat,
+    coalesce(caffeine_mg, -1)
+  );
 
 CREATE TABLE IF NOT EXISTS weight_logs (
   id          SERIAL PRIMARY KEY,

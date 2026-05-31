@@ -8,6 +8,11 @@ function isMissingFavoriteBeveragesTable(error) {
     && error.message.includes('favorite_beverages');
 }
 
+function isDuplicateFavoriteBeverageError(error) {
+  return error?.code === '23505'
+    && error?.constraint === 'idx_favorite_beverages_user_exact_signature';
+}
+
 export async function GET(request) {
   try {
     const userId = await getCurrentUserId(request);
@@ -22,6 +27,8 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  let favoriteBeveragePayload = null;
+
   try {
     const userId = await getCurrentUserId(request);
     const {
@@ -42,7 +49,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Name, amount, and normalized amount are required' }, { status: 400 });
     }
 
-    const favoriteBeverage = await FavoriteBeverage.create({
+    favoriteBeveragePayload = {
       userId,
       name,
       beverageType,
@@ -55,10 +62,25 @@ export async function POST(request) {
       carbs: Number(carbs || 0),
       fat: Number(fat || 0),
       caffeineMg: caffeineMg == null || caffeineMg === '' ? null : Number(caffeineMg),
-    });
+    };
+
+    const existing = await FavoriteBeverage.findExactMatch(favoriteBeveragePayload);
+    if (existing) {
+      return NextResponse.json(existing);
+    }
+
+    const favoriteBeverage = await FavoriteBeverage.create(favoriteBeveragePayload);
 
     return NextResponse.json(favoriteBeverage, { status: 201 });
   } catch (error) {
+    if (isDuplicateFavoriteBeverageError(error)) {
+      const existing = favoriteBeveragePayload
+        ? await FavoriteBeverage.findExactMatch(favoriteBeveragePayload)
+        : null;
+      if (existing) {
+        return NextResponse.json(existing);
+      }
+    }
     if (isMissingFavoriteBeveragesTable(error)) {
       return NextResponse.json(
         { error: 'Favorite beverages are not initialized yet. Run `npm run init-db` to apply the latest schema.' },

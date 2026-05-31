@@ -9,6 +9,11 @@ function isMissingFavoriteFoodsTable(error) {
     && error.message.includes('favorite_foods');
 }
 
+function isDuplicateFavoriteFoodError(error) {
+  return error?.code === '23505'
+    && error?.constraint === 'idx_favorite_foods_user_exact_signature';
+}
+
 export async function GET(request) {
   try {
     const userId = await getCurrentUserId(request);
@@ -23,6 +28,8 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  let favoriteFoodPayload = null;
+
   try {
     const userId = await getCurrentUserId(request);
     const {
@@ -43,7 +50,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Name and macro fields are required' }, { status: 400 });
     }
 
-    const favoriteFood = await FavoriteFood.create({
+    favoriteFoodPayload = {
       userId,
       name,
       defaultMealType,
@@ -56,10 +63,25 @@ export async function POST(request) {
       fiber: optionalNumberOrNull(fiber),
       sugarAlcohols: optionalNumberOrNull(sugarAlcohols),
       calories: Number(calories),
-    });
+    };
+
+    const existing = await FavoriteFood.findExactMatch(favoriteFoodPayload);
+    if (existing) {
+      return NextResponse.json(existing);
+    }
+
+    const favoriteFood = await FavoriteFood.create(favoriteFoodPayload);
 
     return NextResponse.json(favoriteFood, { status: 201 });
   } catch (error) {
+    if (isDuplicateFavoriteFoodError(error)) {
+      const existing = favoriteFoodPayload
+        ? await FavoriteFood.findExactMatch(favoriteFoodPayload)
+        : null;
+      if (existing) {
+        return NextResponse.json(existing);
+      }
+    }
     if (isMissingFavoriteFoodsTable(error)) {
       return NextResponse.json(
         { error: 'Favorite foods are not initialized yet. Run `npm run init-db` to apply the latest schema.' },
