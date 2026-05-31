@@ -30,6 +30,7 @@ const sampleBeverage = {
   recordedAt: '2026-05-24T09:15',
   date: '2026-05-24',
   beverageType: 'protein_shake',
+  displayName: null,
   countsTowardHydration: true,
   calories: 160,
   protein: 30,
@@ -72,6 +73,7 @@ describe('intake duplicate helpers', () => {
       amount: 16,
       unit: 'fl_oz',
       beverageType: 'protein_shake',
+      displayName: null,
       countsTowardHydration: true,
       calories: 160,
       protein: 30,
@@ -88,6 +90,20 @@ describe('intake duplicate helpers', () => {
     expect(payload.recordedAt).toBe('2026-05-26T09:15');
   });
 
+  it('preserves custom beverage names when duplicating other beverages', () => {
+    const payload = buildBeverageDuplicatePayload({
+      ...sampleBeverage,
+      beverageType: 'other',
+      displayName: 'LMNT Grapefruit',
+    }, '2026-05-26');
+
+    expect(payload).toMatchObject({
+      beverageType: 'other',
+      displayName: 'LMNT Grapefruit',
+      recordedAt: '2026-05-26T09:15',
+    });
+  });
+
   it('falls back to default duplicate values when optional beverage fields are missing', () => {
     const payload = buildBeverageDuplicatePayload({
       amount: 12,
@@ -99,6 +115,7 @@ describe('intake duplicate helpers', () => {
       amount: 12,
       unit: 'fl_oz',
       beverageType: 'water',
+      displayName: null,
       countsTowardHydration: false,
       calories: 0,
       protein: 0,

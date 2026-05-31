@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS favorite_beverages (
   user_id                 INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name                    TEXT NOT NULL,
   beverage_type           TEXT NOT NULL DEFAULT 'water',
+  display_name            TEXT,
   amount                  DOUBLE PRECISION NOT NULL,
   unit                    TEXT NOT NULL,
   amount_fl_oz            DOUBLE PRECISION NOT NULL,
@@ -123,6 +124,7 @@ CREATE TABLE IF NOT EXISTS water_entries (
   recorded_at                  TEXT NOT NULL,
   date                         TEXT NOT NULL,
   beverage_type                TEXT NOT NULL DEFAULT 'water',
+  display_name                 TEXT,
   counts_toward_hydration      BOOLEAN NOT NULL DEFAULT TRUE,
   calories                     DOUBLE PRECISION NOT NULL DEFAULT 0,
   protein                      DOUBLE PRECISION NOT NULL DEFAULT 0,
@@ -279,6 +281,9 @@ ALTER TABLE water_entries
   ADD COLUMN IF NOT EXISTS beverage_type TEXT NOT NULL DEFAULT 'water';
 
 ALTER TABLE water_entries
+  ADD COLUMN IF NOT EXISTS display_name TEXT;
+
+ALTER TABLE water_entries
   ADD COLUMN IF NOT EXISTS counts_toward_hydration BOOLEAN NOT NULL DEFAULT TRUE;
 
 ALTER TABLE water_entries
@@ -298,3 +303,6 @@ ALTER TABLE water_entries
 
 ALTER TABLE water_entries
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+ALTER TABLE favorite_beverages
+  ADD COLUMN IF NOT EXISTS display_name TEXT;

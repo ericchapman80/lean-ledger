@@ -461,4 +461,44 @@ describe('buildTrendAnalytics', () => {
       sharePercentage: 29,
     });
   });
+
+  it('uses custom other beverage names in beverage mix labels', () => {
+    const result = buildTrendAnalytics({
+      startDate: '2026-05-25',
+      endDate: '2026-05-25',
+      mealTrends: [],
+      weightLogs: [],
+      beverageEntries: [
+        {
+          date: '2026-05-25',
+          recordedAt: '2026-05-25T10:00',
+          amountFlOz: 20,
+          beverageType: 'other',
+          displayName: 'LMNT Grapefruit',
+          countsTowardHydration: false,
+          caffeineMg: 0,
+        },
+      ],
+      profile: {
+        weight: 80,
+        dietStyle: 'balanced',
+        activeMacros: { protein: 180, calories: 2200, carbs: 180 },
+      },
+      weeklyStats: {
+        dailyTargets: { calories: 2200 },
+        weeklyTargets: { calories: 15400 },
+        consumed: { calories: 0 },
+        remaining: { calories: 15400 },
+        focus: { sevenDayAverageWeight: null },
+        elapsedDays: 1,
+      },
+    });
+
+    expect(result.summary.beverageBehavior.beverageMix).toEqual([
+      expect.objectContaining({
+        beverageType: 'other',
+        label: 'LMNT Grapefruit',
+      }),
+    ]);
+  });
 });

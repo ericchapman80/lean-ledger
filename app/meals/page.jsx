@@ -23,6 +23,7 @@ import {
   buildBeverageRecordedAt,
   formatBeverageFromFlOz,
   getDefaultBeverageForm,
+  getBeverageDisplayName,
   getDefaultCountsTowardHydration,
   getHydrationHelperCopy,
   getPreferredBeverageUnit,
@@ -72,6 +73,7 @@ function getEmptyFormData(mealType = 'breakfast') {
 function getBeverageFormFromEntry(entry) {
   return {
     beverageType: entry.beverageType,
+    displayName: entry.displayName || '',
     amount: entry.amount?.toString() || '',
     unit: entry.unit || 'fl_oz',
     time: entry.recordedAt?.slice(11, 16) || '20:00',
@@ -128,6 +130,9 @@ function formatCarbDetail(meal, dietStyle) {
 
 function formatFavoriteBeverageDetails(entry, preferredBeverageUnit) {
   const details = [formatBeverageFromFlOz(entry.amountFlOz, preferredBeverageUnit)];
+  if (entry.beverageType === 'other' && entry.displayName) {
+    details.unshift(entry.displayName);
+  }
   if (entry.countsTowardHydration) {
     details.push('counts toward hydration');
   }
@@ -636,6 +641,7 @@ export default function Meals() {
       unit,
       recordedAt: buildBeverageRecordedAt(selectedDate),
       beverageType: 'water',
+      displayName: null,
       countsTowardHydration: true,
       calories: 0,
       protein: 0,
@@ -663,7 +669,7 @@ export default function Meals() {
   const handleDuplicateBeverage = async (entry) => {
     try {
       await beverageApi.createBeverage(buildBeverageDuplicatePayload(entry, selectedDate));
-      const beverageLabel = BEVERAGE_TYPES.find((type) => type.key === entry.beverageType)?.label?.toLowerCase() || 'beverage';
+      const beverageLabel = getBeverageDisplayName(entry).toLowerCase();
       setActionMessage(`Added another ${formatBeverageFromFlOz(entry.amountFlOz, preferredBeverageUnit)} ${beverageLabel}`);
       await fetchMeals();
     } catch (err) {
@@ -672,7 +678,7 @@ export default function Meals() {
   };
 
   const handleFavoriteBeverage = (entry) => {
-    const defaultName = BEVERAGE_TYPES.find((type) => type.key === entry.beverageType)?.label || 'Favorite Beverage';
+    const defaultName = entry.displayName?.trim() || BEVERAGE_TYPES.find((type) => type.key === entry.beverageType)?.label || 'Favorite Beverage';
     setFavoriteBeverageDraft({
       name: defaultName,
       payload: buildFavoriteBeveragePayload(entry, defaultName),
@@ -711,6 +717,7 @@ export default function Meals() {
       unit: beverageForm.unit,
       recordedAt: buildBeverageRecordedAt(selectedDate, beverageForm.time),
       beverageType: beverageForm.beverageType,
+      displayName: beverageForm.beverageType === 'other' ? beverageForm.displayName : null,
       countsTowardHydration: beverageForm.countsTowardHydration,
       calories: beverageForm.calories,
       protein: beverageForm.protein,
@@ -869,6 +876,7 @@ export default function Meals() {
                   onChange={(e) => setBeverageForm((current) => ({
                     ...current,
                     beverageType: e.target.value,
+                    displayName: e.target.value === 'other' ? current.displayName : '',
                     countsTowardHydration: getDefaultCountsTowardHydration(e.target.value),
                   }))}
                 >
@@ -887,6 +895,20 @@ export default function Meals() {
                 />
               </div>
             </div>
+
+            {beverageForm.beverageType === 'other' ? (
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Custom Beverage Name</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={beverageForm.displayName}
+                  onChange={(e) => setBeverageForm((current) => ({ ...current, displayName: e.target.value }))}
+                  placeholder="e.g., LMNT Grapefruit"
+                  required
+                />
+              </div>
+            ) : null}
 
             <div className="grid grid-2">
               <div className="form-group" style={{ marginBottom: 0 }}>
@@ -997,7 +1019,7 @@ export default function Meals() {
               >
                 <div style={{ minWidth: 0 }}>
                   <p style={{ margin: 0, fontWeight: 700 }}>
-                    {BEVERAGE_TYPES.find((type) => type.key === entry.beverageType)?.label || 'Beverage'}
+                    {getBeverageDisplayName(entry)}
                   </p>
                   <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
                     {formatBeverageFromFlOz(entry.amountFlOz, preferredBeverageUnit)}
@@ -1475,7 +1497,7 @@ export default function Meals() {
                   <div>
                     <h3 style={{ margin: '0 0 4px' }}>{favoriteBeverage.name}</h3>
                     <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
-                      {BEVERAGE_TYPES.find((type) => type.key === favoriteBeverage.beverageType)?.label || 'Beverage'}
+                      {getBeverageDisplayName(favoriteBeverage)}
                     </p>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>

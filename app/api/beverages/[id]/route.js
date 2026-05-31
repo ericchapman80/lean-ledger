@@ -16,6 +16,7 @@ export async function PUT(request, { params }) {
       unit: body.unit ?? existing.unit,
       recordedAt: body.recordedAt ?? existing.recordedAt,
       beverageType: body.beverageType ?? existing.beverageType,
+      displayName: body.displayName ?? existing.displayName,
       countsTowardHydration: body.countsTowardHydration ?? existing.countsTowardHydration,
       calories: body.calories ?? existing.calories,
       protein: body.protein ?? existing.protein,
