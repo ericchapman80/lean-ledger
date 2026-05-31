@@ -321,7 +321,9 @@ export default function Meals() {
   const beverageSummary = useMemo(() => summarizeBeverageEntries(beverageEntries, {
     preferredUnit: preferredBeverageUnit,
     weightKg: profile?.weight,
-  }), [beverageEntries, preferredBeverageUnit, profile?.weight]);
+    dietStyle: profile?.dietStyle,
+    date: selectedDate,
+  }), [beverageEntries, preferredBeverageUnit, profile?.dietStyle, profile?.weight, selectedDate]);
   const hydrationHelper = getHydrationHelperCopy({ dietStyle: profile?.dietStyle });
   const hydrationFeedback = useMemo(() => getHydrationFeedback({
     entries: beverageEntries,
@@ -330,6 +332,21 @@ export default function Meals() {
     isCurrentDay: selectedDate === getTodayDate(),
     currentHour: new Date().getHours(),
   }), [beverageEntries, beverageSummary, profile?.dietStyle, selectedDate]);
+  const hydrationTargetBreakdown = useMemo(() => ([
+    `base ${formatBeverageFromFlOz(beverageSummary.baselineFlOz, preferredBeverageUnit)}`,
+    beverageSummary.workoutBonusFlOz > 0
+      ? `workout ${formatBeverageFromFlOz(beverageSummary.workoutBonusFlOz, preferredBeverageUnit)}`
+      : null,
+    beverageSummary.dietStyleBonusFlOz > 0
+      ? `${beverageSummary.dietStyleBonusLabel} ${formatBeverageFromFlOz(beverageSummary.dietStyleBonusFlOz, preferredBeverageUnit)}`
+      : null,
+  ].filter(Boolean)), [
+    beverageSummary.baselineFlOz,
+    beverageSummary.dietStyleBonusFlOz,
+    beverageSummary.dietStyleBonusLabel,
+    beverageSummary.workoutBonusFlOz,
+    preferredBeverageUnit,
+  ]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -988,6 +1005,9 @@ export default function Meals() {
 
         <div style={{ display: 'grid', gap: '6px', marginTop: '14px' }}>
           <HydrationFeedback feedback={hydrationFeedback} style={{ marginBottom: '4px' }} />
+          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+            Target: {hydrationTargetBreakdown.join(' + ')}
+          </p>
           <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
             Total fluids: {beverageSummary.display.totalFluids}
           </p>

@@ -139,6 +139,8 @@ export default function Dashboard() {
     preferredUnit: preferredBeverageUnit,
     weightKg: profile.weight,
     workoutCompleted: checkIn.workoutCompleted === 'true' || checkIn.workoutCompleted === true,
+    dietStyle: profile.dietStyle,
+    date: selectedDate,
   });
   const waterProgress = getWaterProgressSemantics({
     current: beverageSummary.hydrationFlOz,
@@ -162,6 +164,15 @@ export default function Dashboard() {
     isCurrentDay: selectedDate === getTodayDate(),
     currentHour: new Date().getHours(),
   });
+  const hydrationTargetBreakdown = [
+    `base ${formatBeverageFromFlOz(beverageSummary.baselineFlOz, preferredBeverageUnit)}`,
+    beverageSummary.workoutBonusFlOz > 0
+      ? `workout ${formatBeverageFromFlOz(beverageSummary.workoutBonusFlOz, preferredBeverageUnit)}`
+      : null,
+    beverageSummary.dietStyleBonusFlOz > 0
+      ? `${beverageSummary.dietStyleBonusLabel} ${formatBeverageFromFlOz(beverageSummary.dietStyleBonusFlOz, preferredBeverageUnit)}`
+      : null,
+  ].filter(Boolean);
   const waistMeta = getHealthMetricFieldMeta('waistMeasurement', profile.units);
   const waistInputProps = getHealthMetricInputProps('waistMeasurement', profile.units);
   const calorieProgress = getProgressSemantics({
@@ -372,8 +383,7 @@ export default function Dashboard() {
         <div style={{ display: 'grid', gap: '6px' }}>
           <HydrationFeedback feedback={hydrationFeedback} style={{ marginBottom: '4px' }} />
           <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
-            Baseline target: {formatBeverageFromFlOz(beverageSummary.baselineFlOz, preferredBeverageUnit)}
-            {beverageSummary.workoutBonusFlOz > 0 ? ` • workout adjustment: +${formatBeverageFromFlOz(beverageSummary.workoutBonusFlOz, preferredBeverageUnit)}` : ''}
+            Target: {hydrationTargetBreakdown.join(' + ')}
           </p>
           <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
             Total fluids: {beverageSummary.display.totalFluids}

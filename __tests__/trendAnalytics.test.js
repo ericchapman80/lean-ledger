@@ -208,7 +208,9 @@ describe('buildTrendAnalytics', () => {
     expect(result.summary.waistChange).toBe(-0.8);
     expect(result.summary.workoutCompletionPercentage).toBe(67);
     expect(result.summary.hydrationAdherencePercentage).toBe(0);
-    expect(result.summary.hydrationTarget).toBeGreaterThan(0);
+    expect(result.dailySeries[0].hydrationTarget).toBe(142);
+    expect(result.dailySeries[1].hydrationTarget).toBe(122);
+    expect(result.summary.hydrationTarget).toBe(122);
     expect(result.summary.weeklyAverageHydration).toBe(100);
   });
 

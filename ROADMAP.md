@@ -25,6 +25,12 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 
 ### Phase 2 Priorities
 
+**Legend**
+- ✅ shipped
+- 🚧 in progress
+- 🧭 next up
+- 🕒 later / future iteration
+
 ## Meal Intelligence & Behavioral Insights
 
 Meal intelligence should be treated as a **high-priority Phase 2 direction** because it aligns directly with the core Lean Recomp product philosophy:
@@ -42,7 +48,7 @@ This roadmap area should clearly guide future product decisions around these pri
 - **meal intelligence is a major future direction**
 - **sustainability and consistency remain the primary philosophy**
 
-### 1. Favorite Meals / Meal Templates
+### 1. Favorite Meals / Meal Templates ✅
 
 - **Status: shipped on main**
   - save favorite meals
@@ -59,7 +65,7 @@ This roadmap area should clearly guide future product decisions around these pri
   - Most users repeat meals regularly.
   - Meal reuse dramatically improves speed, consistency, and retention.
 
-### 2. Smart Favorite Meal Detection
+### 2. Smart Favorite Meal Detection ✅
 
 - **Status: shipped on main**
   - repeated meal sections are detected from recent intake history
@@ -72,9 +78,9 @@ This roadmap area should clearly guide future product decisions around these pri
 - **Rationale**:
   - Reduces friction and helps users build sustainable routines without manual organization work.
 
-### 3. Meal-Level Macro Feedback
+### 3. Meal-Level Macro Feedback ✅
 
-- **Status: now in progress**
+- **Status: shipped on main**
 
 - **Add lightweight meal quality insights.**
 - **Examples**:
@@ -89,7 +95,14 @@ This roadmap area should clearly guide future product decisions around these pri
 - **Rationale**:
   - Meal-level feedback is more actionable and psychologically useful than only daily totals.
 
-### 4. Meal Trends & Behavioral Analytics
+### 4. Meal Trends & Behavioral Analytics ✅
+
+- **Status: shipped on main**
+  - average breakfast protein
+  - snack frequency
+  - dinner calorie trends
+  - meal timing consistency
+  - high-protein meal streaks
 
 - **Track meal-level patterns over time.**
 - **Examples**:
@@ -101,13 +114,14 @@ This roadmap area should clearly guide future product decisions around these pri
 - **Rationale**:
   - This supports sustainable behavior change and gives users meaningful insight into eating patterns.
 
-### 5. Repeat & Quick-Add UX
+### 5. Repeat & Quick-Add UX ✅
 
-- **Status: partially shipped on main**
+- **Status: shipped foundation on main**
   - repeat last meal
   - repeat yesterday’s breakfast/lunch/dinner
   - add favorite meal
   - add favorite food / add again today
+  - add favorite beverage
   - future work remains around even faster frequent-meal shortcuts
 
 - **Improve rapid logging workflows.**
@@ -119,7 +133,7 @@ This roadmap area should clearly guide future product decisions around these pri
 - **Rationale**:
   - Daily logging speed is one of the most important retention drivers.
 
-### 6. Meal Categories & Context
+### 6. Meal Categories & Context 🕒
 
 - **Future-friendly support for**:
   - Pre Workout
@@ -131,7 +145,7 @@ This roadmap area should clearly guide future product decisions around these pri
 - **Rationale**:
   - Supports athletic/recovery workflows without requiring a complex nutrition system.
 
-### 7. Meal-Centric Dashboard Direction
+### 7. Meal-Centric Dashboard Direction 🚧
 
 - **Continue evolving the app toward**:
   - meal-first UX
@@ -141,7 +155,7 @@ This roadmap area should clearly guide future product decisions around these pri
 - **Rationale**:
   - Users think in meals, not food rows.
 
-### 8. Behavioral Coaching Layer
+### 8. Behavioral Coaching Layer 🕒
 
 - **Future AI/coaching layer should focus on**:
   - consistency
@@ -168,6 +182,17 @@ This roadmap area should clearly guide future product decisions around these pri
 
 ## Hydration & Beverage Intelligence
 
+- ✅ shipped on main
+  - weighted hydration contribution system
+  - internal beverage hydration multipliers
+  - beverage favorites
+  - beverage trends / hydration behavior insights
+  - hydration feedback on Dashboard and Intake
+  - custom beverage names for `Other`
+  - duplicate prevention for favorite foods and favorite beverages
+- 🚧 in progress
+  - adaptive hydration targets based on weight, workouts, and diet style
+
 Hydration intelligence should be treated as a **high-priority Phase 2 direction** because it supports the Lean Recomp philosophy without increasing logging friction:
 
 - **low cognitive load**
@@ -176,7 +201,7 @@ Hydration intelligence should be treated as a **high-priority Phase 2 direction*
 - **lightweight intelligence**
 - **consistency over perfection**
 
-### Partial Hydration Contribution System
+### Partial Hydration Contribution System ✅
 
 - **Goal**:
   - Improve hydration realism while preserving a simple, non-technical UX.
@@ -184,7 +209,7 @@ Hydration intelligence should be treated as a **high-priority Phase 2 direction*
   - Not all beverages contribute equally toward hydration.
   - Water, tea, and electrolyte drinks should count differently than protein shakes, keto coffee, milk, soda, or alcohol.
 
-### Internal Hydration Contribution Multipliers
+### Internal Hydration Contribution Multipliers ✅
 
 - **Support configurable internal hydration contribution percentages by beverage type**:
   - Water → 100%
@@ -201,7 +226,7 @@ Hydration intelligence should be treated as a **high-priority Phase 2 direction*
   - Keep these values configurable internally.
   - Do not require users to configure percentages manually.
 
-### Hydration Calculation Behavior
+### Hydration Calculation Behavior ✅
 
 - **Hydration progress should be derived from**:
   - beverage amount
@@ -209,7 +234,7 @@ Hydration intelligence should be treated as a **high-priority Phase 2 direction*
 - **Example**:
   - 16 oz black coffee → ~14.4 oz hydration counted internally
 
-### Preserve Low Cognitive Load
+### Preserve Low Cognitive Load ✅
 
 - **Do not expose hydration math everywhere in the UI**
 - **Default UX should remain simple**:
@@ -218,7 +243,7 @@ Hydration intelligence should be treated as a **high-priority Phase 2 direction*
   - remaining
   - progress
 
-### Optional Hydration Details
+### Optional Hydration Details 🕒
 
 - **Add an optional drill-down for deeper insight**
 - **Requirements**:
@@ -245,7 +270,7 @@ Hydration intelligence should be treated as a **high-priority Phase 2 direction*
   - compact
   - expandable on demand
 
-### Future Hydration Intelligence
+### Future Hydration Intelligence 🧭
 
 - **Workout / sweat hydration adjustments**
 - **Sauna adjustments**
