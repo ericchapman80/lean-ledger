@@ -42,10 +42,12 @@ import { buildFavoriteMealSuggestions, getMealSectionSignature } from '@/lib/mea
 import { buildFavoriteFoodPayload, buildMealFromFavoriteFood } from '@/lib/favoriteFoods';
 import { buildBeverageFromFavorite, buildFavoriteBeveragePayload } from '@/lib/favoriteBeverages';
 import { buildBeverageDuplicatePayload, buildMealDuplicatePayload } from '@/lib/intakeDuplicates';
+import { getHydrationFeedback } from '@/lib/hydrationFeedback';
 import { getMealFeedback } from '@/lib/mealFeedback';
 import { lookupByBarcode } from '@/lib/foodLookup';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
+import HydrationFeedback from '@/components/HydrationFeedback';
 import Modal from '@/components/Modal';
 import BarcodeScanner from '@/components/BarcodeScanner';
 import ProductLookup from '@/components/ProductLookup';
@@ -316,6 +318,13 @@ export default function Meals() {
     weightKg: profile?.weight,
   }), [beverageEntries, preferredBeverageUnit, profile?.weight]);
   const hydrationHelper = getHydrationHelperCopy({ dietStyle: profile?.dietStyle });
+  const hydrationFeedback = useMemo(() => getHydrationFeedback({
+    entries: beverageEntries,
+    summary: beverageSummary,
+    dietStyle: profile?.dietStyle,
+    isCurrentDay: selectedDate === getTodayDate(),
+    currentHour: new Date().getHours(),
+  }), [beverageEntries, beverageSummary, profile?.dietStyle, selectedDate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -956,6 +965,7 @@ export default function Meals() {
         </details>
 
         <div style={{ display: 'grid', gap: '6px', marginTop: '14px' }}>
+          <HydrationFeedback feedback={hydrationFeedback} style={{ marginBottom: '4px' }} />
           <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
             Total fluids: {beverageSummary.display.totalFluids}
           </p>

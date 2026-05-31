@@ -18,9 +18,11 @@ import {
   getPreferredBeverageUnit,
   summarizeBeverageEntries,
 } from '@/lib/beverages';
+import { getHydrationFeedback } from '@/lib/hydrationFeedback';
 import { getPrimaryCarbLabel } from '@/lib/carbUtils';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
+import HydrationFeedback from '@/components/HydrationFeedback';
 import ProgressBar from '@/components/ProgressBar';
 import MacroCard from '@/components/MacroCard';
 
@@ -151,6 +153,14 @@ export default function Dashboard() {
   const hydrationHelper = getHydrationHelperCopy({
     dietStyle: profile.dietStyle,
     workoutCompleted: checkIn.workoutCompleted === 'true' || checkIn.workoutCompleted === true,
+  });
+  const hydrationFeedback = getHydrationFeedback({
+    entries: beverageEntries,
+    summary: beverageSummary,
+    dietStyle: profile.dietStyle,
+    workoutCompleted: checkIn.workoutCompleted === 'true' || checkIn.workoutCompleted === true,
+    isCurrentDay: selectedDate === getTodayDate(),
+    currentHour: new Date().getHours(),
   });
   const waistMeta = getHealthMetricFieldMeta('waistMeasurement', profile.units);
   const waistInputProps = getHealthMetricInputProps('waistMeasurement', profile.units);
@@ -360,6 +370,7 @@ export default function Dashboard() {
         </div>
 
         <div style={{ display: 'grid', gap: '6px' }}>
+          <HydrationFeedback feedback={hydrationFeedback} style={{ marginBottom: '4px' }} />
           <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
             Baseline target: {formatBeverageFromFlOz(beverageSummary.baselineFlOz, preferredBeverageUnit)}
             {beverageSummary.workoutBonusFlOz > 0 ? ` • workout adjustment: +${formatBeverageFromFlOz(beverageSummary.workoutBonusFlOz, preferredBeverageUnit)}` : ''}
