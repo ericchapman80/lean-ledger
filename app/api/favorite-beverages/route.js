@@ -27,6 +27,7 @@ export async function POST(request) {
     const {
       name,
       beverageType = 'water',
+      displayName = null,
       amount,
       unit = 'fl_oz',
       amountFlOz,
@@ -46,6 +47,7 @@ export async function POST(request) {
       userId,
       name,
       beverageType,
+      displayName: displayName == null || displayName === '' ? null : String(displayName).trim(),
       amount: Number(amount),
       unit,
       amountFlOz: Number(amountFlOz),

@@ -67,6 +67,30 @@ describe('water helpers', () => {
     expect(result.caffeineMg).toBe(75);
   });
 
+  it('requires and preserves a custom name for other beverages', () => {
+    const result = normalizeBeverageEntryInput({
+      amount: 12,
+      unit: 'fl_oz',
+      recordedAt: '2026-05-25T09:15',
+      beverageType: 'other',
+      displayName: 'LMNT Grapefruit',
+      countsTowardHydration: false,
+    });
+
+    expect(result.displayName).toBe('LMNT Grapefruit');
+  });
+
+  it('rejects unnamed other beverages', () => {
+    expect(() => normalizeBeverageEntryInput({
+      amount: 12,
+      unit: 'fl_oz',
+      recordedAt: '2026-05-25T09:15',
+      beverageType: 'other',
+      displayName: '',
+      countsTowardHydration: false,
+    })).toThrow('Custom beverage name is required for Other');
+  });
+
   it('keeps the local date key for late-night beverage entries near a UTC boundary', () => {
     const result = normalizeBeverageEntryInput({
       amount: 16,

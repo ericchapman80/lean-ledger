@@ -18,6 +18,7 @@ const sampleMeal = {
 
 const sampleBeverage = {
   beverageType: 'protein_shake',
+  displayName: null,
   amount: 16,
   unit: 'fl_oz',
   amountFlOz: 16,
@@ -72,6 +73,7 @@ describe('favorite beverage helpers', () => {
     expect(buildFavoriteBeveragePayload(sampleBeverage, 'Post Workout Shake')).toEqual({
       name: 'Post Workout Shake',
       beverageType: 'protein_shake',
+      displayName: null,
       amount: 16,
       unit: 'fl_oz',
       amountFlOz: 16,
@@ -95,6 +97,7 @@ describe('favorite beverage helpers', () => {
       amount: 16,
       unit: 'fl_oz',
       beverageType: 'protein_shake',
+      displayName: null,
       countsTowardHydration: false,
       calories: 160,
       protein: 30,
@@ -103,5 +106,22 @@ describe('favorite beverage helpers', () => {
       caffeineMg: 120,
     });
     expect(payload.recordedAt.startsWith('2026-05-30T')).toBe(true);
+  });
+
+  it('preserves custom other beverage names through favorite payloads', () => {
+    const payload = buildFavoriteBeveragePayload({
+      ...sampleBeverage,
+      beverageType: 'other',
+      displayName: 'LMNT Grapefruit',
+    }, 'LMNT Grapefruit');
+
+    expect(payload.displayName).toBe('LMNT Grapefruit');
+    expect(buildBeverageFromFavorite({
+      ...payload,
+      id: 8,
+    }, '2026-05-30')).toMatchObject({
+      beverageType: 'other',
+      displayName: 'LMNT Grapefruit',
+    });
   });
 });
