@@ -131,6 +131,7 @@ export default function Trends() {
   const weightUnit = getWeightUnit(profile.units);
   const carbLabel = analytics.summary.carbLabel || 'Carbs';
   const mealBehavior = analytics.summary.mealBehavior || {};
+  const beverageBehavior = analytics.summary.beverageBehavior || {};
   const hasWaistData = chartData.some((entry) => entry.waistMeasurement != null);
   const hasWorkoutData = chartData.some((entry) => entry.workoutCompleted != null);
   const hasHydrationData = chartData.some((entry) => entry.hydrationOunces != null);
@@ -139,6 +140,11 @@ export default function Trends() {
     || entry.dinnerCalories != null
     || entry.hadSnack
     || entry.firstMealLoggedMinutes != null
+  ));
+  const hasBeverageBehaviorData = chartData.some((entry) => (
+    Number(entry.totalFluidsOunces || 0) > 0
+    || Number(entry.caffeineMg || 0) > 0
+    || Number(entry.lateDayHydrationOunces || 0) > 0
   ));
   const hasRecoveryData = chartData.some((entry) => (
     entry.sleepHours != null
@@ -520,6 +526,124 @@ export default function Trends() {
             {' '}Weekly hydration adherence: {analytics.summary.hydrationAdherencePercentage ?? 0}%.
           </p>
         </div>
+      )}
+
+      {hasBeverageBehaviorData && (
+        <>
+          <div className="card" style={{ marginBottom: '24px' }}>
+            <h2 style={{ marginBottom: '8px' }}>Beverage Patterns</h2>
+            <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+              Hydration stays weighted by beverage type, while caffeine, beverage mix, and late-day drinking patterns help explain how those fluids are showing up.
+            </p>
+          </div>
+
+          <div className="grid grid-4" style={{ marginBottom: '32px' }}>
+            <SummaryCard
+              label="Avg Daily Hydration"
+              value={beverageBehavior.averageDailyHydration != null
+                ? formatWaterFromFlOz(beverageBehavior.averageDailyHydration, preferredWaterUnit)
+                : 'No beverage logs'}
+              helper={beverageBehavior.loggedDays
+                ? `${beverageBehavior.loggedDays} beverage days in this window`
+                : 'Log beverages across multiple days to establish a pattern.'}
+              accent="#3498db"
+            />
+            <SummaryCard
+              label="Hydration Hit Rate"
+              value={beverageBehavior.hydrationTargetHitRate != null
+                ? `${beverageBehavior.hydrationTargetHitRate}%`
+                : 'No beverage logs'}
+              helper="Percentage of beverage days that reached the hydration target"
+              accent="#16a085"
+            />
+            <SummaryCard
+              label="Primary Beverage"
+              value={beverageBehavior.primaryBeverageLabel || 'No beverage logs'}
+              helper={beverageBehavior.primaryBeverageSharePercentage != null
+                ? `${beverageBehavior.primaryBeverageSharePercentage}% of logged fluids`
+                : 'No beverage mix yet'}
+              accent="#8e44ad"
+            />
+            <SummaryCard
+              label="Avg Daily Caffeine"
+              value={beverageBehavior.averageDailyCaffeineMg != null
+                ? `${beverageBehavior.averageDailyCaffeineMg} mg`
+                : 'No beverage logs'}
+              helper={beverageBehavior.caffeineDays
+                ? `${beverageBehavior.caffeineDays} caffeinated days in this window`
+                : 'No caffeine recorded in this window'}
+              accent="#e67e22"
+            />
+            <SummaryCard
+              label="Late-Day Hydration"
+              value={beverageBehavior.averageLateDayHydration != null
+                ? formatWaterFromFlOz(beverageBehavior.averageLateDayHydration, preferredWaterUnit)
+                : 'No beverage logs'}
+              helper={beverageBehavior.loggedDays
+                ? `${beverageBehavior.lateDayHydrationPercentage}% of hydration landed after ${formatMinutesFromMidnight(beverageBehavior.lateDayCutoffMinutes)}`
+                : 'No late-day hydration pattern yet'}
+              accent="#2c3e50"
+            />
+          </div>
+
+          <div className="grid grid-2" style={{ marginBottom: '32px' }}>
+            <div className="card">
+              <h2 style={{ marginBottom: '8px' }}>Beverage Mix</h2>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                Share of logged fluids by beverage type. Hydration totals still apply beverage weighting separately.
+              </p>
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={beverageBehavior.beverageMix || []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="label" minTickGap={16} />
+                  <YAxis unit="%" />
+                  <Tooltip
+                    formatter={(value, _name, item) => [
+                      `${value}%`,
+                      `${item?.payload?.label || 'Beverage'} share`,
+                    ]}
+                  />
+                  <Legend />
+                  <Bar dataKey="sharePercentage" fill="#8e44ad" name="Share of Logged Fluids" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="card">
+              <h2 style={{ marginBottom: '8px' }}>Caffeine Trend</h2>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                Spot how often caffeine shows up and whether it is creeping higher across the selected window.
+              </p>
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="displayDate" minTickGap={24} />
+                  <YAxis />
+                  <Tooltip formatter={(value) => [`${value} mg`, 'Caffeine']} />
+                  <Legend />
+                  <Line type="monotone" dataKey="caffeineMg" stroke="#e67e22" strokeWidth={3} dot={{ r: 3 }} name="Caffeine" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="card" style={{ marginBottom: '32px' }}>
+            <h2 style={{ marginBottom: '8px' }}>Late-Day Hydration Trend</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
+              Fluids after {formatMinutesFromMidnight(beverageBehavior.lateDayCutoffMinutes)} can be fine, but seeing the pattern helps you judge whether most hydration is happening too late.
+            </p>
+            <ResponsiveContainer width="100%" height={260}>
+              <ComposedChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="displayDate" minTickGap={24} />
+                <YAxis />
+                <Tooltip formatter={(value) => [formatWaterFromFlOz(value, preferredWaterUnit), 'Late-Day Hydration']} />
+                <Legend />
+                <Bar dataKey="lateDayHydrationOunces" fill="#2c3e50" name="Late-Day Hydration" radius={[4, 4, 0, 0]} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </>
       )}
 
       {(hasWorkoutData || hasHydrationData) && (
