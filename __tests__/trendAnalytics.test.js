@@ -368,4 +368,97 @@ describe('buildTrendAnalytics', () => {
     expect(result.dailySeries[1].dinnerCalories).toBe(650);
     expect(result.dailySeries[2].hadSnack).toBe(true);
   });
+
+  it('builds beverage behavior analytics from weighted hydration, caffeine, and timing', () => {
+    const result = buildTrendAnalytics({
+      startDate: '2026-05-25',
+      endDate: '2026-05-28',
+      mealTrends: [],
+      weightLogs: [],
+      beverageEntries: [
+        {
+          date: '2026-05-25',
+          recordedAt: '2026-05-25T09:00',
+          amountFlOz: 40,
+          beverageType: 'water',
+          countsTowardHydration: true,
+          caffeineMg: 0,
+        },
+        {
+          date: '2026-05-25',
+          recordedAt: '2026-05-25T18:30',
+          amountFlOz: 16,
+          beverageType: 'black_coffee',
+          countsTowardHydration: true,
+          caffeineMg: 120,
+        },
+        {
+          date: '2026-05-25',
+          recordedAt: '2026-05-25T20:00',
+          amountFlOz: 12,
+          beverageType: 'diet_drink',
+          countsTowardHydration: true,
+          caffeineMg: 40,
+        },
+        {
+          date: '2026-05-26',
+          recordedAt: '2026-05-26T10:00',
+          amountFlOz: 32,
+          beverageType: 'electrolyte_drink',
+          countsTowardHydration: true,
+          caffeineMg: 0,
+        },
+        {
+          date: '2026-05-26',
+          recordedAt: '2026-05-26T19:00',
+          amountFlOz: 12,
+          beverageType: 'protein_shake',
+          countsTowardHydration: false,
+          caffeineMg: 0,
+        },
+        {
+          date: '2026-05-27',
+          recordedAt: '2026-05-27T17:30',
+          amountFlOz: 24,
+          beverageType: 'unsweet_tea',
+          countsTowardHydration: true,
+          caffeineMg: 30,
+        },
+      ],
+      profile: {
+        weight: 45,
+        dietStyle: 'balanced',
+        activeMacros: { protein: 180, calories: 2200, carbs: 180 },
+      },
+      weeklyStats: {
+        dailyTargets: { calories: 2200 },
+        weeklyTargets: { calories: 15400 },
+        consumed: { calories: 0 },
+        remaining: { calories: 15400 },
+        focus: { sevenDayAverageWeight: null },
+        elapsedDays: 4,
+      },
+    });
+
+    expect(result.dailySeries[0].hydrationOunces).toBe(66);
+    expect(result.dailySeries[0].totalFluidsOunces).toBe(68);
+    expect(result.dailySeries[0].caffeineMg).toBe(160);
+    expect(result.dailySeries[0].lateDayHydrationOunces).toBe(26);
+    expect(result.dailySeries[1].beverageCount).toBe(2);
+    expect(result.summary.hydrationAdherencePercentage).toBe(33);
+    expect(result.summary.beverageBehavior.loggedDays).toBe(3);
+    expect(result.summary.beverageBehavior.averageDailyHydration).toBe(41);
+    expect(result.summary.beverageBehavior.hydrationTargetHitRate).toBe(33);
+    expect(result.summary.beverageBehavior.averageDailyCaffeineMg).toBe(63);
+    expect(result.summary.beverageBehavior.lateDayHydrationPercentage).toBe(41);
+    expect(result.summary.beverageBehavior.primaryBeverageLabel).toBe('Water');
+    expect(result.summary.beverageBehavior.primaryBeverageSharePercentage).toBe(29);
+    expect(result.summary.beverageBehavior.beverageMix[0]).toMatchObject({
+      beverageType: 'water',
+      label: 'Water',
+      totalFluidsOunces: 40,
+      hydrationOunces: 40,
+      sharePercentage: 29,
+    });
+  });
 });
