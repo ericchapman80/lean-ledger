@@ -35,6 +35,28 @@ describe('water helpers', () => {
     expect(result.targetFlOz).toBe(136);
   });
 
+  it('adds a low-carb buffer to adaptive hydration targets', () => {
+    const result = calculateDailyWaterTarget(104.8, { dietStyle: 'low_carb', date: '2026-05-27' });
+    expect(result.baselineFlOz).toBe(116);
+    expect(result.dietStyleBonusFlOz).toBe(8);
+    expect(result.dietStyleBonusLabel).toBe('low-carb buffer');
+    expect(result.targetFlOz).toBe(124);
+  });
+
+  it('uses the keto flexible weekday buffer on weekdays', () => {
+    const result = calculateDailyWaterTarget(104.8, { dietStyle: 'keto_flexible', date: '2026-05-29' });
+    expect(result.dietStyleBonusFlOz).toBe(12);
+    expect(result.dietStyleBonusLabel).toBe('keto-weekday buffer');
+    expect(result.targetFlOz).toBe(128);
+  });
+
+  it('uses the flexible weekend buffer on weekends', () => {
+    const result = calculateDailyWaterTarget(104.8, { dietStyle: 'keto_flexible', date: '2026-05-31' });
+    expect(result.dietStyleBonusFlOz).toBe(6);
+    expect(result.dietStyleBonusLabel).toBe('flexible-weekend buffer');
+    expect(result.targetFlOz).toBe(122);
+  });
+
   it('normalizes water entries and validates per-entry limits', () => {
     const result = normalizeWaterEntryInput({
       amount: 2,
@@ -151,7 +173,7 @@ describe('water helpers', () => {
 
   it('adds keto hydration helper guidance when applicable', () => {
     expect(getHydrationHelperCopy({ dietStyle: 'keto_flexible', workoutCompleted: true })).toEqual([
-      'Hydration and electrolytes matter more during low-carb eating.',
+      'Low-carb plans use a slightly higher hydration target to account for fluid and electrolyte swings.',
       'Hydration totals weight beverages by type instead of treating every drink as full water.',
       'Training days usually need extra fluids to support performance and recovery.',
     ]);
