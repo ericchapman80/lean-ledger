@@ -133,6 +133,8 @@ jobs:
     if: github.event_name == 'pull_request' && !github.event.pull_request.draft
     needs: [validate, local-functional]
     runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: --dns-result-order=ipv4first
     outputs:
       deployment-url: ${{ steps.deploy.outputs.url }}
     steps:
