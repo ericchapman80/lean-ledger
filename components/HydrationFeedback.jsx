@@ -29,8 +29,8 @@ export default function HydrationFeedback({ feedback, style = null }) {
         ...style,
       }}
     >
-      <p style={{ margin: '0 0 4px', fontSize: '12px', fontWeight: 700, color: styles.labelColor }}>
-        {feedback.shortLabel}
+      <p style={{ margin: '0 0 4px', fontSize: '12px', fontWeight: 700, color: styles.labelColor, letterSpacing: '0.02em' }}>
+        💡 {feedback.shortLabel}
       </p>
       <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
         {feedback.message}

@@ -1003,24 +1003,31 @@ export default function Meals() {
           </form>
         </details>
 
-        <div style={{ display: 'grid', gap: '6px', marginTop: '14px' }}>
+        <div style={{ display: 'grid', gap: '8px', marginTop: '14px' }}>
           <HydrationFeedback feedback={hydrationFeedback} style={{ marginBottom: '4px' }} />
-          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
-            Target: {hydrationTargetBreakdown.join(' + ')}
-          </p>
-          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
-            Total fluids: {beverageSummary.display.totalFluids}
-          </p>
-          {beverageSummary.display.totalFluids !== beverageSummary.display.consumed ? (
-            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
-              Weighted hydration: {beverageSummary.display.consumed}
-            </p>
-          ) : null}
-          {hydrationHelper.map((message) => (
-            <p key={message} style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
-              {message}
-            </p>
-          ))}
+          <details>
+            <summary style={{ cursor: 'pointer', color: 'var(--primary-color)', fontWeight: 600, fontSize: '14px' }}>
+              Read more
+            </summary>
+            <div style={{ display: 'grid', gap: '6px', marginTop: '8px' }}>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                Target: {hydrationTargetBreakdown.join(' + ')}
+              </p>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                Total fluids: {beverageSummary.display.totalFluids}
+              </p>
+              {beverageSummary.display.totalFluids !== beverageSummary.display.consumed ? (
+                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                  Weighted hydration: {beverageSummary.display.consumed}
+                </p>
+              ) : null}
+              {hydrationHelper.map((message) => (
+                <p key={message} style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                  {message}
+                </p>
+              ))}
+            </div>
+          </details>
         </div>
 
         {beverageEntries.length > 0 ? (
