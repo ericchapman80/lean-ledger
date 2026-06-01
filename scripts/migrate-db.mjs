@@ -24,7 +24,23 @@ const projectRoot = join(__dirname, '..');
 const baselinePath = join(projectRoot, 'lib', 'schema.sql');
 const migrationsDir = join(projectRoot, 'db', 'migrations');
 
-const sql = postgres(getDatabaseUrl(process.env));
+const CONNECT_TIMEOUT_SECONDS = 30;
+const MAX_MIGRATION_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 5000;
+
+function getSqlClient() {
+  return postgres(getDatabaseUrl(process.env), {
+    max: 1,
+    idle_timeout: 20,
+    connect_timeout: CONNECT_TIMEOUT_SECONDS,
+  });
+}
+
+async function sleep(ms) {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+let sql = getSqlClient();
 
 async function ensureMigrationTable() {
   await sql`
@@ -68,26 +84,48 @@ async function applySqlFile(version, path) {
 }
 
 try {
-  await ensureMigrationTable();
-  await applySqlFile('000_baseline_schema', baselinePath);
+  let lastError;
 
-  let entries = [];
-  try {
-    entries = await fs.readdir(migrationsDir, { withFileTypes: true });
-  } catch (error) {
-    if (error.code !== 'ENOENT') throw error;
+  for (let attempt = 1; attempt <= MAX_MIGRATION_ATTEMPTS; attempt += 1) {
+    try {
+      if (attempt > 1) {
+        console.log(`↻ Retrying database migrations (attempt ${attempt}/${MAX_MIGRATION_ATTEMPTS})`);
+      }
+
+      await ensureMigrationTable();
+      await applySqlFile('000_baseline_schema', baselinePath);
+
+      let entries = [];
+      try {
+        entries = await fs.readdir(migrationsDir, { withFileTypes: true });
+      } catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+      }
+
+      const migrationFiles = entries
+        .filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
+        .map((entry) => entry.name)
+        .sort();
+
+      for (const name of migrationFiles) {
+        await applySqlFile(name, join(migrationsDir, name));
+      }
+
+      console.log('✓ Database migrations complete');
+      lastError = null;
+      break;
+    } catch (error) {
+      lastError = error;
+      if (attempt >= MAX_MIGRATION_ATTEMPTS) {
+        throw error;
+      }
+      await sql.end({ timeout: 1 });
+      sql = getSqlClient();
+      await sleep(RETRY_DELAY_MS);
+    }
   }
 
-  const migrationFiles = entries
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.sql'))
-    .map((entry) => entry.name)
-    .sort();
-
-  for (const name of migrationFiles) {
-    await applySqlFile(name, join(migrationsDir, name));
-  }
-
-  console.log('✓ Database migrations complete');
+  if (lastError) throw lastError;
 } finally {
-  await sql.end();
+  await sql.end({ timeout: 1 });
 }
