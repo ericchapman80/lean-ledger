@@ -212,6 +212,23 @@ describe('buildTrendAnalytics', () => {
     expect(result.dailySeries[1].hydrationTarget).toBe(122);
     expect(result.summary.hydrationTarget).toBe(122);
     expect(result.summary.weeklyAverageHydration).toBe(100);
+    expect(result.summary.recoveryBehavior.loggedWorkoutDays).toBe(3);
+    expect(result.summary.recoveryBehavior.workoutDays).toBe(2);
+    expect(result.summary.recoveryBehavior.restDays).toBe(1);
+    expect(result.summary.recoveryBehavior.currentWorkoutStreak).toBe(1);
+    expect(result.summary.recoveryBehavior.longestWorkoutStreak).toBe(1);
+    expect(result.summary.recoveryBehavior.averageSleepHours).toBe(6.8);
+    expect(result.summary.recoveryBehavior.workoutSleepAverage).toBe(7.5);
+    expect(result.summary.recoveryBehavior.restSleepAverage).toBe(6);
+    expect(result.summary.recoveryBehavior.lowSleepDays).toBe(1);
+    expect(result.summary.recoveryBehavior.proteinWorkoutAverage).toBe(195);
+    expect(result.summary.recoveryBehavior.proteinRestAverage).toBe(205);
+    expect(result.summary.recoveryBehavior.hydrationWorkoutHitRate).toBe(0);
+    expect(result.summary.recoveryBehavior.hydrationRestHitRate).toBe(0);
+    expect(result.summary.recoveryBehavior.recoveryReadyDays).toBe(1);
+    expect(result.summary.recoveryBehavior.recoveryReadyLoggedDays).toBe(2);
+    expect(result.summary.recoveryBehavior.lowSleepEnergyAverage).toBe(2);
+    expect(result.summary.recoveryBehavior.adequateSleepEnergyAverage).toBe(4);
   });
 
   it('keeps trend grouping on the user local date key near UTC midnight', () => {

@@ -155,7 +155,12 @@ This roadmap area should clearly guide future product decisions around these pri
 - **Rationale**:
   - Users think in meals, not food rows.
 
-### 8. Behavioral Coaching Layer 🕒
+### 8. Behavioral Coaching Layer 🚧
+
+- **Status: in progress**
+  - meal-level feedback is shipped
+  - hydration feedback is shipped
+  - recovery / workout behavior insights are the active next coaching layer
 
 - **Future AI/coaching layer should focus on**:
   - consistency
