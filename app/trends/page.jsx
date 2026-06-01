@@ -132,6 +132,7 @@ export default function Trends() {
   const carbLabel = analytics.summary.carbLabel || 'Carbs';
   const mealBehavior = analytics.summary.mealBehavior || {};
   const beverageBehavior = analytics.summary.beverageBehavior || {};
+  const recoveryBehavior = analytics.summary.recoveryBehavior || {};
   const hasWaistData = chartData.some((entry) => entry.waistMeasurement != null);
   const hasWorkoutData = chartData.some((entry) => entry.workoutCompleted != null);
   const hasHydrationData = chartData.some((entry) => entry.hydrationOunces != null);
@@ -152,6 +153,11 @@ export default function Trends() {
     || entry.hungerLevel != null
     || entry.sorenessLevel != null
   ));
+  const hasRecoveryBehaviorData = (
+    recoveryBehavior.loggedWorkoutDays > 0
+    || recoveryBehavior.averageSleepHours != null
+    || recoveryBehavior.recoveryReadyLoggedDays > 0
+  );
   const formatAdvancedMetricTooltip = (value, _name, item) => (
     formatHealthMetricDisplayUnitValue(item?.dataKey, value, profile.units)
   );
@@ -642,6 +648,112 @@ export default function Trends() {
                 <Bar dataKey="lateDayHydrationOunces" fill="#2c3e50" name="Late-Day Hydration" radius={[4, 4, 0, 0]} />
               </ComposedChart>
             </ResponsiveContainer>
+          </div>
+        </>
+      )}
+
+      {hasRecoveryBehaviorData && (
+        <>
+          <div className="card" style={{ marginBottom: '24px' }}>
+            <h2 style={{ marginBottom: '8px' }}>Recovery &amp; Training Patterns</h2>
+            <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+              Use workout completion, sleep, hydration, and recovery signals to spot what supports better training weeks without turning Lean Ledger into a workout log.
+            </p>
+          </div>
+
+          <div className="grid grid-4" style={{ marginBottom: '32px' }}>
+            <SummaryCard
+              label="Workout Completion"
+              value={recoveryBehavior.loggedWorkoutDays > 0
+                ? `${analytics.summary.workoutCompletionPercentage}%`
+                : 'No workout logs'}
+              helper={recoveryBehavior.loggedWorkoutDays > 0
+                ? `Current streak ${recoveryBehavior.currentWorkoutStreak || 0} • Longest ${recoveryBehavior.longestWorkoutStreak || 0}`
+                : 'Mark workout completion in your daily check-in to track consistency.'}
+              accent="#27ae60"
+            />
+            <SummaryCard
+              label="Average Sleep"
+              value={recoveryBehavior.averageSleepHours != null
+                ? `${recoveryBehavior.averageSleepHours} hr`
+                : 'No sleep logs'}
+              helper={recoveryBehavior.workoutSleepAverage != null && recoveryBehavior.restSleepAverage != null
+                ? `Workout days ${recoveryBehavior.workoutSleepAverage} hr • Rest days ${recoveryBehavior.restSleepAverage} hr`
+                : 'Log sleep to compare workout and rest-day recovery.'}
+              accent="#2980b9"
+            />
+            <SummaryCard
+              label="Training Day Protein"
+              value={recoveryBehavior.proteinWorkoutAverage != null
+                ? `${recoveryBehavior.proteinWorkoutAverage} g`
+                : 'No workout days'}
+              helper={recoveryBehavior.proteinWorkoutAverage != null && recoveryBehavior.proteinRestAverage != null
+                ? `Rest days ${recoveryBehavior.proteinRestAverage} g`
+                : 'Helps compare how fueling shifts between workout and rest days.'}
+              accent="#e74c3c"
+            />
+            <SummaryCard
+              label="Recovery-Ready Days"
+              value={recoveryBehavior.recoveryReadyLoggedDays > 0
+                ? `${recoveryBehavior.recoveryReadyDays}`
+                : 'No recovery logs'}
+              helper={recoveryBehavior.recoveryReadyLoggedDays > 0
+                ? `${recoveryBehavior.recoveryReadyLoggedDays} fully logged days met sleep 7h+, energy 4+, soreness 3 or lower`
+                : 'Requires sleep, energy, and soreness on the same day.'}
+              accent="#8e44ad"
+            />
+          </div>
+
+          <div className="grid grid-2" style={{ marginBottom: '32px' }}>
+            <div className="card">
+              <h2 style={{ marginBottom: '8px' }}>Training Day Support</h2>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                Compare whether workout days are getting the protein and hydration support they need.
+              </p>
+              <div style={{ display: 'grid', gap: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Protein on Workout Days</span>
+                  <strong>{recoveryBehavior.proteinWorkoutAverage != null ? `${recoveryBehavior.proteinWorkoutAverage} g` : 'No workout logs'}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Protein on Rest Days</span>
+                  <strong>{recoveryBehavior.proteinRestAverage != null ? `${recoveryBehavior.proteinRestAverage} g` : 'No rest-day logs'}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Hydration Hit Rate on Workout Days</span>
+                  <strong>{recoveryBehavior.hydrationWorkoutHitRate != null ? `${recoveryBehavior.hydrationWorkoutHitRate}%` : 'No workout hydration logs'}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Hydration Hit Rate on Rest Days</span>
+                  <strong>{recoveryBehavior.hydrationRestHitRate != null ? `${recoveryBehavior.hydrationRestHitRate}%` : 'No rest-day hydration logs'}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="card">
+              <h2 style={{ marginBottom: '8px' }}>Sleep &amp; Recovery Pattern</h2>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                Keep this directional: low sleep, energy, and soreness are most useful when they repeat.
+              </p>
+              <div style={{ display: 'grid', gap: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Low-Sleep Days</span>
+                  <strong>{recoveryBehavior.lowSleepDays || 0}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Energy on Low-Sleep Days</span>
+                  <strong>{recoveryBehavior.lowSleepEnergyAverage != null ? `${recoveryBehavior.lowSleepEnergyAverage} / 5` : 'Not enough data'}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Energy with 6.5h+ Sleep</span>
+                  <strong>{recoveryBehavior.adequateSleepEnergyAverage != null ? `${recoveryBehavior.adequateSleepEnergyAverage} / 5` : 'Not enough data'}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Workout Day Sleep</span>
+                  <strong>{recoveryBehavior.workoutSleepAverage != null ? `${recoveryBehavior.workoutSleepAverage} hr` : 'Not enough data'}</strong>
+                </div>
+              </div>
+            </div>
           </div>
         </>
       )}
