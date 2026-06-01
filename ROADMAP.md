@@ -6,8 +6,9 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 
 ## Lean Recomp Product Roadmap
 
-### Phase 1 Status
+### Phase 1 Status ✅
 
+- **Status: complete**
 - **Phase 1 is complete.**
 - **Completed Lean Recomp foundation**:
   - Lean Recomp goal and diet style persistence
@@ -307,6 +308,231 @@ Hydration intelligence should be treated as a **high-priority Phase 2 direction*
 - **Sustainable**
 - **Consistency over perfection**
 - **Core loop should support users who only track weight, calories, protein, waist, and workouts**
+
+## Configurable Daily Wins / Challenge Habits
+
+**Priority**
+- High future iteration after current nutrition/date/unit/database stabilization work.
+
+**Goal**
+- Allow users to choose which daily habits they want to track so Lean Ledger can support Lean Recomp, recovery, faith/spiritual focus, reading, and challenge-style programs such as 75 Hard without becoming a rigid habit tracker.
+
+**Product philosophy**
+- consistency over perfection
+- configurable but not overwhelming
+- tap-first mobile logging
+- supportive, not shame-based
+- Intake remains the daily action surface
+- Dashboard remains summary-only
+- Trends show patterns over time
+
+**Core idea**
+- Users should be able to activate a personalized set of Daily Wins from Profile/Settings.
+- Only selected habits appear on the Intake page.
+
+**Phased implementation plan**
+
+### V1 — Fixed Daily Wins MVP 🧭
+
+**Goal**
+- Prove that Intake-first habit capture is valuable before introducing full configurability.
+
+**Scope**
+- Add a compact `Today’s Wins` card on Intake.
+- Start with a fixed curated set of habits:
+  - Workout completed
+  - Sleep hours
+  - Reading completed
+  - Prayer / Spiritual focus
+  - Energy
+  - Soreness
+- Use fast tap-first controls:
+  - boolean habits: `Done / Not Yet`
+  - numeric habits: simple entry or chips
+  - rating habits: `1–5` pills
+- Add a compact Dashboard summary only:
+  - `4 of 6 wins complete`
+  - or `Daily Wins: 67%`
+- Add basic Trends support:
+  - weekly completion %
+  - workout consistency
+  - sleep trend
+  - simple recovery trend
+
+**Why first**
+- solves capture friction before adding customization
+- keeps scope tight
+- validates whether users actually use the Daily Wins surface
+
+**Explicitly out of V1**
+- custom habits
+- templates
+- reorderable habits
+- advanced correlation analytics
+- challenge history
+
+### V1.5 — Configurable Suggested Habits
+
+**Goal**
+- Let users tailor Daily Wins without opening the door to fully open-ended habit tracking yet.
+
+**Scope**
+- Add a `Daily Wins` section to Profile / Settings where users can:
+  - enable/disable suggested habits
+  - reorder active habits
+- Expand the suggested habit library to include:
+  - Water goal hit
+  - Protein goal hit
+  - Steps / walk
+  - Mobility / stretching
+  - Sauna / recovery
+  - No alcohol
+  - Progress photo
+  - Weigh-in
+  - Waist measurement
+- Only active habits appear on Intake.
+- Keep Dashboard summary-only.
+- Expand Trends modestly:
+  - reading/prayer consistency
+  - water/protein habit completion %
+
+**Why second**
+- adds personalization without forcing schema or UX complexity too early
+- keeps the system opinionated and product-shaped
+
+### V2 — Custom Habits + Challenge Templates
+
+**Goal**
+- Support challenge-style tracking and personal discipline systems without turning Lean Ledger into a generic habit tracker.
+
+**Scope**
+- Allow users to add up to 10 custom habits.
+- Support challenge templates such as:
+  - Lean Recomp Foundations
+  - 75 Hard Inspired
+  - Recovery Focus
+  - Faith + Fitness
+  - Minimalist 3-Habit Reset
+- Templates should preselect habits but remain customizable.
+- Add richer Trends support:
+  - correlation with protein adherence, energy, hunger, soreness
+  - challenge completion history
+- Gradually add more input types:
+  - duration minutes
+  - measurement
+  - text note
+
+**Why third**
+- this is where complexity starts to rise
+- it should come only after the base capture loop is proven and polished
+
+### Future UX target
+
+- Profile / Settings should eventually provide a `Daily Wins` configuration area for:
+  - choosing suggested habits
+  - enabling/disabling habits
+  - reordering active habits
+  - adding custom habits
+  - selecting challenge templates
+
+- Intake remains the primary logging surface.
+- Dashboard remains a compact summary surface.
+- Trends should stay pattern-focused rather than overly analytical until capture friction is low.
+
+**Recommended data model**
+
+- Do **not** implement custom habits as fixed database columns.
+- Use a flexible habit definition/log model instead.
+
+### Suggested tables
+
+`habit_definitions`
+- `id`
+- `user_id` nullable
+- `name`
+- `category`
+- `input_type`
+- `default_goal`
+- `unit`
+- `is_system_default`
+- `is_active`
+- `sort_order`
+- `created_at`
+- `updated_at`
+
+`daily_habit_logs`
+- `id`
+- `user_id`
+- `habit_id`
+- `date`
+- `value_numeric`
+- `value_text`
+- `value_boolean`
+- `completed`
+- `note` optional
+- `created_at`
+- `updated_at`
+
+### Optional future table
+
+`challenge_templates`
+- `id`
+- `name`
+- `description`
+- `default_duration_days`
+- `is_system_default`
+
+`challenge_template_habits`
+- `template_id`
+- `habit_definition_id`
+
+**Why not columns**
+
+- Avoid columns like:
+  - `custom_habit_1`
+  - `custom_habit_2`
+  - `custom_habit_3`
+
+- That approach becomes hard to maintain, hard to query, hard to trend, and hard to customize.
+
+**Input types to support eventually**
+- boolean
+- number
+- rating_1_to_5
+- duration_minutes
+- measurement
+- text_note
+
+**V1 recommendation**
+- Start with fixed suggested habits plus custom boolean habits.
+- Add numeric/rating/duration support incrementally.
+
+**MVP scope**
+- Profile configuration for active habits
+- up to 10 custom habits
+- Today’s Wins card on Intake
+- daily completion logging
+- compact Dashboard summary
+- basic Trends completion %
+- tests for habit definition and logging
+
+**Out of scope for MVP**
+- fully custom formulas
+- complex challenge rules
+- penalties
+- social sharing
+- leaderboards
+- AI-generated habit plans
+- shame-based streaks
+
+**Guardrails**
+- Do not turn Lean Ledger into a generic habit tracker.
+- Do not overload Intake.
+- Do not require users to configure habits before using the app.
+- Do not show inactive habits.
+- Do not punish missed days.
+- Do not use aggressive 75 Hard language by default.
+- Keep Lean Recomp and consistency as the core product identity.
 
 ### Completed / Implemented
 

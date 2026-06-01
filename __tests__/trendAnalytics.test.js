@@ -161,6 +161,8 @@ describe('buildTrendAnalytics', () => {
           recordedAt: '2026-05-18T20:00',
           waistMeasurement: 40.0,
           workoutCompleted: true,
+          readingCompleted: true,
+          prayerCompleted: false,
           sleepHours: 7.5,
           energyLevel: 4,
           hungerLevel: 3,
@@ -170,6 +172,8 @@ describe('buildTrendAnalytics', () => {
           date: '2026-05-19',
           recordedAt: '2026-05-19T20:00',
           workoutCompleted: false,
+          readingCompleted: true,
+          prayerCompleted: true,
           sleepHours: 6,
           energyLevel: 2,
           hungerLevel: 4,
@@ -180,6 +184,8 @@ describe('buildTrendAnalytics', () => {
           recordedAt: '2026-05-20T20:00',
           waistMeasurement: 39.2,
           workoutCompleted: true,
+          readingCompleted: false,
+          prayerCompleted: true,
         },
       ],
       beverageEntries: [
@@ -229,6 +235,12 @@ describe('buildTrendAnalytics', () => {
     expect(result.summary.recoveryBehavior.recoveryReadyLoggedDays).toBe(2);
     expect(result.summary.recoveryBehavior.lowSleepEnergyAverage).toBe(2);
     expect(result.summary.recoveryBehavior.adequateSleepEnergyAverage).toBe(4);
+    expect(result.summary.dailyWinsBehavior.averageCompletedWins).toBe(4);
+    expect(result.summary.dailyWinsBehavior.completionPercentage).toBe(67);
+    expect(result.summary.dailyWinsBehavior.perfectDays).toBe(0);
+    expect(result.summary.dailyWinsBehavior.workoutCompletionPercentage).toBe(67);
+    expect(result.summary.dailyWinsBehavior.readingCompletionPercentage).toBe(67);
+    expect(result.summary.dailyWinsBehavior.prayerCompletionPercentage).toBe(67);
   });
 
   it('keeps trend grouping on the user local date key near UTC midnight', () => {

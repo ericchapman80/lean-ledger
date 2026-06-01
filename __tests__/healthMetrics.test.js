@@ -84,12 +84,16 @@ describe('validateHealthMetricEntry', () => {
     const result = validateHealthMetricEntry({
       recordedAt: '2026-05-24T20:00',
       workoutCompleted: false,
+      readingCompleted: true,
+      prayerCompleted: false,
       progressPhotoCount: 2,
       progressPhotoNote: 'Front and side',
     });
 
     expect(result.errors).toEqual([]);
     expect(result.normalized.workoutCompleted).toBe(false);
+    expect(result.normalized.readingCompleted).toBe(true);
+    expect(result.normalized.prayerCompleted).toBe(false);
     expect(result.normalized.progressPhotoCount).toBe(2);
     expect(result.normalized.progressPhotoNote).toBe('Front and side');
   });
