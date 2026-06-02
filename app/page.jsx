@@ -189,7 +189,9 @@ export default function Dashboard() {
     sugarAlcohols: totals.sugarAlcohols || 0,
     netCarbs: totals.netCarbs || totals.carbs,
   };
-  const dailyWinsSummary = getDailyWinsSummary(checkIn);
+  const activeDailyWins = profile?.activeDailyWins || [];
+  const dailyWinsSummary = getDailyWinsSummary(checkIn, activeDailyWins);
+  const activeDailyWinLabels = activeDailyWins.map((definition) => definition.label).join(' • ');
 
   const handleCheckInSubmit = async (e) => {
     e.preventDefault();
@@ -260,6 +262,11 @@ export default function Dashboard() {
             <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
               Intake is the main place to log today&apos;s wins. Dashboard stays summary-only.
             </p>
+            {activeDailyWinLabels ? (
+              <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                Active: {activeDailyWinLabels}
+              </p>
+            ) : null}
           </div>
           <div style={{ textAlign: 'right' }}>
             <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>

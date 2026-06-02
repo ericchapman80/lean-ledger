@@ -12,6 +12,14 @@ CREATE TABLE IF NOT EXISTS users (
   goal            TEXT NOT NULL CHECK (goal IN ('lose', 'maintain', 'gain', 'recomp')),
   diet_style      TEXT DEFAULT 'balanced' CHECK (diet_style IN ('balanced', 'low_carb', 'keto', 'keto_flexible')),
   units           TEXT DEFAULT 'metric' CHECK (units IN ('metric', 'imperial')),
+  daily_wins_active_keys TEXT[] NOT NULL DEFAULT ARRAY[
+    'workoutCompleted',
+    'readingCompleted',
+    'prayerCompleted',
+    'sleepHours',
+    'energyLevel',
+    'sorenessLevel'
+  ]::TEXT[],
   custom_protein  DOUBLE PRECISION,
   custom_fat      DOUBLE PRECISION,
   custom_carbs    DOUBLE PRECISION,
@@ -223,6 +231,16 @@ ALTER TABLE users
 
 ALTER TABLE users
   ADD COLUMN IF NOT EXISTS diet_style TEXT DEFAULT 'balanced';
+
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS daily_wins_active_keys TEXT[] NOT NULL DEFAULT ARRAY[
+    'workoutCompleted',
+    'readingCompleted',
+    'prayerCompleted',
+    'sleepHours',
+    'energyLevel',
+    'sorenessLevel'
+  ]::TEXT[];
 
 ALTER TABLE users
   DROP CONSTRAINT IF EXISTS users_diet_style_check;

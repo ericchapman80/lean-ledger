@@ -196,6 +196,7 @@ describe('buildTrendAnalytics', () => {
       profile: {
         weight: 100,
         dietStyle: 'keto',
+        dailyWinsActiveKeys: ['workoutCompleted', 'sleepHours', 'readingCompleted'],
         activeMacros: { protein: 200, calories: 2200, carbs: 40 },
       },
       weeklyStats: {
@@ -235,12 +236,13 @@ describe('buildTrendAnalytics', () => {
     expect(result.summary.recoveryBehavior.recoveryReadyLoggedDays).toBe(2);
     expect(result.summary.recoveryBehavior.lowSleepEnergyAverage).toBe(2);
     expect(result.summary.recoveryBehavior.adequateSleepEnergyAverage).toBe(4);
-    expect(result.summary.dailyWinsBehavior.averageCompletedWins).toBe(4);
+    expect(result.summary.dailyWinsBehavior.activeTotal).toBe(3);
+    expect(result.summary.dailyWinsBehavior.averageCompletedWins).toBe(2);
     expect(result.summary.dailyWinsBehavior.completionPercentage).toBe(67);
-    expect(result.summary.dailyWinsBehavior.perfectDays).toBe(0);
-    expect(result.summary.dailyWinsBehavior.workoutCompletionPercentage).toBe(67);
-    expect(result.summary.dailyWinsBehavior.readingCompletionPercentage).toBe(67);
-    expect(result.summary.dailyWinsBehavior.prayerCompletionPercentage).toBe(67);
+    expect(result.summary.dailyWinsBehavior.perfectDays).toBe(1);
+    expect(result.summary.dailyWinsBehavior.habitCompletionPercentages.workoutCompleted).toBe(67);
+    expect(result.summary.dailyWinsBehavior.habitCompletionPercentages.readingCompleted).toBe(67);
+    expect(result.summary.dailyWinsBehavior.habitCompletionPercentages.sleepHours).toBe(67);
   });
 
   it('keeps trend grouping on the user local date key near UTC midnight', () => {

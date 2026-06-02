@@ -47,6 +47,13 @@ describe('validateProfilePayload', () => {
   it('accepts a payload with no units field', () => {
     expect(validateProfilePayload(valid)).toBeNull();
   });
+
+  it('rejects invalid daily wins configuration', () => {
+    expect(validateProfilePayload({ ...valid, dailyWinsActiveKeys: ['workoutCompleted', 'bogus'] }))
+      .toBe('Invalid daily wins configuration');
+    expect(validateProfilePayload({ ...valid, dailyWinsActiveKeys: [] }))
+      .toBe('Select at least one daily win');
+  });
 });
 
 describe('enrichProfile', () => {
@@ -56,6 +63,7 @@ describe('enrichProfile', () => {
     gender: 'male', activityLevel: 'moderate', goal: 'maintain',
     dietStyle: 'balanced',
     units: 'metric',
+    dailyWinsActiveKeys: ['workoutCompleted', 'sleepHours', 'energyLevel'],
     customMacros: null,
   };
 
@@ -65,6 +73,8 @@ describe('enrichProfile', () => {
     expect(result.recommendedMacros).toHaveProperty('protein');
     expect(result.recommendedMacros.dietStyle).toBe('balanced');
     expect(result.activeMacros).toHaveProperty('protein');
+    expect(result.dailyWinsActiveKeys).toEqual(['workoutCompleted', 'sleepHours', 'energyLevel']);
+    expect(result.activeDailyWins.map((definition) => definition.key)).toEqual(['workoutCompleted', 'sleepHours', 'energyLevel']);
   });
 
   it('uses customMacros when present', () => {
