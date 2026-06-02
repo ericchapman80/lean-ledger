@@ -193,6 +193,13 @@ describe('buildTrendAnalytics', () => {
         { date: '2026-05-18', recordedAt: '2026-05-18T18:00', amountFlOz: 56, countsTowardHydration: true },
         { date: '2026-05-19', recordedAt: '2026-05-19T20:00', amountFlOz: 80, countsTowardHydration: true },
       ],
+      customHabits: [
+        { id: 201, name: 'Mobility', isActive: true, sortOrder: 0 },
+      ],
+      dailyHabitLogs: [
+        { date: '2026-05-18', habitId: 201, completed: true },
+        { date: '2026-05-19', habitId: 201, completed: false },
+      ],
       profile: {
         weight: 100,
         dietStyle: 'keto',
@@ -236,13 +243,14 @@ describe('buildTrendAnalytics', () => {
     expect(result.summary.recoveryBehavior.recoveryReadyLoggedDays).toBe(2);
     expect(result.summary.recoveryBehavior.lowSleepEnergyAverage).toBe(2);
     expect(result.summary.recoveryBehavior.adequateSleepEnergyAverage).toBe(4);
-    expect(result.summary.dailyWinsBehavior.activeTotal).toBe(3);
-    expect(result.summary.dailyWinsBehavior.averageCompletedWins).toBe(2);
-    expect(result.summary.dailyWinsBehavior.completionPercentage).toBe(67);
+    expect(result.summary.dailyWinsBehavior.activeTotal).toBe(4);
+    expect(result.summary.dailyWinsBehavior.averageCompletedWins).toBe(2.3);
+    expect(result.summary.dailyWinsBehavior.completionPercentage).toBe(58);
     expect(result.summary.dailyWinsBehavior.perfectDays).toBe(1);
     expect(result.summary.dailyWinsBehavior.habitCompletionPercentages.workoutCompleted).toBe(67);
     expect(result.summary.dailyWinsBehavior.habitCompletionPercentages.readingCompleted).toBe(67);
     expect(result.summary.dailyWinsBehavior.habitCompletionPercentages.sleepHours).toBe(67);
+    expect(result.summary.dailyWinsBehavior.habitCompletionPercentages['habit:201']).toBe(33);
   });
 
   it('keeps trend grouping on the user local date key near UTC midnight', () => {

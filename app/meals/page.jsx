@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { beverageApi, favoriteBeveragesApi, favoriteFoodsApi, favoriteMealsApi, healthMetricsApi, mealsApi, profileApi } from '@/lib/api';
+import { beverageApi, dailyHabitsApi, favoriteBeveragesApi, favoriteFoodsApi, favoriteMealsApi, habitDefinitionsApi, healthMetricsApi, mealsApi, profileApi } from '@/lib/api';
 import {
   calculateNetCarbs,
   getPrimaryCarbLabel,
@@ -46,7 +46,7 @@ import { buildBeverageDuplicatePayload, buildMealDuplicatePayload } from '@/lib/
 import { getHydrationFeedback } from '@/lib/hydrationFeedback';
 import { getMealFeedback } from '@/lib/mealFeedback';
 import { lookupByBarcode } from '@/lib/foodLookup';
-import { getActiveDailyWinDefinitions, getDailyWinsSummary, getEmptyDailyWins } from '@/lib/dailyWins';
+import { getCustomDailyHabitPayloads, getDailyWinsSummary, getDailyWinsValues, mergeDailyWinDefinitions } from '@/lib/dailyWins';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import HydrationFeedback from '@/components/HydrationFeedback';
@@ -237,7 +237,8 @@ export default function Meals() {
   const [favoriteFoods, setFavoriteFoods] = useState([]);
   const [favoriteBeverages, setFavoriteBeverages] = useState([]);
   const [beverageEntries, setBeverageEntries] = useState([]);
-  const [dailyWins, setDailyWins] = useState(getEmptyDailyWins(initialDate));
+  const [customHabits, setCustomHabits] = useState([]);
+  const [dailyWins, setDailyWins] = useState(getDailyWinsValues(initialDate));
   const [dailyWinsSavedAt, setDailyWinsSavedAt] = useState(null);
   const [savingDailyWins, setSavingDailyWins] = useState(false);
   const [selectedDate, setSelectedDate] = useState(initialDate);
@@ -269,7 +270,7 @@ export default function Meals() {
       setLoading(true);
       setError(null);
       const recentStartDate = getDateDaysBefore(selectedDate, RECENT_MEAL_LOOKBACK_DAYS);
-      const [profileData, mealData, recentMealData, favoriteMealData, favoriteFoodData, favoriteBeverageData, beverageData, healthMetricData] = await Promise.all([
+      const [profileData, mealData, recentMealData, favoriteMealData, favoriteFoodData, favoriteBeverageData, beverageData, healthMetricData, customHabitData, dailyHabitLogData] = await Promise.all([
         profileApi.getProfile(),
         mealsApi.getMeals({ date: selectedDate }),
         mealsApi.getMeals({ startDate: recentStartDate, endDate: selectedDate }),
@@ -278,6 +279,8 @@ export default function Meals() {
         favoriteBeveragesApi.getFavoriteBeverages(),
         beverageApi.getBeverages({ date: selectedDate }),
         healthMetricsApi.getHealthMetrics({ startDate: selectedDate, endDate: selectedDate }),
+        habitDefinitionsApi.getHabitDefinitions(),
+        dailyHabitsApi.getDailyHabitLogs({ startDate: selectedDate, endDate: selectedDate }),
       ]);
       const dailyMetric = healthMetricData[0] || null;
       setProfile(profileData);
@@ -287,7 +290,8 @@ export default function Meals() {
       setFavoriteFoods(favoriteFoodData);
       setFavoriteBeverages(favoriteBeverageData);
       setBeverageEntries(beverageData);
-      setDailyWins(getEmptyDailyWins(selectedDate, dailyMetric));
+      setCustomHabits(customHabitData);
+      setDailyWins(getDailyWinsValues(selectedDate, dailyMetric, customHabitData, dailyHabitLogData));
       setDailyWinsSavedAt(dailyMetric?.updatedAt || null);
       setBeverageForm(getDefaultBeverageForm(selectedDate, profileData.units));
       setEditingBeverage(null);
@@ -347,8 +351,8 @@ export default function Meals() {
   }), [beverageEntries, preferredBeverageUnit, profile?.dietStyle, profile?.weight, selectedDate]);
   const hydrationHelper = getHydrationHelperCopy({ dietStyle: profile?.dietStyle });
   const activeDailyWins = useMemo(
-    () => getActiveDailyWinDefinitions(profile?.dailyWinsActiveKeys),
-    [profile?.dailyWinsActiveKeys],
+    () => mergeDailyWinDefinitions(profile?.dailyWinsActiveKeys, customHabits),
+    [customHabits, profile?.dailyWinsActiveKeys],
   );
   const dailyWinsSummary = useMemo(
     () => getDailyWinsSummary(dailyWins, activeDailyWins),
@@ -445,6 +449,10 @@ export default function Meals() {
         energyLevel: dailyWins.energyLevel === '' ? null : Number(dailyWins.energyLevel),
         sorenessLevel: dailyWins.sorenessLevel === '' ? null : Number(dailyWins.sorenessLevel),
       });
+      await Promise.all(
+        getCustomDailyHabitPayloads(dailyWins, customHabits, selectedDate)
+          .map((payload) => dailyHabitsApi.upsertDailyHabitLog(payload)),
+      );
       setActionMessage(`Saved ${dailyWinsSummary.completed} of ${dailyWinsSummary.total} daily wins`);
       await fetchMeals();
     } catch (err) {

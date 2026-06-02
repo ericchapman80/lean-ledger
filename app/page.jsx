@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { beverageApi, healthMetricsApi, statsApi, profileApi } from '@/lib/api';
+import { beverageApi, dailyHabitsApi, habitDefinitionsApi, healthMetricsApi, statsApi, profileApi } from '@/lib/api';
 import {
   getHealthMetricDisplayValue,
   getHealthMetricFieldMeta,
@@ -12,7 +12,7 @@ import { getTodayDate, formatDisplayDate } from '@/lib/utils/dateUtils';
 import { getProgressSemantics, getWaterProgressSemantics } from '@/lib/dashboardProgress';
 import { getGoalDescription } from '@/lib/utils/macroUtils';
 import { formatWeight } from '@/lib/utils/unitUtils';
-import { getDailyWinsSummary, getEmptyDailyWins } from '@/lib/dailyWins';
+import { getDailyWinsSummary, getDailyWinsValues, mergeDailyWinDefinitions } from '@/lib/dailyWins';
 import {
   formatBeverageFromFlOz,
   getHydrationHelperCopy,
@@ -29,7 +29,7 @@ import MacroCard from '@/components/MacroCard';
 
 function getEmptyCheckIn(date, metric = null, units = 'metric') {
   return {
-    ...getEmptyDailyWins(date, metric),
+    ...getDailyWinsValues(date, metric),
     waistMeasurement: metric?.waistMeasurement != null
       ? String(getHealthMetricDisplayValue('waistMeasurement', metric.waistMeasurement, units))
       : '',
@@ -79,6 +79,7 @@ export default function Dashboard() {
   const [weeklyStats, setWeeklyStats] = useState(null);
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [checkIn, setCheckIn] = useState(getEmptyCheckIn(initialDate));
+  const [customHabits, setCustomHabits] = useState([]);
   const [beverageEntries, setBeverageEntries] = useState([]);
   const [checkInSavedAt, setCheckInSavedAt] = useState(null);
   const [savingCheckIn, setSavingCheckIn] = useState(false);
@@ -87,18 +88,24 @@ export default function Dashboard() {
     try {
       setLoading(true);
       setError(null);
-      const [statsData, profileData, weeklyStatsData, healthMetricData, beverageData] = await Promise.all([
+      const [statsData, profileData, weeklyStatsData, healthMetricData, beverageData, customHabitData, dailyHabitLogData] = await Promise.all([
         statsApi.getDailyStats(selectedDate),
         profileApi.getProfile(),
         statsApi.getWeeklyStats(selectedDate),
         healthMetricsApi.getHealthMetrics({ startDate: selectedDate, endDate: selectedDate }),
         beverageApi.getBeverages({ date: selectedDate }),
+        habitDefinitionsApi.getHabitDefinitions(),
+        dailyHabitsApi.getDailyHabitLogs({ startDate: selectedDate, endDate: selectedDate }),
       ]);
       setStats(statsData);
       setProfile(profileData);
       setWeeklyStats(weeklyStatsData);
       const dailyCheckIn = healthMetricData.find(hasCoreCheckInData) || null;
-      setCheckIn(getEmptyCheckIn(selectedDate, dailyCheckIn, profileData.units || 'metric'));
+      setCustomHabits(customHabitData);
+      setCheckIn({
+        ...getEmptyCheckIn(selectedDate, dailyCheckIn, profileData.units || 'metric'),
+        ...getDailyWinsValues(selectedDate, dailyCheckIn, customHabitData, dailyHabitLogData),
+      });
       setBeverageEntries(beverageData);
       setCheckInSavedAt(dailyCheckIn?.updatedAt || null);
     } catch (err) {
@@ -189,7 +196,7 @@ export default function Dashboard() {
     sugarAlcohols: totals.sugarAlcohols || 0,
     netCarbs: totals.netCarbs || totals.carbs,
   };
-  const activeDailyWins = profile?.activeDailyWins || [];
+  const activeDailyWins = mergeDailyWinDefinitions(profile?.dailyWinsActiveKeys, customHabits);
   const dailyWinsSummary = getDailyWinsSummary(checkIn, activeDailyWins);
   const activeDailyWinLabels = activeDailyWins.map((definition) => definition.label).join(' • ');
 

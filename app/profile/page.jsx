@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { profileApi } from '@/lib/api';
+import { habitDefinitionsApi, profileApi } from '@/lib/api';
 import { DAILY_WIN_DEFINITION_MAP, DEFAULT_DAILY_WIN_KEYS, getActiveDailyWinDefinitions } from '@/lib/dailyWins';
 import {
   getActivityLevelDescription,
@@ -27,6 +27,25 @@ function moveDailyWinKey(keys, key, direction) {
   const reordered = [...keys];
   [reordered[currentIndex], reordered[nextIndex]] = [reordered[nextIndex], reordered[currentIndex]];
   return reordered;
+}
+
+function moveCustomHabit(habits, id, direction) {
+  const currentIndex = habits.findIndex((habit) => habit.id === id);
+  if (currentIndex === -1) return habits;
+
+  const nextIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+  if (nextIndex < 0 || nextIndex >= habits.length) return habits;
+
+  const reordered = [...habits];
+  [reordered[currentIndex], reordered[nextIndex]] = [reordered[nextIndex], reordered[currentIndex]];
+  return reordered;
+}
+
+function normalizeCustomHabits(habits) {
+  return habits.map((habit, index) => ({
+    ...habit,
+    sortOrder: index,
+  }));
 }
 
 function MacroSummaryCard({
@@ -90,6 +109,9 @@ export default function Profile() {
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(false);
   const [profile, setProfile] = useState(null);
+  const [savedCustomHabits, setSavedCustomHabits] = useState([]);
+  const [customHabits, setCustomHabits] = useState([]);
+  const [newCustomHabitName, setNewCustomHabitName] = useState('');
   const [formData, setFormData] = useState({
     age: '',
     height: '',
@@ -110,8 +132,13 @@ export default function Profile() {
     try {
       setLoading(true);
       setError(null);
-      const data = await profileApi.getProfile();
+      const [data, habitData] = await Promise.all([
+        profileApi.getProfile(),
+        habitDefinitionsApi.getHabitDefinitions(),
+      ]);
       setProfile(data);
+      setSavedCustomHabits(habitData);
+      setCustomHabits(habitData);
 
       if (data) {
         const units = data.units || 'metric';
@@ -182,8 +209,45 @@ export default function Profile() {
       };
 
       const data = await profileApi.createOrUpdateProfile(profileData);
+      const existingById = new Map(savedCustomHabits.filter((habit) => typeof habit.id === 'number').map((habit) => [habit.id, habit]));
+      const stagedHabits = normalizeCustomHabits(customHabits);
+      const currentIds = new Set(stagedHabits.filter((habit) => typeof habit.id === 'number').map((habit) => habit.id));
+
+      for (const habit of savedCustomHabits) {
+        if (typeof habit.id === 'number' && !currentIds.has(habit.id)) {
+          await habitDefinitionsApi.deleteHabitDefinition(habit.id);
+        }
+      }
+
+      for (const habit of stagedHabits) {
+        if (typeof habit.id === 'number') {
+          const previous = existingById.get(habit.id);
+          if (
+            !previous
+            || previous.name !== habit.name
+            || previous.isActive !== habit.isActive
+            || previous.sortOrder !== habit.sortOrder
+          ) {
+            await habitDefinitionsApi.updateHabitDefinition(habit.id, {
+              name: habit.name,
+              isActive: habit.isActive,
+              sortOrder: habit.sortOrder,
+            });
+          }
+        } else {
+          await habitDefinitionsApi.createHabitDefinition({
+            name: habit.name,
+            isActive: habit.isActive,
+          });
+        }
+      }
+
+      const syncedHabits = await habitDefinitionsApi.getHabitDefinitions();
       const wasFirstSetup = !profile;
       setProfile(data);
+      setSavedCustomHabits(syncedHabits);
+      setCustomHabits(syncedHabits);
+      setNewCustomHabitName('');
       setEditing(false);
       if (wasFirstSetup) router.push('/');
     } catch (err) {
@@ -418,6 +482,115 @@ export default function Profile() {
               </div>
             </div>
 
+            <div className="card" style={{ padding: '18px', marginBottom: '24px', background: 'rgba(39, 174, 96, 0.04)' }}>
+              <h3 style={{ margin: '0 0 10px' }}>Custom Daily Wins</h3>
+              <p style={{ margin: '0 0 16px', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                Add up to 10 boolean habits like Reading 10 Pages, Prayer, Mobility, or No Alcohol. These show up after your suggested Daily Wins on Intake.
+              </p>
+
+              <div style={{ display: 'grid', gap: '12px', marginBottom: '16px' }}>
+                {customHabits.map((habit, index) => (
+                  <div
+                    key={habit.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '12px 14px',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '12px',
+                      background: 'var(--card-background)',
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <input
+                        type="text"
+                        value={habit.name}
+                        onChange={(e) => setCustomHabits((current) => current.map((entry) => (
+                          entry.id === habit.id ? { ...entry, name: e.target.value } : entry
+                        )))}
+                        className="form-input"
+                        maxLength={40}
+                      />
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                        <input
+                          type="checkbox"
+                          checked={habit.isActive !== false}
+                          onChange={(e) => setCustomHabits((current) => current.map((entry) => (
+                            entry.id === habit.id ? { ...entry, isActive: e.target.checked } : entry
+                          )))}
+                        />
+                        Active on Intake
+                      </label>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        onClick={() => setCustomHabits((current) => moveCustomHabit(current, habit.id, 'up'))}
+                        disabled={index === 0}
+                      >
+                        Up
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        onClick={() => setCustomHabits((current) => moveCustomHabit(current, habit.id, 'down'))}
+                        disabled={index === customHabits.length - 1}
+                      >
+                        Down
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        onClick={() => setCustomHabits((current) => current.filter((entry) => entry.id !== habit.id))}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {customHabits.length === 0 ? (
+                  <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                    No custom Daily Wins yet.
+                  </p>
+                ) : null}
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <input
+                  type="text"
+                  value={newCustomHabitName}
+                  onChange={(e) => setNewCustomHabitName(e.target.value)}
+                  className="form-input"
+                  placeholder="Add a custom boolean habit"
+                  maxLength={40}
+                  style={{ flex: '1 1 240px' }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  disabled={customHabits.length >= 10}
+                  onClick={() => {
+                    const trimmed = newCustomHabitName.trim();
+                    if (!trimmed) return;
+                    setCustomHabits((current) => normalizeCustomHabits([
+                      ...current,
+                      {
+                        id: `new-${Date.now()}`,
+                        name: trimmed,
+                        isActive: true,
+                      },
+                    ]));
+                    setNewCustomHabitName('');
+                  }}
+                >
+                  Add Habit
+                </button>
+              </div>
+            </div>
+
             <h2 style={{ marginTop: '32px', marginBottom: '24px' }}>Macro Goals</h2>
 
             <div className="form-group">
@@ -558,6 +731,31 @@ export default function Profile() {
             </span>
           ))}
         </div>
+        {savedCustomHabits.length > 0 ? (
+          <>
+            <p style={{ color: 'var(--text-secondary)', margin: '18px 0 10px' }}>
+              Custom habits
+            </p>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {savedCustomHabits.map((habit) => (
+                <span
+                  key={habit.id}
+                  style={{
+                    borderRadius: '999px',
+                    border: '1px solid rgba(39, 174, 96, 0.18)',
+                    background: habit.isActive !== false ? 'rgba(39, 174, 96, 0.08)' : 'rgba(127, 140, 141, 0.08)',
+                    color: habit.isActive !== false ? '#1f7a48' : 'var(--text-secondary)',
+                    padding: '8px 12px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                  }}
+                >
+                  {habit.name}
+                </span>
+              ))}
+            </div>
+          </>
+        ) : null}
       </div>
 
       <div className="grid grid-2">
