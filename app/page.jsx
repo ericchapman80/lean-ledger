@@ -12,6 +12,7 @@ import { getTodayDate, formatDisplayDate } from '@/lib/utils/dateUtils';
 import { getProgressSemantics, getWaterProgressSemantics } from '@/lib/dashboardProgress';
 import { getGoalDescription } from '@/lib/utils/macroUtils';
 import { formatWeight } from '@/lib/utils/unitUtils';
+import { getDailyWinsSummary, getEmptyDailyWins } from '@/lib/dailyWins';
 import {
   formatBeverageFromFlOz,
   getHydrationHelperCopy,
@@ -26,20 +27,14 @@ import HydrationFeedback from '@/components/HydrationFeedback';
 import ProgressBar from '@/components/ProgressBar';
 import MacroCard from '@/components/MacroCard';
 
-const DEFAULT_CHECKIN_TIME = '20:00';
-
 function getEmptyCheckIn(date, metric = null, units = 'metric') {
   return {
-    recordedAt: metric?.recordedAt || (date ? `${date}T${DEFAULT_CHECKIN_TIME}` : ''),
+    ...getEmptyDailyWins(date, metric),
     waistMeasurement: metric?.waistMeasurement != null
       ? String(getHealthMetricDisplayValue('waistMeasurement', metric.waistMeasurement, units))
       : '',
-    workoutCompleted: metric?.workoutCompleted == null ? '' : String(metric.workoutCompleted),
     hydrationOunces: metric?.hydrationOunces ?? '',
-    sleepHours: metric?.sleepHours ?? '',
-    energyLevel: metric?.energyLevel ?? '',
     hungerLevel: metric?.hungerLevel ?? '',
-    sorenessLevel: metric?.sorenessLevel ?? '',
     progressPhotoCount: metric?.progressPhotoCount ?? '',
     progressPhotoNote: metric?.progressPhotoNote ?? '',
   };
@@ -50,6 +45,8 @@ function hasCoreCheckInData(metric) {
   return [
     'waistMeasurement',
     'workoutCompleted',
+    'readingCompleted',
+    'prayerCompleted',
     'hydrationOunces',
     'sleepHours',
     'energyLevel',
@@ -64,6 +61,8 @@ function countLoggedSignals(checkIn) {
   return [
     checkIn.waistMeasurement,
     checkIn.workoutCompleted,
+    checkIn.readingCompleted,
+    checkIn.prayerCompleted,
     checkIn.sleepHours,
     checkIn.energyLevel,
     checkIn.hungerLevel,
@@ -190,6 +189,7 @@ export default function Dashboard() {
     sugarAlcohols: totals.sugarAlcohols || 0,
     netCarbs: totals.netCarbs || totals.carbs,
   };
+  const dailyWinsSummary = getDailyWinsSummary(checkIn);
 
   const handleCheckInSubmit = async (e) => {
     e.preventDefault();
@@ -248,6 +248,25 @@ export default function Dashboard() {
             </p>
             <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
               {calorieProgress.icon} {calorieProgress.stateLabel}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: '32px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div>
+            <h2 style={{ margin: '0 0 6px' }}>Daily Wins</h2>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+              Intake is the main place to log today&apos;s wins. Dashboard stays summary-only.
+            </p>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
+              {dailyWinsSummary.completed} / {dailyWinsSummary.total}
+            </p>
+            <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+              {dailyWinsSummary.percentage}% complete
             </p>
           </div>
         </div>

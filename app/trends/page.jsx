@@ -133,6 +133,7 @@ export default function Trends() {
   const mealBehavior = analytics.summary.mealBehavior || {};
   const beverageBehavior = analytics.summary.beverageBehavior || {};
   const recoveryBehavior = analytics.summary.recoveryBehavior || {};
+  const dailyWinsBehavior = analytics.summary.dailyWinsBehavior || {};
   const hasWaistData = chartData.some((entry) => entry.waistMeasurement != null);
   const hasWorkoutData = chartData.some((entry) => entry.workoutCompleted != null);
   const hasHydrationData = chartData.some((entry) => entry.hydrationOunces != null);
@@ -157,6 +158,11 @@ export default function Trends() {
     recoveryBehavior.loggedWorkoutDays > 0
     || recoveryBehavior.averageSleepHours != null
     || recoveryBehavior.recoveryReadyLoggedDays > 0
+  );
+  const hasDailyWinsBehaviorData = (
+    dailyWinsBehavior.averageCompletedWins != null
+    || dailyWinsBehavior.readingCompletionPercentage != null
+    || dailyWinsBehavior.prayerCompletionPercentage != null
   );
   const formatAdvancedMetricTooltip = (value, _name, item) => (
     formatHealthMetricDisplayUnitValue(item?.dataKey, value, profile.units)
@@ -754,6 +760,46 @@ export default function Trends() {
                 </div>
               </div>
             </div>
+          </div>
+        </>
+      )}
+
+      {hasDailyWinsBehaviorData && (
+        <>
+          <div className="card" style={{ marginBottom: '24px' }}>
+            <h2 style={{ marginBottom: '8px' }}>Daily Wins Patterns</h2>
+            <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+              Keep Daily Wins lightweight. This view is just enough to show whether the capture loop is actually becoming consistent.
+            </p>
+          </div>
+
+          <div className="grid grid-4" style={{ marginBottom: '32px' }}>
+            <SummaryCard
+              label="Average Wins"
+              value={dailyWinsBehavior.averageCompletedWins != null ? `${dailyWinsBehavior.averageCompletedWins} / 6` : 'No wins logged'}
+              helper={dailyWinsBehavior.completionPercentage != null
+                ? `${dailyWinsBehavior.completionPercentage}% of possible wins completed`
+                : 'Log wins on Intake to start the pattern.'}
+              accent="var(--primary-color)"
+            />
+            <SummaryCard
+              label="Perfect Win Days"
+              value={dailyWinsBehavior.perfectDays != null ? `${dailyWinsBehavior.perfectDays}` : '0'}
+              helper="Days where all six Daily Wins were logged or completed"
+              accent="#27ae60"
+            />
+            <SummaryCard
+              label="Reading Consistency"
+              value={dailyWinsBehavior.readingCompletionPercentage != null ? `${dailyWinsBehavior.readingCompletionPercentage}%` : 'No reading logs'}
+              helper="Share of tracked days marked done"
+              accent="#8e44ad"
+            />
+            <SummaryCard
+              label="Prayer Consistency"
+              value={dailyWinsBehavior.prayerCompletionPercentage != null ? `${dailyWinsBehavior.prayerCompletionPercentage}%` : 'No prayer logs'}
+              helper="Share of tracked days marked done"
+              accent="#16a085"
+            />
           </div>
         </>
       )}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { beverageApi, favoriteBeveragesApi, favoriteFoodsApi, favoriteMealsApi, mealsApi, profileApi } from '@/lib/api';
+import { beverageApi, favoriteBeveragesApi, favoriteFoodsApi, favoriteMealsApi, healthMetricsApi, mealsApi, profileApi } from '@/lib/api';
 import {
   calculateNetCarbs,
   getPrimaryCarbLabel,
@@ -46,6 +46,7 @@ import { buildBeverageDuplicatePayload, buildMealDuplicatePayload } from '@/lib/
 import { getHydrationFeedback } from '@/lib/hydrationFeedback';
 import { getMealFeedback } from '@/lib/mealFeedback';
 import { lookupByBarcode } from '@/lib/foodLookup';
+import { getDailyWinsSummary, getEmptyDailyWins } from '@/lib/dailyWins';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import HydrationFeedback from '@/components/HydrationFeedback';
@@ -171,6 +172,19 @@ function InlineActionButton({ children, onClick, danger = false }) {
   );
 }
 
+function DailyWinToggle({ active, children, onClick }) {
+  return (
+    <button
+      type="button"
+      className={`btn ${active ? 'btn-primary' : 'btn-outline'}`}
+      style={{ flex: '1 1 auto', minWidth: '88px', padding: '8px 10px' }}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
 function getMealFeedbackStyles(tone) {
   if (tone === 'positive') {
     return {
@@ -223,6 +237,9 @@ export default function Meals() {
   const [favoriteFoods, setFavoriteFoods] = useState([]);
   const [favoriteBeverages, setFavoriteBeverages] = useState([]);
   const [beverageEntries, setBeverageEntries] = useState([]);
+  const [dailyWins, setDailyWins] = useState(getEmptyDailyWins(initialDate));
+  const [dailyWinsSavedAt, setDailyWinsSavedAt] = useState(null);
+  const [savingDailyWins, setSavingDailyWins] = useState(false);
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [selectedMealType, setSelectedMealType] = useState('breakfast');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -252,7 +269,7 @@ export default function Meals() {
       setLoading(true);
       setError(null);
       const recentStartDate = getDateDaysBefore(selectedDate, RECENT_MEAL_LOOKBACK_DAYS);
-      const [profileData, mealData, recentMealData, favoriteMealData, favoriteFoodData, favoriteBeverageData, beverageData] = await Promise.all([
+      const [profileData, mealData, recentMealData, favoriteMealData, favoriteFoodData, favoriteBeverageData, beverageData, healthMetricData] = await Promise.all([
         profileApi.getProfile(),
         mealsApi.getMeals({ date: selectedDate }),
         mealsApi.getMeals({ startDate: recentStartDate, endDate: selectedDate }),
@@ -260,7 +277,9 @@ export default function Meals() {
         favoriteFoodsApi.getFavoriteFoods(),
         favoriteBeveragesApi.getFavoriteBeverages(),
         beverageApi.getBeverages({ date: selectedDate }),
+        healthMetricsApi.getHealthMetrics({ startDate: selectedDate, endDate: selectedDate }),
       ]);
+      const dailyMetric = healthMetricData[0] || null;
       setProfile(profileData);
       setMeals(mealData);
       setRecentMeals(recentMealData);
@@ -268,6 +287,8 @@ export default function Meals() {
       setFavoriteFoods(favoriteFoodData);
       setFavoriteBeverages(favoriteBeverageData);
       setBeverageEntries(beverageData);
+      setDailyWins(getEmptyDailyWins(selectedDate, dailyMetric));
+      setDailyWinsSavedAt(dailyMetric?.updatedAt || null);
       setBeverageForm(getDefaultBeverageForm(selectedDate, profileData.units));
       setEditingBeverage(null);
       setBeverageEditorOpen(false);
@@ -325,6 +346,7 @@ export default function Meals() {
     date: selectedDate,
   }), [beverageEntries, preferredBeverageUnit, profile?.dietStyle, profile?.weight, selectedDate]);
   const hydrationHelper = getHydrationHelperCopy({ dietStyle: profile?.dietStyle });
+  const dailyWinsSummary = useMemo(() => getDailyWinsSummary(dailyWins), [dailyWins]);
   const hydrationFeedback = useMemo(() => getHydrationFeedback({
     entries: beverageEntries,
     summary: beverageSummary,
@@ -400,6 +422,28 @@ export default function Meals() {
       fetchMeals();
     } catch (err) {
       alert(err.message);
+    }
+  };
+
+  const handleDailyWinsSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setSavingDailyWins(true);
+      await healthMetricsApi.createHealthMetric({
+        recordedAt: dailyWins.recordedAt,
+        workoutCompleted: dailyWins.workoutCompleted === '' ? null : dailyWins.workoutCompleted === 'true',
+        readingCompleted: dailyWins.readingCompleted === '' ? null : dailyWins.readingCompleted === 'true',
+        prayerCompleted: dailyWins.prayerCompleted === '' ? null : dailyWins.prayerCompleted === 'true',
+        sleepHours: dailyWins.sleepHours === '' ? null : Number(dailyWins.sleepHours),
+        energyLevel: dailyWins.energyLevel === '' ? null : Number(dailyWins.energyLevel),
+        sorenessLevel: dailyWins.sorenessLevel === '' ? null : Number(dailyWins.sorenessLevel),
+      });
+      setActionMessage(`Saved ${dailyWinsSummary.completed} of ${dailyWinsSummary.total} daily wins`);
+      await fetchMeals();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSavingDailyWins(false);
     }
   };
 
@@ -828,6 +872,107 @@ export default function Meals() {
         <p style={{ margin: '12px 0 0', color: 'var(--text-secondary)', fontSize: '14px' }}>
           Current target meal: <strong>{getMealTypeLabel(selectedMealType)}</strong>
         </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '12px' }}>
+          <div>
+            <h2 style={{ margin: '0 0 6px' }}>Today&apos;s Wins</h2>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+              Keep this fast. Log the few daily wins you actually want to stay consistent with.
+            </p>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
+              {dailyWinsSummary.completed} / {dailyWinsSummary.total}
+            </p>
+            <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+              {dailyWinsSummary.percentage}% complete
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleDailyWinsSubmit} style={{ display: 'grid', gap: '14px' }}>
+          <div className="grid grid-2">
+            <div>
+              <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Workout</p>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <DailyWinToggle active={dailyWins.workoutCompleted === 'true'} onClick={() => setDailyWins((current) => ({ ...current, workoutCompleted: 'true' }))}>Done</DailyWinToggle>
+                <DailyWinToggle active={dailyWins.workoutCompleted === 'false'} onClick={() => setDailyWins((current) => ({ ...current, workoutCompleted: 'false' }))}>Not Yet</DailyWinToggle>
+              </div>
+            </div>
+            <div>
+              <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Reading</p>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <DailyWinToggle active={dailyWins.readingCompleted === 'true'} onClick={() => setDailyWins((current) => ({ ...current, readingCompleted: 'true' }))}>Done</DailyWinToggle>
+                <DailyWinToggle active={dailyWins.readingCompleted === 'false'} onClick={() => setDailyWins((current) => ({ ...current, readingCompleted: 'false' }))}>Not Yet</DailyWinToggle>
+              </div>
+            </div>
+            <div>
+              <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Prayer</p>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <DailyWinToggle active={dailyWins.prayerCompleted === 'true'} onClick={() => setDailyWins((current) => ({ ...current, prayerCompleted: 'true' }))}>Done</DailyWinToggle>
+                <DailyWinToggle active={dailyWins.prayerCompleted === 'false'} onClick={() => setDailyWins((current) => ({ ...current, prayerCompleted: 'false' }))}>Not Yet</DailyWinToggle>
+              </div>
+            </div>
+            <div>
+              <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Sleep</p>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {[5, 6, 7, 8, 9].map((value) => (
+                  <DailyWinToggle
+                    key={value}
+                    active={Number(dailyWins.sleepHours) === value}
+                    onClick={() => setDailyWins((current) => ({ ...current, sleepHours: String(value) }))}
+                  >
+                    {value === 9 ? '9+' : `${value}h`}
+                  </DailyWinToggle>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-2">
+            <div>
+              <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Energy</p>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <DailyWinToggle
+                    key={`energy-${value}`}
+                    active={Number(dailyWins.energyLevel) === value}
+                    onClick={() => setDailyWins((current) => ({ ...current, energyLevel: String(value) }))}
+                  >
+                    {value}
+                  </DailyWinToggle>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Soreness</p>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <DailyWinToggle
+                    key={`soreness-${value}`}
+                    active={Number(dailyWins.sorenessLevel) === value}
+                    onClick={() => setDailyWins((current) => ({ ...current, sorenessLevel: String(value) }))}
+                  >
+                    {value}
+                  </DailyWinToggle>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={savingDailyWins}>
+              {savingDailyWins ? 'Saving...' : "Save Today's Wins"}
+            </button>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+              {dailyWinsSavedAt
+                ? `Updated for ${selectedDate}.`
+                : 'Daily Wins stay lightweight here so logging feels easy to repeat.'}
+            </p>
+          </div>
+        </form>
       </div>
 
       <div id="beverages" className="card" style={{ marginBottom: '24px', marginTop: '32px' }}>

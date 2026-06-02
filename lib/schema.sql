@@ -175,6 +175,8 @@ CREATE TABLE IF NOT EXISTS health_metrics (
   weight                       DOUBLE PRECISION,
   waist_measurement            DOUBLE PRECISION,
   workout_completed            BOOLEAN,
+  reading_completed            BOOLEAN,
+  prayer_completed             BOOLEAN,
   hydration_ounces             DOUBLE PRECISION,
   energy_level                 INTEGER,
   hunger_level                 INTEGER,
@@ -234,6 +236,12 @@ ALTER TABLE health_metrics
 
 ALTER TABLE health_metrics
   ADD COLUMN IF NOT EXISTS workout_completed BOOLEAN;
+
+ALTER TABLE health_metrics
+  ADD COLUMN IF NOT EXISTS reading_completed BOOLEAN;
+
+ALTER TABLE health_metrics
+  ADD COLUMN IF NOT EXISTS prayer_completed BOOLEAN;
 
 ALTER TABLE health_metrics
   ADD COLUMN IF NOT EXISTS hydration_ounces DOUBLE PRECISION;
