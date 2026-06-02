@@ -46,7 +46,7 @@ import { buildBeverageDuplicatePayload, buildMealDuplicatePayload } from '@/lib/
 import { getHydrationFeedback } from '@/lib/hydrationFeedback';
 import { getMealFeedback } from '@/lib/mealFeedback';
 import { lookupByBarcode } from '@/lib/foodLookup';
-import { getDailyWinsSummary, getEmptyDailyWins } from '@/lib/dailyWins';
+import { getActiveDailyWinDefinitions, getDailyWinsSummary, getEmptyDailyWins } from '@/lib/dailyWins';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import HydrationFeedback from '@/components/HydrationFeedback';
@@ -346,7 +346,14 @@ export default function Meals() {
     date: selectedDate,
   }), [beverageEntries, preferredBeverageUnit, profile?.dietStyle, profile?.weight, selectedDate]);
   const hydrationHelper = getHydrationHelperCopy({ dietStyle: profile?.dietStyle });
-  const dailyWinsSummary = useMemo(() => getDailyWinsSummary(dailyWins), [dailyWins]);
+  const activeDailyWins = useMemo(
+    () => getActiveDailyWinDefinitions(profile?.dailyWinsActiveKeys),
+    [profile?.dailyWinsActiveKeys],
+  );
+  const dailyWinsSummary = useMemo(
+    () => getDailyWinsSummary(dailyWins, activeDailyWins),
+    [activeDailyWins, dailyWins],
+  );
   const hydrationFeedback = useMemo(() => getHydrationFeedback({
     entries: beverageEntries,
     summary: beverageSummary,
@@ -881,6 +888,9 @@ export default function Meals() {
             <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
               Keep this fast. Log the few daily wins you actually want to stay consistent with.
             </p>
+            <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+              Active: {activeDailyWins.map((definition) => definition.label).join(' • ')}
+            </p>
           </div>
           <div style={{ textAlign: 'right' }}>
             <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
@@ -894,72 +904,37 @@ export default function Meals() {
 
         <form onSubmit={handleDailyWinsSubmit} style={{ display: 'grid', gap: '14px' }}>
           <div className="grid grid-2">
-            <div>
-              <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Workout</p>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <DailyWinToggle active={dailyWins.workoutCompleted === 'true'} onClick={() => setDailyWins((current) => ({ ...current, workoutCompleted: 'true' }))}>Done</DailyWinToggle>
-                <DailyWinToggle active={dailyWins.workoutCompleted === 'false'} onClick={() => setDailyWins((current) => ({ ...current, workoutCompleted: 'false' }))}>Not Yet</DailyWinToggle>
+            {activeDailyWins.map((definition) => (
+              <div key={definition.key}>
+                <p style={{ margin: '0 0 8px', fontWeight: 600 }}>{definition.label}</p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {definition.inputType === 'boolean' ? (
+                    <>
+                      <DailyWinToggle active={dailyWins[definition.key] === 'true'} onClick={() => setDailyWins((current) => ({ ...current, [definition.key]: 'true' }))}>Done</DailyWinToggle>
+                      <DailyWinToggle active={dailyWins[definition.key] === 'false'} onClick={() => setDailyWins((current) => ({ ...current, [definition.key]: 'false' }))}>Not Yet</DailyWinToggle>
+                    </>
+                  ) : null}
+                  {definition.key === 'sleepHours' ? [5, 6, 7, 8, 9].map((value) => (
+                    <DailyWinToggle
+                      key={`${definition.key}-${value}`}
+                      active={Number(dailyWins.sleepHours) === value}
+                      onClick={() => setDailyWins((current) => ({ ...current, sleepHours: String(value) }))}
+                    >
+                      {value === 9 ? '9+' : `${value}h`}
+                    </DailyWinToggle>
+                  )) : null}
+                  {definition.inputType === 'rating' ? [1, 2, 3, 4, 5].map((value) => (
+                    <DailyWinToggle
+                      key={`${definition.key}-${value}`}
+                      active={Number(dailyWins[definition.key]) === value}
+                      onClick={() => setDailyWins((current) => ({ ...current, [definition.key]: String(value) }))}
+                    >
+                      {value}
+                    </DailyWinToggle>
+                  )) : null}
+                </div>
               </div>
-            </div>
-            <div>
-              <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Reading</p>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <DailyWinToggle active={dailyWins.readingCompleted === 'true'} onClick={() => setDailyWins((current) => ({ ...current, readingCompleted: 'true' }))}>Done</DailyWinToggle>
-                <DailyWinToggle active={dailyWins.readingCompleted === 'false'} onClick={() => setDailyWins((current) => ({ ...current, readingCompleted: 'false' }))}>Not Yet</DailyWinToggle>
-              </div>
-            </div>
-            <div>
-              <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Prayer</p>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <DailyWinToggle active={dailyWins.prayerCompleted === 'true'} onClick={() => setDailyWins((current) => ({ ...current, prayerCompleted: 'true' }))}>Done</DailyWinToggle>
-                <DailyWinToggle active={dailyWins.prayerCompleted === 'false'} onClick={() => setDailyWins((current) => ({ ...current, prayerCompleted: 'false' }))}>Not Yet</DailyWinToggle>
-              </div>
-            </div>
-            <div>
-              <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Sleep</p>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {[5, 6, 7, 8, 9].map((value) => (
-                  <DailyWinToggle
-                    key={value}
-                    active={Number(dailyWins.sleepHours) === value}
-                    onClick={() => setDailyWins((current) => ({ ...current, sleepHours: String(value) }))}
-                  >
-                    {value === 9 ? '9+' : `${value}h`}
-                  </DailyWinToggle>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-2">
-            <div>
-              <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Energy</p>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {[1, 2, 3, 4, 5].map((value) => (
-                  <DailyWinToggle
-                    key={`energy-${value}`}
-                    active={Number(dailyWins.energyLevel) === value}
-                    onClick={() => setDailyWins((current) => ({ ...current, energyLevel: String(value) }))}
-                  >
-                    {value}
-                  </DailyWinToggle>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Soreness</p>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                {[1, 2, 3, 4, 5].map((value) => (
-                  <DailyWinToggle
-                    key={`soreness-${value}`}
-                    active={Number(dailyWins.sorenessLevel) === value}
-                    onClick={() => setDailyWins((current) => ({ ...current, sorenessLevel: String(value) }))}
-                  >
-                    {value}
-                  </DailyWinToggle>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

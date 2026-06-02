@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { profileApi } from '@/lib/api';
+import { DAILY_WIN_DEFINITION_MAP, DEFAULT_DAILY_WIN_KEYS, getActiveDailyWinDefinitions } from '@/lib/dailyWins';
 import {
   getActivityLevelDescription,
   getDietStyleDescription,
@@ -15,6 +16,18 @@ import ErrorMessage from '@/components/ErrorMessage';
 
 const LEAN_RECOMP_HELPER_TEXT = 'Lean Recomp prioritizes fat loss while preserving or building muscle. Focus on strength performance, waist trend, and weekly average weight instead of day-to-day scale swings.';
 const LEAN_RECOMP_PROTEIN_HELPER = 'If you are around 231 lb and strength training, a typical Lean Recomp protein target lands around 180–220g per day.';
+
+function moveDailyWinKey(keys, key, direction) {
+  const currentIndex = keys.indexOf(key);
+  if (currentIndex === -1) return keys;
+
+  const nextIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+  if (nextIndex < 0 || nextIndex >= keys.length) return keys;
+
+  const reordered = [...keys];
+  [reordered[currentIndex], reordered[nextIndex]] = [reordered[nextIndex], reordered[currentIndex]];
+  return reordered;
+}
 
 function MacroSummaryCard({
   title,
@@ -88,6 +101,7 @@ export default function Profile() {
     goal: 'maintain',
     dietStyle: 'balanced',
     units: 'imperial',
+    dailyWinsActiveKeys: DEFAULT_DAILY_WIN_KEYS,
     useCustomMacros: false,
     customMacros: { protein: '', fat: '', carbs: '', calories: '' },
   });
@@ -113,6 +127,7 @@ export default function Profile() {
           goal: data.goal,
           dietStyle: data.dietStyle || 'balanced',
           units: units,
+          dailyWinsActiveKeys: data.dailyWinsActiveKeys || DEFAULT_DAILY_WIN_KEYS,
           useCustomMacros: !!data.customMacros,
           customMacros: data.customMacros || { protein: '', fat: '', carbs: '', calories: '' },
         });
@@ -157,6 +172,7 @@ export default function Profile() {
         goal: formData.goal,
         dietStyle: formData.dietStyle,
         units: formData.units,
+        dailyWinsActiveKeys: formData.dailyWinsActiveKeys,
         customMacros: formData.useCustomMacros ? {
           protein: parseFloat(formData.customMacros.protein),
           fat:     parseFloat(formData.customMacros.fat),
@@ -176,6 +192,11 @@ export default function Profile() {
   };
 
   if (loading) return <Loading />;
+
+  const activeDailyWins = getActiveDailyWinDefinitions(formData.dailyWinsActiveKeys);
+  const inactiveDailyWins = DEFAULT_DAILY_WIN_KEYS
+    .filter((key) => !formData.dailyWinsActiveKeys.includes(key))
+    .map((key) => DAILY_WIN_DEFINITION_MAP[key]);
 
   if (editing || !profile) {
     return (
@@ -306,6 +327,97 @@ export default function Profile() {
               )}
             </div>
 
+            <h2 style={{ marginTop: '32px', marginBottom: '24px' }}>Daily Wins</h2>
+            <div className="card" style={{ padding: '18px', marginBottom: '24px', background: 'rgba(52, 152, 219, 0.04)' }}>
+              <p style={{ margin: '0 0 16px', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                Keep Intake focused. Choose the suggested daily wins you actually want to see there, then order them for tap-first logging.
+              </p>
+
+              <div style={{ display: 'grid', gap: '12px', marginBottom: '18px' }}>
+                {activeDailyWins.map((definition, index) => (
+                  <div
+                    key={definition.key}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '12px 14px',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '12px',
+                      background: 'var(--card-background)',
+                    }}
+                  >
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 600 }}>{definition.label}</p>
+                      <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                        Active on Intake
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        onClick={() => setFormData((current) => ({
+                          ...current,
+                          dailyWinsActiveKeys: moveDailyWinKey(current.dailyWinsActiveKeys, definition.key, 'up'),
+                        }))}
+                        disabled={index === 0}
+                      >
+                        Up
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        onClick={() => setFormData((current) => ({
+                          ...current,
+                          dailyWinsActiveKeys: moveDailyWinKey(current.dailyWinsActiveKeys, definition.key, 'down'),
+                        }))}
+                        disabled={index === activeDailyWins.length - 1}
+                      >
+                        Down
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        onClick={() => setFormData((current) => ({
+                          ...current,
+                          dailyWinsActiveKeys: current.dailyWinsActiveKeys.filter((key) => key !== definition.key),
+                        }))}
+                        disabled={activeDailyWins.length === 1}
+                      >
+                        Hide
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <p style={{ margin: '0 0 10px', fontWeight: 600 }}>Available suggested habits</p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {inactiveDailyWins.map((definition) => (
+                    <button
+                      key={definition.key}
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => setFormData((current) => ({
+                        ...current,
+                        dailyWinsActiveKeys: [...current.dailyWinsActiveKeys, definition.key],
+                      }))}
+                    >
+                      Add {definition.label}
+                    </button>
+                  ))}
+                  {inactiveDailyWins.length === 0 ? (
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
+                      All suggested Daily Wins are active.
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
             <h2 style={{ marginTop: '32px', marginBottom: '24px' }}>Macro Goals</h2>
 
             <div className="form-group">
@@ -420,6 +532,31 @@ export default function Profile() {
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: '32px' }}>
+        <h2 style={{ marginBottom: '16px' }}>Daily Wins</h2>
+        <p style={{ color: 'var(--text-secondary)', margin: '0 0 16px' }}>
+          Intake shows only the Daily Wins you have turned on here. Keep the list short enough that it stays easy to repeat.
+        </p>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {profile.activeDailyWins?.map((definition) => (
+            <span
+              key={definition.key}
+              style={{
+                borderRadius: '999px',
+                border: '1px solid rgba(52, 152, 219, 0.18)',
+                background: 'rgba(52, 152, 219, 0.08)',
+                color: 'var(--primary-color)',
+                padding: '8px 12px',
+                fontSize: '13px',
+                fontWeight: 600,
+              }}
+            >
+              {definition.label}
+            </span>
+          ))}
         </div>
       </div>
 

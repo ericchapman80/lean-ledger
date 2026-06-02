@@ -134,6 +134,7 @@ export default function Trends() {
   const beverageBehavior = analytics.summary.beverageBehavior || {};
   const recoveryBehavior = analytics.summary.recoveryBehavior || {};
   const dailyWinsBehavior = analytics.summary.dailyWinsBehavior || {};
+  const activeDailyWins = profile.activeDailyWins || [];
   const hasWaistData = chartData.some((entry) => entry.waistMeasurement != null);
   const hasWorkoutData = chartData.some((entry) => entry.workoutCompleted != null);
   const hasHydrationData = chartData.some((entry) => entry.hydrationOunces != null);
@@ -161,8 +162,7 @@ export default function Trends() {
   );
   const hasDailyWinsBehaviorData = (
     dailyWinsBehavior.averageCompletedWins != null
-    || dailyWinsBehavior.readingCompletionPercentage != null
-    || dailyWinsBehavior.prayerCompletionPercentage != null
+    || Object.values(dailyWinsBehavior.habitCompletionPercentages || {}).some((value) => value != null)
   );
   const formatAdvancedMetricTooltip = (value, _name, item) => (
     formatHealthMetricDisplayUnitValue(item?.dataKey, value, profile.units)
@@ -776,7 +776,7 @@ export default function Trends() {
           <div className="grid grid-4" style={{ marginBottom: '32px' }}>
             <SummaryCard
               label="Average Wins"
-              value={dailyWinsBehavior.averageCompletedWins != null ? `${dailyWinsBehavior.averageCompletedWins} / 6` : 'No wins logged'}
+              value={dailyWinsBehavior.averageCompletedWins != null ? `${dailyWinsBehavior.averageCompletedWins} / ${dailyWinsBehavior.activeTotal || activeDailyWins.length}` : 'No wins logged'}
               helper={dailyWinsBehavior.completionPercentage != null
                 ? `${dailyWinsBehavior.completionPercentage}% of possible wins completed`
                 : 'Log wins on Intake to start the pattern.'}
@@ -785,21 +785,20 @@ export default function Trends() {
             <SummaryCard
               label="Perfect Win Days"
               value={dailyWinsBehavior.perfectDays != null ? `${dailyWinsBehavior.perfectDays}` : '0'}
-              helper="Days where all six Daily Wins were logged or completed"
+              helper={`Days where all ${dailyWinsBehavior.activeTotal || activeDailyWins.length} active Daily Wins were logged or completed`}
               accent="#27ae60"
             />
-            <SummaryCard
-              label="Reading Consistency"
-              value={dailyWinsBehavior.readingCompletionPercentage != null ? `${dailyWinsBehavior.readingCompletionPercentage}%` : 'No reading logs'}
-              helper="Share of tracked days marked done"
-              accent="#8e44ad"
-            />
-            <SummaryCard
-              label="Prayer Consistency"
-              value={dailyWinsBehavior.prayerCompletionPercentage != null ? `${dailyWinsBehavior.prayerCompletionPercentage}%` : 'No prayer logs'}
-              helper="Share of tracked days marked done"
-              accent="#16a085"
-            />
+            {activeDailyWins.map((definition) => (
+              <SummaryCard
+                key={definition.key}
+                label={`${definition.label} Consistency`}
+                value={dailyWinsBehavior.habitCompletionPercentages?.[definition.key] != null
+                  ? `${dailyWinsBehavior.habitCompletionPercentages[definition.key]}%`
+                  : `No ${definition.label.toLowerCase()} logs`}
+                helper="Share of tracked days marked complete or logged"
+                accent={definition.key === 'readingCompleted' ? '#8e44ad' : definition.key === 'prayerCompleted' ? '#16a085' : undefined}
+              />
+            ))}
           </div>
         </>
       )}
