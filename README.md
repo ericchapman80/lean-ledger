@@ -6,6 +6,11 @@ Single Next.js 15 app deployed to Vercel, with Postgres for persistence.
 
 The DB driver (`postgres` package, porsager) speaks the standard Postgres wire protocol, so **the exact same code runs against either Neon (cloud) or a local Postgres install** — only the `DATABASE_URL` differs.
 
+Daily Wins is an opt-in surface:
+
+- new users start with zero active Daily Wins
+- Intake and Dashboard only show habits after explicit configuration in Profile
+
 ## Environment management
 
 Use one env file per database target:

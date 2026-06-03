@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { beverageApi, dailyHabitsApi, favoriteBeveragesApi, favoriteFoodsApi, favoriteMealsApi, habitDefinitionsApi, healthMetricsApi, mealsApi, profileApi } from '@/lib/api';
 import {
   calculateNetCarbs,
@@ -890,72 +891,88 @@ export default function Meals() {
       </div>
 
       <div className="card" style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '12px' }}>
-          <div>
-            <h2 style={{ margin: '0 0 6px' }}>Today&apos;s Wins</h2>
-            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
-              Keep this fast. Log the few daily wins you actually want to stay consistent with.
-            </p>
-            <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
-              Active: {activeDailyWins.map((definition) => definition.label).join(' • ')}
-            </p>
+        {activeDailyWins.length === 0 ? (
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div>
+              <h2 style={{ margin: '0 0 6px' }}>Today&apos;s Wins</h2>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                No Daily Wins configured.
+              </p>
+            </div>
+            <Link href="/profile" className="btn btn-outline">
+              Configure Daily Wins
+            </Link>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
-              {dailyWinsSummary.completed} / {dailyWinsSummary.total}
-            </p>
-            <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
-              {dailyWinsSummary.percentage}% complete
-            </p>
-          </div>
-        </div>
-
-        <form onSubmit={handleDailyWinsSubmit} style={{ display: 'grid', gap: '14px' }}>
-          <div className="grid grid-2">
-            {activeDailyWins.map((definition) => (
-              <div key={definition.key}>
-                <p style={{ margin: '0 0 8px', fontWeight: 600 }}>{definition.label}</p>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {definition.inputType === 'boolean' ? (
-                    <>
-                      <DailyWinToggle active={dailyWins[definition.key] === 'true'} onClick={() => setDailyWins((current) => ({ ...current, [definition.key]: 'true' }))}>Done</DailyWinToggle>
-                      <DailyWinToggle active={dailyWins[definition.key] === 'false'} onClick={() => setDailyWins((current) => ({ ...current, [definition.key]: 'false' }))}>Not Yet</DailyWinToggle>
-                    </>
-                  ) : null}
-                  {definition.key === 'sleepHours' ? [5, 6, 7, 8, 9].map((value) => (
-                    <DailyWinToggle
-                      key={`${definition.key}-${value}`}
-                      active={Number(dailyWins.sleepHours) === value}
-                      onClick={() => setDailyWins((current) => ({ ...current, sleepHours: String(value) }))}
-                    >
-                      {value === 9 ? '9+' : `${value}h`}
-                    </DailyWinToggle>
-                  )) : null}
-                  {definition.inputType === 'rating' ? [1, 2, 3, 4, 5].map((value) => (
-                    <DailyWinToggle
-                      key={`${definition.key}-${value}`}
-                      active={Number(dailyWins[definition.key]) === value}
-                      onClick={() => setDailyWins((current) => ({ ...current, [definition.key]: String(value) }))}
-                    >
-                      {value}
-                    </DailyWinToggle>
-                  )) : null}
-                </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '12px' }}>
+              <div>
+                <h2 style={{ margin: '0 0 6px' }}>Today&apos;s Wins</h2>
+                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                  Keep this fast. Log the few daily wins you actually want to stay consistent with.
+                </p>
+                <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  Active: {activeDailyWins.map((definition) => definition.label).join(' • ')}
+                </p>
               </div>
-            ))}
-          </div>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
+                  {dailyWinsSummary.completed} / {dailyWinsSummary.total}
+                </p>
+                <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  {dailyWinsSummary.percentage}% complete
+                </p>
+              </div>
+            </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={savingDailyWins}>
-              {savingDailyWins ? 'Saving...' : "Save Today's Wins"}
-            </button>
-            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
-              {dailyWinsSavedAt
-                ? `Updated for ${selectedDate}.`
-                : 'Daily Wins stay lightweight here so logging feels easy to repeat.'}
-            </p>
-          </div>
-        </form>
+            <form onSubmit={handleDailyWinsSubmit} style={{ display: 'grid', gap: '14px' }}>
+              <div className="grid grid-2">
+                {activeDailyWins.map((definition) => (
+                  <div key={definition.key}>
+                    <p style={{ margin: '0 0 8px', fontWeight: 600 }}>{definition.label}</p>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {definition.inputType === 'boolean' ? (
+                        <>
+                          <DailyWinToggle active={dailyWins[definition.key] === 'true'} onClick={() => setDailyWins((current) => ({ ...current, [definition.key]: 'true' }))}>Done</DailyWinToggle>
+                          <DailyWinToggle active={dailyWins[definition.key] === 'false'} onClick={() => setDailyWins((current) => ({ ...current, [definition.key]: 'false' }))}>Not Yet</DailyWinToggle>
+                        </>
+                      ) : null}
+                      {definition.key === 'sleepHours' ? [5, 6, 7, 8, 9].map((value) => (
+                        <DailyWinToggle
+                          key={`${definition.key}-${value}`}
+                          active={Number(dailyWins.sleepHours) === value}
+                          onClick={() => setDailyWins((current) => ({ ...current, sleepHours: String(value) }))}
+                        >
+                          {value === 9 ? '9+' : `${value}h`}
+                        </DailyWinToggle>
+                      )) : null}
+                      {definition.inputType === 'rating' ? [1, 2, 3, 4, 5].map((value) => (
+                        <DailyWinToggle
+                          key={`${definition.key}-${value}`}
+                          active={Number(dailyWins[definition.key]) === value}
+                          onClick={() => setDailyWins((current) => ({ ...current, [definition.key]: String(value) }))}
+                        >
+                          {value}
+                        </DailyWinToggle>
+                      )) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={savingDailyWins}>
+                  {savingDailyWins ? 'Saving...' : "Save Today's Wins"}
+                </button>
+                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                  {dailyWinsSavedAt
+                    ? `Updated for ${selectedDate}.`
+                    : 'Daily Wins stay lightweight here so logging feels easy to repeat.'}
+                </p>
+              </div>
+            </form>
+          </>
+        )}
       </div>
 
       <div id="beverages" className="card" style={{ marginBottom: '24px', marginTop: '32px' }}>

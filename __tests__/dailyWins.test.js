@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildCustomDailyWinDefinitions,
   DAILY_WIN_DEFINITIONS,
-  DEFAULT_DAILY_WIN_KEYS,
+  DEFAULT_ACTIVE_DAILY_WIN_KEYS,
   getActiveDailyWinDefinitions,
   getCustomDailyHabitPayloads,
   getDailyWinsSummary,
@@ -50,7 +50,8 @@ describe('daily wins helpers', () => {
       'sleepHours',
       'workoutCompleted',
     ]);
-    expect(normalizeDailyWinKeys([])).toEqual(DEFAULT_DAILY_WIN_KEYS);
+    expect(normalizeDailyWinKeys([])).toEqual(DEFAULT_ACTIVE_DAILY_WIN_KEYS);
+    expect(normalizeDailyWinKeys()).toEqual(DEFAULT_ACTIVE_DAILY_WIN_KEYS);
   });
 
   it('builds summaries against only the active configured wins', () => {
