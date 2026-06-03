@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { habitDefinitionsApi, profileApi } from '@/lib/api';
 import { DAILY_WIN_DEFINITION_MAP, DEFAULT_DAILY_WIN_KEYS, getActiveDailyWinDefinitions } from '@/lib/dailyWins';
+import { applyDailyWinTemplate, DAILY_WIN_TEMPLATES } from '@/lib/dailyWinTemplates';
 import {
   getActivityLevelDescription,
   getDietStyleDescription,
@@ -112,6 +113,7 @@ export default function Profile() {
   const [savedCustomHabits, setSavedCustomHabits] = useState([]);
   const [customHabits, setCustomHabits] = useState([]);
   const [newCustomHabitName, setNewCustomHabitName] = useState('');
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState('');
   const [formData, setFormData] = useState({
     age: '',
     height: '',
@@ -139,6 +141,7 @@ export default function Profile() {
       setProfile(data);
       setSavedCustomHabits(habitData);
       setCustomHabits(habitData);
+      setSelectedTemplateKey('');
 
       if (data) {
         const units = data.units || 'metric';
@@ -396,6 +399,46 @@ export default function Profile() {
               <p style={{ margin: '0 0 16px', color: 'var(--text-secondary)', fontSize: '14px' }}>
                 Keep Intake focused. Choose the suggested daily wins you actually want to see there, then order them for tap-first logging.
               </p>
+
+              <div style={{ marginBottom: '18px', paddingBottom: '18px', borderBottom: '1px solid var(--border-color)' }}>
+                <p style={{ margin: '0 0 10px', fontWeight: 600 }}>Challenge template</p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <select
+                    value={selectedTemplateKey}
+                    onChange={(e) => setSelectedTemplateKey(e.target.value)}
+                    className="form-select"
+                    style={{ flex: '1 1 260px' }}
+                  >
+                    <option value="">Choose a template</option>
+                    {DAILY_WIN_TEMPLATES.map((template) => (
+                      <option key={template.key} value={template.key}>{template.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    disabled={!selectedTemplateKey}
+                    onClick={() => {
+                      const applied = applyDailyWinTemplate({
+                        templateKey: selectedTemplateKey,
+                        customHabits,
+                      });
+                      setFormData((current) => ({
+                        ...current,
+                        dailyWinsActiveKeys: applied.suggestedKeys,
+                      }));
+                      setCustomHabits(normalizeCustomHabits(applied.customHabits));
+                    }}
+                  >
+                    Apply Template
+                  </button>
+                </div>
+                {selectedTemplateKey ? (
+                  <p style={{ margin: '10px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                    {DAILY_WIN_TEMPLATES.find((template) => template.key === selectedTemplateKey)?.description}
+                  </p>
+                ) : null}
+              </div>
 
               <div style={{ display: 'grid', gap: '12px', marginBottom: '18px' }}>
                 {activeDailyWins.map((definition, index) => (
