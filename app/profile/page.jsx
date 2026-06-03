@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { habitDefinitionsApi, profileApi } from '@/lib/api';
 import { DAILY_WIN_DEFINITION_MAP, DEFAULT_DAILY_WIN_KEYS, getActiveDailyWinDefinitions } from '@/lib/dailyWins';
-import { applyDailyWinTemplate, DAILY_WIN_TEMPLATES } from '@/lib/dailyWinTemplates';
+import { applyDailyWinTemplate, buildDailyWinChallengeSummary, DAILY_WIN_TEMPLATES } from '@/lib/dailyWinTemplates';
 import {
   getActivityLevelDescription,
   getDietStyleDescription,
   getGoalDescription,
 } from '@/lib/utils/macroUtils';
+import { getTodayDate } from '@/lib/utils/dateUtils';
 import { cmToFeetInches, feetInchesToCm, kgToLbs, lbsToKg, formatHeight, formatWeight, getWeightUnit } from '@/lib/utils/unitUtils';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
@@ -126,6 +127,8 @@ export default function Profile() {
     dietStyle: 'balanced',
     units: 'imperial',
     dailyWinsActiveKeys: DEFAULT_DAILY_WIN_KEYS,
+    dailyWinsTemplateKey: '',
+    dailyWinsChallengeStartDate: '',
     useCustomMacros: false,
     customMacros: { protein: '', fat: '', carbs: '', calories: '' },
   });
@@ -141,7 +144,7 @@ export default function Profile() {
       setProfile(data);
       setSavedCustomHabits(habitData);
       setCustomHabits(habitData);
-      setSelectedTemplateKey('');
+      setSelectedTemplateKey(data?.dailyWinsTemplateKey || '');
 
       if (data) {
         const units = data.units || 'metric';
@@ -158,6 +161,8 @@ export default function Profile() {
           dietStyle: data.dietStyle || 'balanced',
           units: units,
           dailyWinsActiveKeys: data.dailyWinsActiveKeys || DEFAULT_DAILY_WIN_KEYS,
+          dailyWinsTemplateKey: data.dailyWinsTemplateKey || '',
+          dailyWinsChallengeStartDate: data.dailyWinsChallengeStartDate || '',
           useCustomMacros: !!data.customMacros,
           customMacros: data.customMacros || { protein: '', fat: '', carbs: '', calories: '' },
         });
@@ -203,6 +208,10 @@ export default function Profile() {
         dietStyle: formData.dietStyle,
         units: formData.units,
         dailyWinsActiveKeys: formData.dailyWinsActiveKeys,
+        dailyWinsTemplateKey: formData.dailyWinsTemplateKey || null,
+        dailyWinsChallengeStartDate: formData.dailyWinsTemplateKey
+          ? (formData.dailyWinsChallengeStartDate || getTodayDate())
+          : null,
         customMacros: formData.useCustomMacros ? {
           protein: parseFloat(formData.customMacros.protein),
           fat:     parseFloat(formData.customMacros.fat),
@@ -264,6 +273,12 @@ export default function Profile() {
   const inactiveDailyWins = DEFAULT_DAILY_WIN_KEYS
     .filter((key) => !formData.dailyWinsActiveKeys.includes(key))
     .map((key) => DAILY_WIN_DEFINITION_MAP[key]);
+  const activeTemplateKey = selectedTemplateKey || formData.dailyWinsTemplateKey;
+  const challengePreview = buildDailyWinChallengeSummary({
+    templateKey: activeTemplateKey,
+    challengeStartDate: formData.dailyWinsChallengeStartDate,
+    referenceDate: getTodayDate(),
+  });
 
   if (editing || !profile) {
     return (
@@ -426,17 +441,75 @@ export default function Profile() {
                       setFormData((current) => ({
                         ...current,
                         dailyWinsActiveKeys: applied.suggestedKeys,
+                        dailyWinsTemplateKey: selectedTemplateKey,
+                        dailyWinsChallengeStartDate: current.dailyWinsChallengeStartDate || getTodayDate(),
                       }));
                       setCustomHabits(normalizeCustomHabits(applied.customHabits));
                     }}
                   >
                     Apply Template
                   </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    disabled={!formData.dailyWinsTemplateKey}
+                    onClick={() => {
+                      setSelectedTemplateKey('');
+                      setFormData((current) => ({
+                        ...current,
+                        dailyWinsTemplateKey: '',
+                        dailyWinsChallengeStartDate: '',
+                      }));
+                    }}
+                  >
+                    Clear
+                  </button>
                 </div>
                 {selectedTemplateKey ? (
                   <p style={{ margin: '10px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
                     {DAILY_WIN_TEMPLATES.find((template) => template.key === selectedTemplateKey)?.description}
                   </p>
+                ) : null}
+                {formData.dailyWinsTemplateKey ? (
+                  <div style={{ marginTop: '14px', display: 'grid', gap: '10px' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ marginBottom: '6px' }}>Challenge start date</label>
+                      <input
+                        type="date"
+                        value={formData.dailyWinsChallengeStartDate}
+                        onChange={(e) => setFormData((current) => ({
+                          ...current,
+                          dailyWinsChallengeStartDate: e.target.value,
+                        }))}
+                        className="form-input"
+                        max={getTodayDate()}
+                      />
+                    </div>
+                    {challengePreview ? (
+                      <div
+                        style={{
+                          padding: '12px 14px',
+                          borderRadius: '12px',
+                          border: '1px solid rgba(52, 152, 219, 0.18)',
+                          background: 'rgba(52, 152, 219, 0.08)',
+                        }}
+                      >
+                        <p style={{ margin: '0 0 6px', fontWeight: 600 }}>
+                          {challengePreview.templateName} • Day {challengePreview.dayNumber}
+                          {challengePreview.durationDays ? ` of ${challengePreview.durationDays}` : ''}
+                        </p>
+                        <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                          Started {formData.dailyWinsChallengeStartDate}
+                          {challengePreview.daysRemaining != null ? ` • ${challengePreview.daysRemaining} days left` : ''}
+                        </p>
+                        {challengePreview.percentComplete != null ? (
+                          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
+                            {challengePreview.percentComplete}% through the current run.
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
                 ) : null}
               </div>
 
@@ -756,6 +829,24 @@ export default function Profile() {
         <p style={{ color: 'var(--text-secondary)', margin: '0 0 16px' }}>
           Intake shows only the Daily Wins you have turned on here. Keep the list short enough that it stays easy to repeat.
         </p>
+        {profile.dailyWinsTemplateKey ? (
+          <div
+            style={{
+              marginBottom: '16px',
+              padding: '12px 14px',
+              borderRadius: '12px',
+              border: '1px solid rgba(52, 152, 219, 0.18)',
+              background: 'rgba(52, 152, 219, 0.08)',
+            }}
+          >
+            <p style={{ margin: '0 0 6px', fontWeight: 600 }}>
+              {DAILY_WIN_TEMPLATES.find((template) => template.key === profile.dailyWinsTemplateKey)?.name || 'Active template'}
+            </p>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
+              Started {profile.dailyWinsChallengeStartDate || 'not set'}.
+            </p>
+          </div>
+        ) : null}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {profile.activeDailyWins?.map((definition) => (
             <span
