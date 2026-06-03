@@ -15,13 +15,14 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { beverageApi, healthMetricsApi, profileApi, statsApi, weightApi } from '@/lib/api';
+import { beverageApi, dailyHabitsApi, habitDefinitionsApi, healthMetricsApi, profileApi, statsApi, weightApi } from '@/lib/api';
 import {
   formatHealthMetricDisplayUnitValue,
   getAvailableAdvancedMetricGroups,
   getHealthMetricFieldMeta,
   HEALTH_METRIC_FIELDS,
 } from '@/lib/healthMetrics';
+import { mergeDailyWinDefinitions } from '@/lib/dailyWins';
 import { buildTrendAnalytics } from '@/lib/trendAnalytics';
 import { getDateDaysBefore, getTodayDate } from '@/lib/utils/dateUtils';
 import { buildTrendChartData } from '@/lib/trendDisplay';
@@ -67,6 +68,7 @@ export default function Trends() {
   const [period, setPeriod] = useState(14);
   const [analytics, setAnalytics] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [customHabits, setCustomHabits] = useState([]);
   const [weeklyStats, setWeeklyStats] = useState(null);
 
   const fetchTrends = async () => {
@@ -78,16 +80,19 @@ export default function Trends() {
       const startDate = getDateDaysBefore(endDate, period - 1);
       const weightStartDate = getDateDaysBefore(startDate, 6);
 
-      const [profileData, weeklyStatsData, mealTrendData, weightData, healthMetricData, beverageData] = await Promise.all([
+      const [profileData, weeklyStatsData, mealTrendData, weightData, healthMetricData, beverageData, customHabitData, dailyHabitLogData] = await Promise.all([
         profileApi.getProfile(),
         statsApi.getWeeklyStats(endDate),
         statsApi.getTrends(startDate, endDate),
         weightApi.getWeightLogs({ startDate: weightStartDate, endDate }),
         healthMetricsApi.getHealthMetrics({ startDate, endDate }),
         beverageApi.getBeverages({ startDate, endDate }),
+        habitDefinitionsApi.getHabitDefinitions(),
+        dailyHabitsApi.getDailyHabitLogs({ startDate, endDate }),
       ]);
 
       setProfile(profileData);
+      setCustomHabits(customHabitData);
       setWeeklyStats(weeklyStatsData);
       setAnalytics(buildTrendAnalytics({
         startDate,
@@ -96,6 +101,8 @@ export default function Trends() {
         weightLogs: weightData,
         healthMetrics: healthMetricData,
         beverageEntries: beverageData,
+        dailyHabitLogs: dailyHabitLogData,
+        customHabits: customHabitData,
         profile: profileData,
         weeklyStats: weeklyStatsData,
       }));
@@ -134,7 +141,7 @@ export default function Trends() {
   const beverageBehavior = analytics.summary.beverageBehavior || {};
   const recoveryBehavior = analytics.summary.recoveryBehavior || {};
   const dailyWinsBehavior = analytics.summary.dailyWinsBehavior || {};
-  const activeDailyWins = profile.activeDailyWins || [];
+  const activeDailyWins = mergeDailyWinDefinitions(profile.dailyWinsActiveKeys, customHabits);
   const hasWaistData = chartData.some((entry) => entry.waistMeasurement != null);
   const hasWorkoutData = chartData.some((entry) => entry.workoutCompleted != null);
   const hasHydrationData = chartData.some((entry) => entry.hydrationOunces != null);
