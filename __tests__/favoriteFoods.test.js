@@ -124,4 +124,34 @@ describe('favorite beverage helpers', () => {
       displayName: 'LMNT Grapefruit',
     });
   });
+
+  it('repairs stale hydration metadata for favorite beverages', () => {
+    const payload = buildFavoriteBeveragePayload({
+      ...sampleBeverage,
+      beverageType: 'water',
+      displayName: null,
+      countsTowardHydration: false,
+    }, 'Water');
+
+    expect(payload.countsTowardHydration).toBe(true);
+    expect(buildBeverageFromFavorite({
+      ...payload,
+      id: 9,
+      countsTowardHydration: false,
+    }, '2026-05-30')).toMatchObject({
+      beverageType: 'water',
+      countsTowardHydration: true,
+    });
+  });
+
+  it('infers favorite hydration metadata from custom beverage names', () => {
+    const payload = buildFavoriteBeveragePayload({
+      ...sampleBeverage,
+      beverageType: 'other',
+      displayName: "Jordan's Skinny Syrup Peach Tea",
+      countsTowardHydration: false,
+    }, 'Peach Tea');
+
+    expect(payload.countsTowardHydration).toBe(true);
+  });
 });

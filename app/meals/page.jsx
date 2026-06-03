@@ -21,12 +21,16 @@ import {
   BEVERAGE_TYPES,
   BEVERAGE_UNITS,
   buildBeverageRecordedAt,
+  convertBeverageToFlOz,
   formatBeverageFromFlOz,
   getDefaultBeverageForm,
   getBeverageDisplayName,
   getDefaultCountsTowardHydration,
+  getHydrationContributionLabel,
+  getHydrationContributionFlOz,
   getHydrationHelperCopy,
   getPreferredBeverageUnit,
+  shouldCountTowardHydration,
   getWaterQuickAddOptions,
   summarizeBeverageEntries,
 } from '@/lib/beverages';
@@ -134,7 +138,7 @@ function formatFavoriteBeverageDetails(entry, preferredBeverageUnit) {
   if (entry.beverageType === 'other' && entry.displayName) {
     details.unshift(entry.displayName);
   }
-  if (entry.countsTowardHydration) {
+  if (shouldCountTowardHydration(entry)) {
     details.push('counts toward hydration');
   }
   if (entry.calories || entry.protein || entry.carbs || entry.fat) {
@@ -144,12 +148,6 @@ function formatFavoriteBeverageDetails(entry, preferredBeverageUnit) {
     details.push(`${Math.round(entry.caffeineMg)} mg caffeine`);
   }
   return details;
-}
-
-function formatHydrationContribution(entry, preferredBeverageUnit) {
-  const contribution = entry.hydrationContributionFlOz ?? 0;
-  if (contribution <= 0) return 'does not add to hydration total';
-  return `${formatBeverageFromFlOz(contribution, preferredBeverageUnit)} hydration credit`;
 }
 
 function InlineActionButton({ children, onClick, danger = false }) {
@@ -343,6 +341,28 @@ export default function Meals() {
     visibleFavoriteSuggestions.map((suggestion) => [`${suggestion.mealType}::${suggestion.signature}`, suggestion]),
   ), [visibleFavoriteSuggestions]);
   const preferredBeverageUnit = getPreferredBeverageUnit(profile?.units);
+  const beverageHydrationPreview = useMemo(() => {
+    if (beverageForm.amount === '') return null;
+    const amountFlOz = convertBeverageToFlOz(beverageForm.amount, beverageForm.unit);
+    if (!Number.isFinite(amountFlOz) || amountFlOz <= 0) return null;
+
+    const contributionFlOz = getHydrationContributionFlOz({
+      beverageType: beverageForm.beverageType,
+      displayName: beverageForm.displayName,
+      countsTowardHydration: beverageForm.countsTowardHydration,
+      amountFlOz,
+    });
+
+    if (contributionFlOz <= 0) return 'This beverage will not add to the hydration total.';
+    return `Counts as ${formatBeverageFromFlOz(contributionFlOz, preferredBeverageUnit)} hydration credit.`;
+  }, [
+    beverageForm.amount,
+    beverageForm.beverageType,
+    beverageForm.countsTowardHydration,
+    beverageForm.displayName,
+    beverageForm.unit,
+    preferredBeverageUnit,
+  ]);
   const beverageSummary = useMemo(() => summarizeBeverageEntries(beverageEntries, {
     preferredUnit: preferredBeverageUnit,
     weightKg: profile?.weight,
@@ -1092,6 +1112,11 @@ export default function Meals() {
               />
               Counts toward hydration
             </label>
+            {beverageHydrationPreview ? (
+              <p style={{ margin: '-6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                {beverageHydrationPreview}
+              </p>
+            ) : null}
 
             <div className="grid grid-4">
               <div className="form-group" style={{ marginBottom: 0 }}>
@@ -1178,7 +1203,7 @@ export default function Meals() {
                   </p>
                   <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
                     {formatBeverageFromFlOz(entry.amountFlOz, preferredBeverageUnit)}
-                    {entry.countsTowardHydration ? ` • ${formatHydrationContribution(entry, preferredBeverageUnit)}` : ' • does not add to hydration total'}
+                    {` • ${getHydrationContributionLabel(entry, preferredBeverageUnit)}`}
                   </p>
                   {(entry.calories || entry.protein || entry.carbs || entry.fat) ? (
                     <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)', fontSize: '12px' }}>

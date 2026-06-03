@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
 import * as FavoriteBeverage from '@/lib/models/favoriteBeverage';
+import { normalizeCountsTowardHydration } from '@/lib/beverages';
 
 function isMissingFavoriteBeveragesTable(error) {
   return error?.code === '42P01'
@@ -50,15 +51,21 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Name, amount, and normalized amount are required' }, { status: 400 });
     }
 
+    const safeDisplayName = displayName == null || displayName === '' ? null : String(displayName).trim();
+
     favoriteBeveragePayload = {
       userId,
       name,
       beverageType,
-      displayName: displayName == null || displayName === '' ? null : String(displayName).trim(),
+      displayName: safeDisplayName,
       amount: Number(amount),
       unit,
       amountFlOz: Number(amountFlOz),
-      countsTowardHydration: Boolean(countsTowardHydration),
+      countsTowardHydration: normalizeCountsTowardHydration({
+        beverageType,
+        displayName: safeDisplayName,
+        countsTowardHydration,
+      }),
       calories: Number(calories || 0),
       protein: Number(protein || 0),
       carbs: Number(carbs || 0),
