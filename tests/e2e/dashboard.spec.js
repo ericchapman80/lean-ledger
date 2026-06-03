@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+test.describe.configure({ mode: 'serial' });
+
 function getIsolatedDate() {
   const daysAhead = 30 + Math.floor(Math.random() * 700);
   return new Date(Date.now() + daysAhead * 86400000).toISOString().slice(0, 10);
