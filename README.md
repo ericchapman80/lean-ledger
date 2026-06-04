@@ -10,6 +10,25 @@ Daily Wins is an opt-in surface:
 
 - new users start with zero active Daily Wins
 - Intake and Dashboard only show habits after explicit configuration in Profile
+## Build In Quality
+
+Lean Ledger should default to **building quality in**, not trying to test quality in later.
+
+That means:
+
+- ship logic changes with unit coverage
+- ship cross-page or user-flow changes with functional/E2E coverage when practical
+- ship DB changes with safe additive migrations and rollout notes
+- keep CI as a real release gate, not an optional afterthought
+- prefer fixing root causes over retrying broken behavior manually
+
+Working expectations:
+
+- UI changes that affect user behavior should usually include tests
+- shared business rules should live in helpers that are easy to test directly
+- schema changes should be backward-safe and environment-aware
+- preview and production verification should stay part of the delivery path
+- quality should be part of feature completion, not a follow-up chore
 
 ## Environment management
 
