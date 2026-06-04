@@ -22,13 +22,16 @@ import {
   BEVERAGE_TYPES,
   BEVERAGE_UNITS,
   buildBeverageRecordedAt,
+  convertBeverageToFlOz,
   formatBeverageFromFlOz,
   getDefaultBeverageForm,
   getBeverageDisplayName,
   getDefaultCountsTowardHydration,
+  getHydrationContributionFlOz,
   getHydrationHelperCopy,
   getPreferredBeverageUnit,
   getWaterQuickAddOptions,
+  shouldCountTowardHydration,
   summarizeBeverageEntries,
 } from '@/lib/beverages';
 import {
@@ -46,6 +49,7 @@ import { buildBeverageFromFavorite, buildFavoriteBeveragePayload } from '@/lib/f
 import { buildBeverageDuplicatePayload, buildMealDuplicatePayload } from '@/lib/intakeDuplicates';
 import { getHydrationFeedback } from '@/lib/hydrationFeedback';
 import { getMealFeedback } from '@/lib/mealFeedback';
+import { buildDailyWinChallengeSummary } from '@/lib/dailyWinTemplates';
 import { lookupByBarcode } from '@/lib/foodLookup';
 import { getCustomDailyHabitPayloads, getDailyWinsSummary, getDailyWinsValues, mergeDailyWinDefinitions } from '@/lib/dailyWins';
 import Loading from '@/components/Loading';
@@ -79,7 +83,7 @@ function getBeverageFormFromEntry(entry) {
     amount: entry.amount?.toString() || '',
     unit: entry.unit || 'fl_oz',
     time: entry.recordedAt?.slice(11, 16) || '20:00',
-    countsTowardHydration: Boolean(entry.countsTowardHydration),
+    countsTowardHydration: shouldCountTowardHydration(entry),
     calories: entry.calories?.toString() || '',
     protein: entry.protein?.toString() || '',
     carbs: entry.carbs?.toString() || '',
@@ -135,7 +139,7 @@ function formatFavoriteBeverageDetails(entry, preferredBeverageUnit) {
   if (entry.beverageType === 'other' && entry.displayName) {
     details.unshift(entry.displayName);
   }
-  if (entry.countsTowardHydration) {
+  if (shouldCountTowardHydration(entry)) {
     details.push('counts toward hydration');
   }
   if (entry.calories || entry.protein || entry.carbs || entry.fat) {
@@ -344,6 +348,28 @@ export default function Meals() {
     visibleFavoriteSuggestions.map((suggestion) => [`${suggestion.mealType}::${suggestion.signature}`, suggestion]),
   ), [visibleFavoriteSuggestions]);
   const preferredBeverageUnit = getPreferredBeverageUnit(profile?.units);
+  const beverageHydrationPreview = useMemo(() => {
+    if (beverageForm.amount === '') return null;
+    const amountFlOz = convertBeverageToFlOz(beverageForm.amount, beverageForm.unit);
+    if (!Number.isFinite(amountFlOz) || amountFlOz <= 0) return null;
+
+    const contributionFlOz = getHydrationContributionFlOz({
+      beverageType: beverageForm.beverageType,
+      displayName: beverageForm.displayName,
+      countsTowardHydration: beverageForm.countsTowardHydration,
+      amountFlOz,
+    });
+
+    if (contributionFlOz <= 0) return 'This beverage will not add to the hydration total.';
+    return `Counts as ${formatBeverageFromFlOz(contributionFlOz, preferredBeverageUnit)} hydration credit.`;
+  }, [
+    beverageForm.amount,
+    beverageForm.beverageType,
+    beverageForm.countsTowardHydration,
+    beverageForm.displayName,
+    beverageForm.unit,
+    preferredBeverageUnit,
+  ]);
   const beverageSummary = useMemo(() => summarizeBeverageEntries(beverageEntries, {
     preferredUnit: preferredBeverageUnit,
     weightKg: profile?.weight,
@@ -358,6 +384,15 @@ export default function Meals() {
   const dailyWinsSummary = useMemo(
     () => getDailyWinsSummary(dailyWins, activeDailyWins),
     [activeDailyWins, dailyWins],
+  );
+  const dailyWinsChallenge = useMemo(
+    () => buildDailyWinChallengeSummary({
+      templateKey: profile?.dailyWinsTemplateKey,
+      challengeStartDate: profile?.dailyWinsChallengeStartDate,
+      referenceDate: selectedDate,
+      dailyWinsSummary,
+    }),
+    [dailyWinsSummary, profile?.dailyWinsChallengeStartDate, profile?.dailyWinsTemplateKey, selectedDate],
   );
   const hydrationFeedback = useMemo(() => getHydrationFeedback({
     entries: beverageEntries,
@@ -914,6 +949,13 @@ export default function Meals() {
                 <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
                   Active: {activeDailyWins.map((definition) => definition.label).join(' • ')}
                 </p>
+                {dailyWinsChallenge ? (
+                  <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                    {dailyWinsChallenge.templateName} • Day {dailyWinsChallenge.dayNumber}
+                    {dailyWinsChallenge.durationDays ? ` of ${dailyWinsChallenge.durationDays}` : ''}
+                    {dailyWinsChallenge.daysRemaining != null ? ` • ${dailyWinsChallenge.daysRemaining} days left` : ''}
+                  </p>
+                ) : null}
               </div>
               <div style={{ textAlign: 'right' }}>
                 <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
@@ -1195,7 +1237,7 @@ export default function Meals() {
                   </p>
                   <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
                     {formatBeverageFromFlOz(entry.amountFlOz, preferredBeverageUnit)}
-                    {entry.countsTowardHydration ? ` • ${formatHydrationContribution(entry, preferredBeverageUnit)}` : ' • does not add to hydration total'}
+                    {shouldCountTowardHydration(entry) ? ` • ${formatHydrationContribution(entry, preferredBeverageUnit)}` : ' • does not add to hydration total'}
                   </p>
                   {(entry.calories || entry.protein || entry.carbs || entry.fat) ? (
                     <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)', fontSize: '12px' }}>

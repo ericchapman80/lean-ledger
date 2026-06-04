@@ -204,6 +204,8 @@ describe('buildTrendAnalytics', () => {
         weight: 100,
         dietStyle: 'keto',
         dailyWinsActiveKeys: ['workoutCompleted', 'sleepHours', 'readingCompleted'],
+        dailyWinsTemplateKey: 'faith_and_fitness',
+        dailyWinsChallengeStartDate: '2026-05-18',
         activeMacros: { protein: 200, calories: 2200, carbs: 40 },
       },
       weeklyStats: {
@@ -251,6 +253,13 @@ describe('buildTrendAnalytics', () => {
     expect(result.summary.dailyWinsBehavior.habitCompletionPercentages.readingCompleted).toBe(67);
     expect(result.summary.dailyWinsBehavior.habitCompletionPercentages.sleepHours).toBe(67);
     expect(result.summary.dailyWinsBehavior.habitCompletionPercentages['habit:201']).toBe(33);
+    expect(result.summary.dailyWinsChallengeBehavior.templateName).toBe('Faith + Fitness');
+    expect(result.summary.dailyWinsChallengeBehavior.dayNumber).toBe(7);
+    expect(result.summary.dailyWinsChallengeBehavior.durationDays).toBe(30);
+    expect(result.summary.dailyWinsChallengeBehavior.perfectDaysInRange).toBe(1);
+    expect(result.summary.dailyWinsChallengeBehavior.currentPerfectDayStreak).toBe(0);
+    expect(result.summary.dailyWinsChallengeBehavior.longestPerfectDayStreak).toBe(1);
+    expect(result.summary.dailyWinsChallengeBehavior.completionPercentageInRange).toBe(25);
   });
 
   it('keeps trend grouping on the user local date key near UTC midnight', () => {

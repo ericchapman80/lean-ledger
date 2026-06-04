@@ -8,6 +8,20 @@ This repo now supports:
 - post-deploy smoke and browser checks
 - daily logical backups for the production database
 
+## Build In Quality Default
+
+This project treats **build in quality** as the default delivery stance.
+
+In practice that means:
+
+- feature work is not considered done without the right test coverage
+- logic-heavy changes should add or update unit tests
+- multi-page or user-flow changes should add or update functional/E2E coverage when practical
+- schema changes should ship with safe migrations, rollout order, and verification steps
+- preview and production checks should stay part of the standard path to `main`
+
+Quality should be part of implementation, not deferred to a later cleanup pass.
+
 ## 1. Recommended Environment Layout
 
 Use one env file per local workflow and one database target per hosted environment:

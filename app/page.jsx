@@ -21,6 +21,7 @@ import {
 } from '@/lib/beverages';
 import { getHydrationFeedback } from '@/lib/hydrationFeedback';
 import { getPrimaryCarbLabel } from '@/lib/carbUtils';
+import { buildDailyWinChallengeSummary } from '@/lib/dailyWinTemplates';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import HydrationFeedback from '@/components/HydrationFeedback';
@@ -199,6 +200,12 @@ export default function Dashboard() {
   const activeDailyWins = mergeDailyWinDefinitions(profile?.dailyWinsActiveKeys, customHabits);
   const dailyWinsSummary = getDailyWinsSummary(checkIn, activeDailyWins);
   const activeDailyWinLabels = activeDailyWins.map((definition) => definition.label).join(' • ');
+  const dailyWinsChallenge = buildDailyWinChallengeSummary({
+    templateKey: profile.dailyWinsTemplateKey,
+    challengeStartDate: profile.dailyWinsChallengeStartDate,
+    referenceDate: selectedDate,
+    dailyWinsSummary,
+  });
 
   const handleCheckInSubmit = async (e) => {
     e.preventDefault();
@@ -285,6 +292,13 @@ export default function Dashboard() {
               {activeDailyWinLabels ? (
                 <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
                   Active: {activeDailyWinLabels}
+                </p>
+              ) : null}
+              {dailyWinsChallenge ? (
+                <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  {dailyWinsChallenge.templateName} • Day {dailyWinsChallenge.dayNumber}
+                  {dailyWinsChallenge.durationDays ? ` of ${dailyWinsChallenge.durationDays}` : ''}
+                  {dailyWinsChallenge.daysRemaining != null ? ` • ${dailyWinsChallenge.daysRemaining} days left` : ''}
                 </p>
               ) : null}
             </div>

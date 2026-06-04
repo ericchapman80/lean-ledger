@@ -54,6 +54,13 @@ describe('validateProfilePayload', () => {
     expect(validateProfilePayload({ ...valid, dailyWinsActiveKeys: [] }))
       .toBeNull();
   });
+
+  it('rejects invalid daily wins template and challenge date', () => {
+    expect(validateProfilePayload({ ...valid, dailyWinsTemplateKey: 'bogus' }))
+      .toBe('Invalid daily wins template');
+    expect(validateProfilePayload({ ...valid, dailyWinsChallengeStartDate: '06/02/2026' }))
+      .toBe('Invalid challenge start date');
+  });
 });
 
 describe('enrichProfile', () => {
@@ -64,6 +71,8 @@ describe('enrichProfile', () => {
     dietStyle: 'balanced',
     units: 'metric',
     dailyWinsActiveKeys: ['workoutCompleted', 'sleepHours', 'energyLevel'],
+    dailyWinsTemplateKey: 'lean_recomp_foundations',
+    dailyWinsChallengeStartDate: '2026-06-01',
     customMacros: null,
   };
 
@@ -75,6 +84,7 @@ describe('enrichProfile', () => {
     expect(result.activeMacros).toHaveProperty('protein');
     expect(result.dailyWinsActiveKeys).toEqual(['workoutCompleted', 'sleepHours', 'energyLevel']);
     expect(result.activeDailyWins.map((definition) => definition.key)).toEqual(['workoutCompleted', 'sleepHours', 'energyLevel']);
+    expect(result.dailyWinsTemplate?.name).toBe('Lean Recomp Foundations');
   });
 
   it('uses customMacros when present', () => {

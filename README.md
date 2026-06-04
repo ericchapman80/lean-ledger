@@ -6,6 +6,26 @@ Single Next.js 15 app deployed to Vercel, with Postgres for persistence.
 
 The DB driver (`postgres` package, porsager) speaks the standard Postgres wire protocol, so **the exact same code runs against either Neon (cloud) or a local Postgres install** — only the `DATABASE_URL` differs.
 
+## Build In Quality
+
+Lean Ledger should default to **building quality in**, not trying to test quality in later.
+
+That means:
+
+- ship logic changes with unit coverage
+- ship cross-page or user-flow changes with functional/E2E coverage when practical
+- ship DB changes with safe additive migrations and rollout notes
+- keep CI as a real release gate, not an optional afterthought
+- prefer fixing root causes over retrying broken behavior manually
+
+Working expectations:
+
+- UI changes that affect user behavior should usually include tests
+- shared business rules should live in helpers that are easy to test directly
+- schema changes should be backward-safe and environment-aware
+- preview and production verification should stay part of the delivery path
+- quality should be part of feature completion, not a follow-up chore
+
 Daily Wins is an opt-in surface:
 
 - new users start with zero active Daily Wins
