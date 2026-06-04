@@ -26,11 +26,12 @@ import {
   getDefaultBeverageForm,
   getBeverageDisplayName,
   getDefaultCountsTowardHydration,
+  getHydrationContributionLabel,
   getHydrationContributionFlOz,
   getHydrationHelperCopy,
   getPreferredBeverageUnit,
-  getWaterQuickAddOptions,
   shouldCountTowardHydration,
+  getWaterQuickAddOptions,
   summarizeBeverageEntries,
 } from '@/lib/beverages';
 import {
@@ -148,12 +149,6 @@ function formatFavoriteBeverageDetails(entry, preferredBeverageUnit) {
     details.push(`${Math.round(entry.caffeineMg)} mg caffeine`);
   }
   return details;
-}
-
-function formatHydrationContribution(entry, preferredBeverageUnit) {
-  const contribution = entry.hydrationContributionFlOz ?? 0;
-  if (contribution <= 0) return 'does not add to hydration total';
-  return `${formatBeverageFromFlOz(contribution, preferredBeverageUnit)} hydration credit`;
 }
 
 function InlineActionButton({ children, onClick, danger = false }) {
@@ -1134,6 +1129,11 @@ export default function Meals() {
               />
               Counts toward hydration
             </label>
+            {beverageHydrationPreview ? (
+              <p style={{ margin: '-6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                {beverageHydrationPreview}
+              </p>
+            ) : null}
 
             <div className="grid grid-4">
               <div className="form-group" style={{ marginBottom: 0 }}>
@@ -1220,7 +1220,7 @@ export default function Meals() {
                   </p>
                   <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
                     {formatBeverageFromFlOz(entry.amountFlOz, preferredBeverageUnit)}
-                    {shouldCountTowardHydration(entry) ? ` • ${formatHydrationContribution(entry, preferredBeverageUnit)}` : ' • does not add to hydration total'}
+                    {` • ${getHydrationContributionLabel(entry, preferredBeverageUnit)}`}
                   </p>
                   {(entry.calories || entry.protein || entry.carbs || entry.fat) ? (
                     <p style={{ margin: '2px 0 0', color: 'var(--text-secondary)', fontSize: '12px' }}>

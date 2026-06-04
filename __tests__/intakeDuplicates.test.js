@@ -116,7 +116,7 @@ describe('intake duplicate helpers', () => {
       unit: 'fl_oz',
       beverageType: 'water',
       displayName: null,
-      countsTowardHydration: false,
+      countsTowardHydration: true,
       calories: 0,
       protein: 0,
       carbs: 0,
@@ -124,6 +124,21 @@ describe('intake duplicate helpers', () => {
       caffeineMg: null,
     });
     expect(payload.recordedAt).toMatch(/^2026-05-25T\d{2}:\d{2}$/);
+  });
+
+  it('repairs stale hydration metadata when duplicating hydrating beverages', () => {
+    const payload = buildBeverageDuplicatePayload({
+      ...sampleBeverage,
+      beverageType: 'other',
+      displayName: 'Americano',
+      countsTowardHydration: false,
+    }, '2026-05-25');
+
+    expect(payload).toMatchObject({
+      beverageType: 'other',
+      displayName: 'Americano',
+      countsTowardHydration: true,
+    });
   });
 
   it('falls back to default duplicate values when optional meal fields are missing', () => {

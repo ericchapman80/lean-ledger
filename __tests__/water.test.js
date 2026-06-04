@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { calculateBeverageNutritionTotals, normalizeBeverageEntryInput, summarizeBeverageEntries } from '@/lib/beverages.js';
+import {
+  calculateBeverageNutritionTotals,
+  getHydrationBeverageType,
+  getHydrationContributionLabel,
+  getHydrationContributionFlOz,
+  normalizeBeverageEntryInput,
+  shouldCountTowardHydration,
+  summarizeBeverageEntries,
+} from '@/lib/beverages.js';
 import {
   aggregateWaterEntriesByDate,
   calculateDailyWaterTarget,
@@ -96,10 +104,65 @@ describe('water helpers', () => {
       recordedAt: '2026-05-25T09:15',
       beverageType: 'other',
       displayName: 'LMNT Grapefruit',
-      countsTowardHydration: false,
     });
 
     expect(result.displayName).toBe('LMNT Grapefruit');
+    expect(result.countsTowardHydration).toBe(true);
+  });
+
+  it('leaves generic other beverages opt-in for hydration by default', () => {
+    const result = normalizeBeverageEntryInput({
+      amount: 16,
+      unit: 'fl_oz',
+      recordedAt: '2026-05-25T09:15',
+      beverageType: 'other',
+      displayName: 'Custom Mocktail',
+    });
+
+    expect(result.countsTowardHydration).toBe(false);
+    expect(getHydrationBeverageType(result)).toBe('other');
+    expect(getHydrationContributionFlOz(result)).toBe(0);
+  });
+
+  it('preserves explicit opt-in or opt-out for partial beverage types', () => {
+    const defaultProteinShake = normalizeBeverageEntryInput({
+      amount: 16,
+      unit: 'fl_oz',
+      recordedAt: '2026-05-25T09:15',
+      beverageType: 'protein_shake',
+    });
+    const optedOutMilk = normalizeBeverageEntryInput({
+      amount: 16,
+      unit: 'fl_oz',
+      recordedAt: '2026-05-25T09:15',
+      beverageType: 'milk',
+      countsTowardHydration: false,
+    });
+    const optedOutOther = normalizeBeverageEntryInput({
+      amount: 16,
+      unit: 'fl_oz',
+      recordedAt: '2026-05-25T09:15',
+      beverageType: 'other',
+      displayName: 'Custom Mocktail',
+      countsTowardHydration: false,
+    });
+    const optedInOther = normalizeBeverageEntryInput({
+      amount: 16,
+      unit: 'fl_oz',
+      recordedAt: '2026-05-25T09:15',
+      beverageType: 'other',
+      displayName: 'Custom Mocktail',
+      countsTowardHydration: true,
+    });
+
+    expect(defaultProteinShake.countsTowardHydration).toBe(false);
+    expect(getHydrationContributionFlOz(defaultProteinShake)).toBe(0);
+    expect(optedOutMilk.countsTowardHydration).toBe(false);
+    expect(getHydrationContributionFlOz(optedOutMilk)).toBe(0);
+    expect(optedOutOther.countsTowardHydration).toBe(false);
+    expect(getHydrationContributionFlOz(optedOutOther)).toBe(0);
+    expect(optedInOther.countsTowardHydration).toBe(true);
+    expect(getHydrationContributionFlOz(optedInOther)).toBe(8);
   });
 
   it('rejects unnamed other beverages', () => {
@@ -142,7 +205,7 @@ describe('water helpers', () => {
         caffeineMg: 0,
       },
       '2026-05-26': {
-        hydrationFlOz: 30.4,
+        hydrationFlOz: 28.8,
         totalFluidsFlOz: 32,
         calories: 0,
         protein: 0,
@@ -187,12 +250,87 @@ describe('water helpers', () => {
     ], { weightKg: 104.8 });
 
     expect(summary.totalFluidsFlOz).toBe(38);
-    expect(summary.hydrationFlOz).toBe(32);
+    expect(summary.hydrationFlOz).toBe(31);
     expect(summary.hydrationDetails).toEqual([
-      expect.objectContaining({ beverageType: 'black_coffee', hydrationMultiplier: 0.95, hydrationContributionFlOz: 19 }),
+      expect.objectContaining({ beverageType: 'black_coffee', hydrationMultiplier: 0.9, hydrationContributionFlOz: 18 }),
       expect.objectContaining({ beverageType: 'diet_drink', hydrationMultiplier: 0.9, hydrationContributionFlOz: 9 }),
       expect.objectContaining({ beverageType: 'milk', hydrationMultiplier: 0.5, hydrationContributionFlOz: 4 }),
     ]);
+  });
+
+  it('repairs stale hydration flags for canonical hydrating beverages', () => {
+    const entries = [
+      { beverageType: 'water', countsTowardHydration: false, amountFlOz: 16 },
+      { beverageType: 'black_coffee', countsTowardHydration: false, amountFlOz: 16 },
+      { beverageType: 'unsweet_tea', countsTowardHydration: false, amountFlOz: 16 },
+      { beverageType: 'electrolyte_drink', countsTowardHydration: false, amountFlOz: 16 },
+    ];
+
+    expect(entries.every((entry) => shouldCountTowardHydration(entry))).toBe(true);
+    expect(entries.map(getHydrationContributionFlOz)).toEqual([16, 14.4, 16, 16]);
+    expect(getHydrationContributionLabel(entries[0], 'fl_oz')).toBe('16 oz hydration credit');
+  });
+
+  it('applies explicit partial hydration multipliers for milk and protein shakes', () => {
+    expect(getHydrationContributionFlOz({
+      beverageType: 'milk',
+      countsTowardHydration: true,
+      amountFlOz: 16,
+    })).toBe(8);
+    expect(getHydrationContributionFlOz({
+      beverageType: 'protein_shake',
+      countsTowardHydration: true,
+      amountFlOz: 16,
+    })).toBe(4);
+  });
+
+  it('infers hydration category for custom other beverage names', () => {
+    const americano = normalizeBeverageEntryInput({
+      amount: 16,
+      unit: 'fl_oz',
+      recordedAt: '2026-05-25T09:15',
+      beverageType: 'other',
+      displayName: 'Americano',
+    });
+    const peachTea = normalizeBeverageEntryInput({
+      amount: 16,
+      unit: 'fl_oz',
+      recordedAt: '2026-05-25T09:15',
+      beverageType: 'other',
+      displayName: "Jordan's Skinny Syrup Peach Tea",
+    });
+
+    expect(getHydrationBeverageType(americano)).toBe('black_coffee');
+    expect(getHydrationContributionFlOz(americano)).toBe(14.4);
+    expect(getHydrationBeverageType(peachTea)).toBe('unsweet_tea');
+    expect(getHydrationContributionFlOz(peachTea)).toBe(16);
+  });
+
+  it('matches the observed mixed beverage hydration total', () => {
+    const summary = summarizeBeverageEntries([
+      { beverageType: 'water', countsTowardHydration: false, amountFlOz: 16 },
+      { beverageType: 'water', countsTowardHydration: false, amountFlOz: 16 },
+      { beverageType: 'other', displayName: 'Americano', countsTowardHydration: false, amountFlOz: 16 },
+      { beverageType: 'other', displayName: "Jordan's Skinny Syrup Peach Tea", countsTowardHydration: false, amountFlOz: 16 },
+      { beverageType: 'other', displayName: "Jordan's Skinny Syrup Peach Tea", countsTowardHydration: false, amountFlOz: 16 },
+    ], { weightKg: 104.8 });
+
+    expect(summary.totalFluidsFlOz).toBe(80);
+    expect(summary.hydrationFlOz).toBe(78.4);
+  });
+
+  it('uses row hydration messaging that matches the contribution amount', () => {
+    expect(getHydrationContributionLabel({
+      beverageType: 'water',
+      countsTowardHydration: false,
+      amountFlOz: 16,
+    }, 'fl_oz')).toBe('16 oz hydration credit');
+
+    expect(getHydrationContributionLabel({
+      beverageType: 'protein_shake',
+      countsTowardHydration: false,
+      amountFlOz: 16,
+    }, 'fl_oz')).toBe('does not add to hydration total');
   });
 
   it('updates hydration totals when a water entry is edited', () => {
@@ -217,8 +355,8 @@ describe('water helpers', () => {
       { beverageType: 'black_coffee', countsTowardHydration: true, amountFlOz: 12, calories: 0, protein: 0, carbs: 0, fat: 0 },
     ], { weightKg: 104.8 });
 
-    expect(withTwoEntries.hydrationFlOz).toBe(27.4);
-    expect(afterDelete.hydrationFlOz).toBe(11.4);
+    expect(withTwoEntries.hydrationFlOz).toBe(26.8);
+    expect(afterDelete.hydrationFlOz).toBe(10.8);
   });
 
   it('updates macro totals when a beverage with macros is edited', () => {

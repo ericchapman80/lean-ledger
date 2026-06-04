@@ -490,17 +490,17 @@ describe('buildTrendAnalytics', () => {
       },
     });
 
-    expect(result.dailySeries[0].hydrationOunces).toBe(66);
+    expect(result.dailySeries[0].hydrationOunces).toBe(65);
     expect(result.dailySeries[0].totalFluidsOunces).toBe(68);
     expect(result.dailySeries[0].caffeineMg).toBe(160);
-    expect(result.dailySeries[0].lateDayHydrationOunces).toBe(26);
+    expect(result.dailySeries[0].lateDayHydrationOunces).toBe(25);
     expect(result.dailySeries[1].beverageCount).toBe(2);
     expect(result.summary.hydrationAdherencePercentage).toBe(33);
     expect(result.summary.beverageBehavior.loggedDays).toBe(3);
-    expect(result.summary.beverageBehavior.averageDailyHydration).toBe(41);
+    expect(result.summary.beverageBehavior.averageDailyHydration).toBe(40);
     expect(result.summary.beverageBehavior.hydrationTargetHitRate).toBe(33);
     expect(result.summary.beverageBehavior.averageDailyCaffeineMg).toBe(63);
-    expect(result.summary.beverageBehavior.lateDayHydrationPercentage).toBe(41);
+    expect(result.summary.beverageBehavior.lateDayHydrationPercentage).toBe(40);
     expect(result.summary.beverageBehavior.primaryBeverageLabel).toBe('Water');
     expect(result.summary.beverageBehavior.primaryBeverageSharePercentage).toBe(29);
     expect(result.summary.beverageBehavior.beverageMix[0]).toMatchObject({
