@@ -141,6 +141,7 @@ export default function Trends() {
   const beverageBehavior = analytics.summary.beverageBehavior || {};
   const recoveryBehavior = analytics.summary.recoveryBehavior || {};
   const dailyWinsBehavior = analytics.summary.dailyWinsBehavior || {};
+  const dailyWinsChallengeBehavior = analytics.summary.dailyWinsChallengeBehavior || null;
   const activeDailyWins = mergeDailyWinDefinitions(profile.dailyWinsActiveKeys, customHabits);
   const hasWaistData = chartData.some((entry) => entry.waistMeasurement != null);
   const hasWorkoutData = chartData.some((entry) => entry.workoutCompleted != null);
@@ -170,6 +171,7 @@ export default function Trends() {
   const hasDailyWinsBehaviorData = (
     dailyWinsBehavior.averageCompletedWins != null
     || Object.values(dailyWinsBehavior.habitCompletionPercentages || {}).some((value) => value != null)
+    || dailyWinsChallengeBehavior != null
   );
   const formatAdvancedMetricTooltip = (value, _name, item) => (
     formatHealthMetricDisplayUnitValue(item?.dataKey, value, profile.units)
@@ -807,6 +809,39 @@ export default function Trends() {
               />
             ))}
           </div>
+
+          {dailyWinsChallengeBehavior ? (
+            <div className="grid grid-4" style={{ marginBottom: '32px' }}>
+              <SummaryCard
+                label="Active Challenge"
+                value={`${dailyWinsChallengeBehavior.templateName} • Day ${dailyWinsChallengeBehavior.dayNumber}${dailyWinsChallengeBehavior.durationDays ? ` / ${dailyWinsChallengeBehavior.durationDays}` : ''}`}
+                helper={dailyWinsChallengeBehavior.daysRemaining != null
+                  ? `${dailyWinsChallengeBehavior.daysRemaining} days left in the current run`
+                  : 'Current template-driven challenge'}
+                accent="#8e44ad"
+              />
+              <SummaryCard
+                label="Perfect Challenge Days"
+                value={`${dailyWinsChallengeBehavior.perfectDaysInRange}`}
+                helper={`Perfect Daily Wins days inside this ${period}-day view`}
+                accent="#27ae60"
+              />
+              <SummaryCard
+                label="Perfect-Day Streak"
+                value={`${dailyWinsChallengeBehavior.currentPerfectDayStreak}`}
+                helper={`Longest streak in range: ${dailyWinsChallengeBehavior.longestPerfectDayStreak}`}
+                accent="var(--primary-color)"
+              />
+              <SummaryCard
+                label="Challenge Completion"
+                value={dailyWinsChallengeBehavior.completionPercentageInRange != null
+                  ? `${dailyWinsChallengeBehavior.completionPercentageInRange}%`
+                  : 'No challenge logs'}
+                helper={`Across ${dailyWinsChallengeBehavior.trackedDaysInRange} tracked challenge day${dailyWinsChallengeBehavior.trackedDaysInRange === 1 ? '' : 's'} in this range`}
+                accent="#16a085"
+              />
+            </div>
+          ) : null}
         </>
       )}
 
