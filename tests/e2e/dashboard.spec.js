@@ -120,7 +120,8 @@ test.describe('dashboard and meals flows', () => {
     const applyTemplateButton = page.getByRole('button', { name: 'Apply Template' });
     await expect(applyTemplateButton).toBeEnabled();
     await applyTemplateButton.click();
-    await expect(profileDailyWinsCard.getByText('Mobility', { exact: true })).toBeVisible();
+    const customDailyWinsCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Custom Daily Wins' }) }).first();
+    await expect(customDailyWinsCard.getByDisplayValue('Mobility')).toBeVisible();
     await profileDailyWinsCard.locator('input[type="date"]').fill(testDate);
     await page.getByRole('button', { name: 'Update Profile' }).click();
 
