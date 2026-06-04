@@ -118,16 +118,9 @@ test.describe('dashboard and meals flows', () => {
     const profileDailyWinsCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Daily Wins' }).first() }).first();
     await page.locator('select').filter({ has: page.locator('option[value="faith_and_fitness"]') }).selectOption('faith_and_fitness');
     await page.getByRole('button', { name: 'Apply Template' }).click();
+    await expect(profileDailyWinsCard.getByText('Mobility', { exact: true })).toBeVisible();
     await profileDailyWinsCard.locator('input[type="date"]').fill(testDate);
     await page.getByRole('button', { name: 'Update Profile' }).click();
-
-    await expect
-      .poll(async () => {
-        const response = await request.get('/api/habit-definitions');
-        const habits = await response.json();
-        return habits.some((habit) => habit.name === 'Mobility');
-      })
-      .toBe(true);
 
     await expect(profileDailyWinsCard).toBeVisible();
     await expect(profileDailyWinsCard.getByText('Workout', { exact: true })).toBeVisible();
