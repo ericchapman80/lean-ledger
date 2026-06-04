@@ -281,10 +281,6 @@ export default function Dashboard() {
             <Link href="/profile" className="btn btn-outline">
               Configure Daily Wins
             </Link>
-            </div>
-            <Link href="/profile" className="btn btn-outline">
-              Configure Daily Wins
-            </Link>
           </div>
         ) : (
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
