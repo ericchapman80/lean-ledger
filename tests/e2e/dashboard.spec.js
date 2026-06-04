@@ -121,6 +121,14 @@ test.describe('dashboard and meals flows', () => {
     await profileDailyWinsCard.locator('input[type="date"]').fill(testDate);
     await page.getByRole('button', { name: 'Update Profile' }).click();
 
+    await expect
+      .poll(async () => {
+        const response = await request.get('/api/habit-definitions');
+        const habits = await response.json();
+        return habits.some((habit) => habit.name === 'Mobility');
+      })
+      .toBe(true);
+
     await expect(profileDailyWinsCard).toBeVisible();
     await expect(profileDailyWinsCard.getByText('Workout', { exact: true })).toBeVisible();
     await expect(profileDailyWinsCard.getByText('Reading', { exact: true })).toBeVisible();
