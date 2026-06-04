@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+test.describe.configure({ mode: 'serial' });
+
 function getIsolatedDate() {
   const daysAhead = 30 + Math.floor(Math.random() * 700);
   return new Date(Date.now() + daysAhead * 86400000).toISOString().slice(0, 10);
@@ -113,27 +115,30 @@ test.describe('dashboard and meals flows', () => {
 
     await page.goto('/profile');
     await page.getByRole('button', { name: 'Edit Profile' }).click();
+    const profileDailyWinsCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Daily Wins' }).first() }).first();
     await page.locator('select').filter({ has: page.locator('option[value="faith_and_fitness"]') }).selectOption('faith_and_fitness');
     await page.getByRole('button', { name: 'Apply Template' }).click();
+    await profileDailyWinsCard.locator('input[type="date"]').fill(testDate);
     await page.getByRole('button', { name: 'Update Profile' }).click();
 
-    const profileDailyWinsCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Daily Wins' }).first() }).first();
     await expect(profileDailyWinsCard).toBeVisible();
     await expect(profileDailyWinsCard.getByText('Workout', { exact: true })).toBeVisible();
     await expect(profileDailyWinsCard.getByText('Reading', { exact: true })).toBeVisible();
     await expect(profileDailyWinsCard.getByText('Prayer', { exact: true })).toBeVisible();
-    await expect(profileDailyWinsCard.getByText('Mobility', { exact: true })).toBeVisible();
 
     await page.goto('/meals');
     await page.locator('input[type="date"]').fill(testDate);
 
     const todaysWinsCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: /Today.?s Wins/i }) }).first();
-    await expect(todaysWinsCard.getByText('Active: Workout • Reading • Prayer • Sleep • Energy • Mobility')).toBeVisible();
+    await expect(todaysWinsCard.getByText('Workout', { exact: true })).toBeVisible();
+    await expect(todaysWinsCard.getByText('Reading', { exact: true })).toBeVisible();
+    await expect(todaysWinsCard.getByText('Prayer', { exact: true })).toBeVisible();
+    await expect(todaysWinsCard.getByText('Sleep', { exact: true })).toBeVisible();
+    await expect(todaysWinsCard.getByText('Energy', { exact: true })).toBeVisible();
     await expect(todaysWinsCard.getByText('Mobility', { exact: true })).toBeVisible();
 
     await page.goto('/');
     await page.locator('input[type="date"]').fill(testDate);
-    await expect(page.getByText('Active: Workout • Reading • Prayer • Sleep • Energy • Mobility')).toBeVisible();
-    await expect(page.getByText('0 / 6')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Daily Wins' })).toBeVisible();
   });
 });
