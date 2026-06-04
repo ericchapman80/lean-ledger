@@ -116,9 +116,10 @@ test.describe('dashboard and meals flows', () => {
     await page.goto('/profile');
     await page.getByRole('button', { name: 'Edit Profile' }).click();
     const profileDailyWinsCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Daily Wins' }).first() }).first();
+    const profileCustomDailyWinsCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Custom Daily Wins' }) }).first();
     await page.locator('select').filter({ has: page.locator('option[value="faith_and_fitness"]') }).selectOption('faith_and_fitness');
     await page.getByRole('button', { name: 'Apply Template' }).click();
-    await expect(profileDailyWinsCard.getByText('Mobility', { exact: true })).toBeVisible();
+    await expect(profileCustomDailyWinsCard.locator('input[type="text"][value="Mobility"]')).toBeVisible();
     await profileDailyWinsCard.locator('input[type="date"]').fill(testDate);
     await page.getByRole('button', { name: 'Update Profile' }).click();
 
