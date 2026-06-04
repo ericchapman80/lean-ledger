@@ -7,6 +7,10 @@ function getIsolatedDate() {
   return new Date(Date.now() + daysAhead * 86400000).toISOString().slice(0, 10);
 }
 
+function getTodayDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 async function seedProfile(request) {
   const response = await request.post('/api/profile', {
     data: {
@@ -111,6 +115,7 @@ test.describe('dashboard and meals flows', () => {
 
   test('applies a Daily Wins template from profile and reflects it on intake and dashboard', async ({ page, request }) => {
     const testDate = getIsolatedDate();
+    const challengeStartDate = getTodayDate();
     await seedProfile(request);
 
     await page.goto('/profile');
@@ -120,7 +125,7 @@ test.describe('dashboard and meals flows', () => {
     await page.locator('select').filter({ has: page.locator('option[value="faith_and_fitness"]') }).selectOption('faith_and_fitness');
     await page.getByRole('button', { name: 'Apply Template' }).click();
     await expect(profileCustomDailyWinsCard.locator('input[type="text"][value="Mobility"]')).toBeVisible();
-    await profileDailyWinsCard.locator('input[type="date"]').fill(testDate);
+    await profileDailyWinsCard.locator('input[type="date"]').fill(challengeStartDate);
     await page.getByRole('button', { name: 'Update Profile' }).click();
 
     await expect(profileDailyWinsCard).toBeVisible();
