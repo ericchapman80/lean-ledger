@@ -52,7 +52,7 @@ describe('validateProfilePayload', () => {
     expect(validateProfilePayload({ ...valid, dailyWinsActiveKeys: ['workoutCompleted', 'bogus'] }))
       .toBe('Invalid daily wins configuration');
     expect(validateProfilePayload({ ...valid, dailyWinsActiveKeys: [] }))
-      .toBe('Select at least one daily win');
+      .toBeNull();
   });
 
   it('rejects invalid daily wins template and challenge date', () => {

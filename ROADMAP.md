@@ -329,6 +329,7 @@ Hydration intelligence should be treated as a **high-priority Phase 2 direction*
 **Core idea**
 - Users should be able to activate a personalized set of Daily Wins from Profile/Settings.
 - Only selected habits appear on the Intake page.
+- Daily Wins should be opt-in by default: new users start with zero active habits until they configure them.
 
 **Phased implementation plan**
 

@@ -270,34 +270,48 @@ export default function Dashboard() {
       </div>
 
       <div className="card" style={{ marginBottom: '32px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div>
-            <h2 style={{ margin: '0 0 6px' }}>Daily Wins</h2>
-            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
-              Intake is the main place to log today&apos;s wins. Dashboard stays summary-only.
-            </p>
-            {activeDailyWinLabels ? (
-              <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
-                Active: {activeDailyWinLabels}
+        {activeDailyWins.length === 0 ? (
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div>
+              <h2 style={{ margin: '0 0 6px' }}>Daily Wins</h2>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                No Daily Wins configured.
               </p>
-            ) : null}
-            {dailyWinsChallenge ? (
-              <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
-                {dailyWinsChallenge.templateName} • Day {dailyWinsChallenge.dayNumber}
-                {dailyWinsChallenge.durationDays ? ` of ${dailyWinsChallenge.durationDays}` : ''}
-                {dailyWinsChallenge.daysRemaining != null ? ` • ${dailyWinsChallenge.daysRemaining} days left` : ''}
+            </div>
+            <Link href="/profile" className="btn btn-outline">
+              Configure Daily Wins
+            </Link>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div>
+              <h2 style={{ margin: '0 0 6px' }}>Daily Wins</h2>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                Intake is the main place to log today&apos;s wins. Dashboard stays summary-only.
               </p>
-            ) : null}
+              {activeDailyWinLabels ? (
+                <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  Active: {activeDailyWinLabels}
+                </p>
+              ) : null}
+              {dailyWinsChallenge ? (
+                <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  {dailyWinsChallenge.templateName} • Day {dailyWinsChallenge.dayNumber}
+                  {dailyWinsChallenge.durationDays ? ` of ${dailyWinsChallenge.durationDays}` : ''}
+                  {dailyWinsChallenge.daysRemaining != null ? ` • ${dailyWinsChallenge.daysRemaining} days left` : ''}
+                </p>
+              ) : null}
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
+                {dailyWinsSummary.completed} / {dailyWinsSummary.total}
+              </p>
+              <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                {dailyWinsSummary.percentage}% complete
+              </p>
+            </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
-              {dailyWinsSummary.completed} / {dailyWinsSummary.total}
-            </p>
-            <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
-              {dailyWinsSummary.percentage}% complete
-            </p>
-          </div>
-        </div>
+        )}
       </div>
 
       <div className="grid grid-2">

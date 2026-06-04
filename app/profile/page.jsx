@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { habitDefinitionsApi, profileApi } from '@/lib/api';
-import { DAILY_WIN_DEFINITION_MAP, DEFAULT_DAILY_WIN_KEYS, getActiveDailyWinDefinitions } from '@/lib/dailyWins';
+import { DAILY_WIN_DEFINITION_MAP, DEFAULT_ACTIVE_DAILY_WIN_KEYS, DEFAULT_DAILY_WIN_KEYS, getActiveDailyWinDefinitions } from '@/lib/dailyWins';
 import { applyDailyWinTemplate, buildDailyWinChallengeSummary, DAILY_WIN_TEMPLATES } from '@/lib/dailyWinTemplates';
 import {
   getActivityLevelDescription,
@@ -126,7 +126,7 @@ export default function Profile() {
     goal: 'maintain',
     dietStyle: 'balanced',
     units: 'imperial',
-    dailyWinsActiveKeys: DEFAULT_DAILY_WIN_KEYS,
+    dailyWinsActiveKeys: DEFAULT_ACTIVE_DAILY_WIN_KEYS,
     dailyWinsTemplateKey: '',
     dailyWinsChallengeStartDate: '',
     useCustomMacros: false,
@@ -160,7 +160,7 @@ export default function Profile() {
           goal: data.goal,
           dietStyle: data.dietStyle || 'balanced',
           units: units,
-          dailyWinsActiveKeys: data.dailyWinsActiveKeys || DEFAULT_DAILY_WIN_KEYS,
+          dailyWinsActiveKeys: data.dailyWinsActiveKeys || DEFAULT_ACTIVE_DAILY_WIN_KEYS,
           dailyWinsTemplateKey: data.dailyWinsTemplateKey || '',
           dailyWinsChallengeStartDate: data.dailyWinsChallengeStartDate || '',
           useCustomMacros: !!data.customMacros,
@@ -827,7 +827,7 @@ export default function Profile() {
       <div className="card" style={{ marginBottom: '32px' }}>
         <h2 style={{ marginBottom: '16px' }}>Daily Wins</h2>
         <p style={{ color: 'var(--text-secondary)', margin: '0 0 16px' }}>
-          Intake shows only the Daily Wins you have turned on here. Keep the list short enough that it stays easy to repeat.
+          Daily Wins are opt-in. Intake only shows the habits you explicitly turn on here.
         </p>
         {profile.dailyWinsTemplateKey ? (
           <div
@@ -847,24 +847,30 @@ export default function Profile() {
             </p>
           </div>
         ) : null}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {profile.activeDailyWins?.map((definition) => (
-            <span
-              key={definition.key}
-              style={{
-                borderRadius: '999px',
-                border: '1px solid rgba(52, 152, 219, 0.18)',
-                background: 'rgba(52, 152, 219, 0.08)',
-                color: 'var(--primary-color)',
-                padding: '8px 12px',
-                fontSize: '13px',
-                fontWeight: 600,
-              }}
-            >
-              {definition.label}
-            </span>
-          ))}
-        </div>
+        {profile.activeDailyWins?.length > 0 ? (
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {profile.activeDailyWins.map((definition) => (
+              <span
+                key={definition.key}
+                style={{
+                  borderRadius: '999px',
+                  border: '1px solid rgba(52, 152, 219, 0.18)',
+                  background: 'rgba(52, 152, 219, 0.08)',
+                  color: 'var(--primary-color)',
+                  padding: '8px 12px',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                }}
+              >
+                {definition.label}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+            No Daily Wins configured yet.
+          </p>
+        )}
         {savedCustomHabits.length > 0 ? (
           <>
             <p style={{ color: 'var(--text-secondary)', margin: '18px 0 10px' }}>
