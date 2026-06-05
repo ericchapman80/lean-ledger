@@ -35,6 +35,13 @@ Hosted environments:
 - Vercel Preview: Neon preview connection string
 - Vercel Production: Neon production connection string
 
+For staged Google auth rollout, keep auth disabled by default until owner-claim rehearsal is complete:
+
+- `AUTH_ENABLED=false`
+- `AUTH_SECRET`
+- `AUTH_GOOGLE_ID`
+- `AUTH_GOOGLE_SECRET`
+
 Do not point Vercel Preview at the production database. Do not point preview and production at the same Neon branch or database.
 
 Recommended local commands:

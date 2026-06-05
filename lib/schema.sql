@@ -4,12 +4,16 @@
 
 CREATE TABLE IF NOT EXISTS users (
   id              SERIAL PRIMARY KEY,
-  age             INTEGER NOT NULL,
-  height          DOUBLE PRECISION NOT NULL,
-  weight          DOUBLE PRECISION NOT NULL,
-  gender          TEXT NOT NULL CHECK (gender IN ('male', 'female', 'other')),
-  activity_level  TEXT NOT NULL CHECK (activity_level IN ('sedentary', 'light', 'moderate', 'active', 'very_active')),
-  goal            TEXT NOT NULL CHECK (goal IN ('lose', 'maintain', 'gain', 'recomp')),
+  name            TEXT,
+  email           TEXT,
+  "emailVerified" TIMESTAMPTZ,
+  image           TEXT,
+  age             INTEGER,
+  height          DOUBLE PRECISION,
+  weight          DOUBLE PRECISION,
+  gender          TEXT CHECK (gender IN ('male', 'female', 'other')),
+  activity_level  TEXT CHECK (activity_level IN ('sedentary', 'light', 'moderate', 'active', 'very_active')),
+  goal            TEXT CHECK (goal IN ('lose', 'maintain', 'gain', 'recomp')),
   diet_style      TEXT DEFAULT 'balanced' CHECK (diet_style IN ('balanced', 'low_carb', 'keto', 'keto_flexible')),
   units           TEXT DEFAULT 'metric' CHECK (units IN ('metric', 'imperial')),
   daily_wins_active_keys TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
@@ -247,6 +251,41 @@ CREATE INDEX IF NOT EXISTS idx_favorite_meals_user_created_at ON favorite_meals(
 CREATE INDEX IF NOT EXISTS idx_favorite_meal_items_template_id ON favorite_meal_items(favorite_meal_id);
 CREATE INDEX IF NOT EXISTS idx_favorite_foods_user_created_at ON favorite_foods(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_favorite_beverages_user_created_at ON favorite_beverages(user_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS accounts (
+  id SERIAL PRIMARY KEY,
+  "userId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  "providerAccountId" TEXT NOT NULL,
+  refresh_token TEXT,
+  access_token TEXT,
+  expires_at BIGINT,
+  id_token TEXT,
+  scope TEXT,
+  session_state TEXT,
+  token_type TEXT,
+  UNIQUE (provider, "providerAccountId")
+);
+
+CREATE INDEX IF NOT EXISTS idx_accounts_user_id ON accounts("userId");
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id SERIAL PRIMARY KEY,
+  "userId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires TIMESTAMPTZ NOT NULL,
+  "sessionToken" TEXT NOT NULL UNIQUE
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions("userId");
+
+CREATE TABLE IF NOT EXISTS verification_token (
+  identifier TEXT NOT NULL,
+  expires TIMESTAMPTZ NOT NULL,
+  token TEXT NOT NULL,
+  PRIMARY KEY (identifier, token)
+);
 
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_goal_check;
 ALTER TABLE users
@@ -273,6 +312,20 @@ ALTER TABLE users
 ALTER TABLE users
   ADD CONSTRAINT users_diet_style_check
   CHECK (diet_style IN ('balanced', 'low_carb', 'keto', 'keto_flexible'));
+
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS name TEXT,
+  ADD COLUMN IF NOT EXISTS email TEXT,
+  ADD COLUMN IF NOT EXISTS "emailVerified" TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS image TEXT;
+
+ALTER TABLE users
+  ALTER COLUMN age DROP NOT NULL,
+  ALTER COLUMN height DROP NOT NULL,
+  ALTER COLUMN weight DROP NOT NULL,
+  ALTER COLUMN gender DROP NOT NULL,
+  ALTER COLUMN activity_level DROP NOT NULL,
+  ALTER COLUMN goal DROP NOT NULL;
 
 ALTER TABLE health_metrics
   ADD COLUMN IF NOT EXISTS waist_measurement DOUBLE PRECISION;

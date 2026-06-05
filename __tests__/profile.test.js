@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { enrichProfile, validateProfilePayload } from '@/lib/profile.js';
+import { enrichProfile, hasCompletedProfile, validateProfilePayload } from '@/lib/profile.js';
 
 describe('validateProfilePayload', () => {
   const valid = {
@@ -120,5 +120,38 @@ describe('enrichProfile', () => {
     expect(matching.hasCustomMacros).toBe(true);
     expect(matching.hasMacroOverrides).toBe(false);
     expect(matching.macrosMatchRecommendation).toBe(true);
+  });
+
+  it('marks incomplete profiles as needing setup without calculating macros', () => {
+    const incomplete = enrichProfile({
+      ...user,
+      age: null,
+    });
+
+    expect(incomplete.needsProfile).toBe(true);
+    expect(incomplete.recommendedMacros).toBeNull();
+    expect(incomplete.activeMacros).toBeNull();
+  });
+});
+
+describe('hasCompletedProfile', () => {
+  it('returns true only when the required onboarding fields are present', () => {
+    expect(hasCompletedProfile({
+      age: 30,
+      height: 175,
+      weight: 75,
+      gender: 'male',
+      activityLevel: 'moderate',
+      goal: 'maintain',
+    })).toBe(true);
+
+    expect(hasCompletedProfile({
+      age: 30,
+      height: 175,
+      weight: 75,
+      gender: 'male',
+      activityLevel: null,
+      goal: 'maintain',
+    })).toBe(false);
   });
 });

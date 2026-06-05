@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export default function Header() {
+export default function Header({ authEnabled = false }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -42,6 +42,7 @@ export default function Header() {
             <li><Link href="/weight" className={isActive('/weight')} onClick={closeMenu}>Weight</Link></li>
             <li><Link href="/trends" className={isActive('/trends')} onClick={closeMenu}>Trends</Link></li>
             <li><Link href="/profile" className={isActive('/profile')} onClick={closeMenu}>Profile</Link></li>
+            {authEnabled && <li><Link href="/login" className={isActive('/login')} onClick={closeMenu}>Account</Link></li>}
           </ul>
         </nav>
       </div>

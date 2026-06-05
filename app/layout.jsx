@@ -1,5 +1,6 @@
 import './globals.css';
 import Header from '@/components/Header';
+import { isAuthEnabled } from '@/lib/authConfig';
 
 export const metadata = {
   title: 'Lean Ledger',
@@ -7,11 +8,13 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+  const authEnabled = isAuthEnabled(process.env);
+
   return (
     <html lang="en">
       <body>
         <div className="app">
-          <Header />
+          <Header authEnabled={authEnabled} />
           <main>{children}</main>
         </div>
       </body>
