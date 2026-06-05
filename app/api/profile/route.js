@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
 import * as User from '@/lib/models/user';
-import { enrichProfile, validateProfilePayload } from '@/lib/profile';
+import { enrichProfile, hasCompletedProfile, validateProfilePayload } from '@/lib/profile';
 
 export async function GET(request) {
   const userId = await getCurrentUserId(request);
   const user = await User.findById(userId);
-  if (!user) {
-    return NextResponse.json({ error: 'Profile not found. Please complete setup.' }, { status: 404 });
+  if (!user || !hasCompletedProfile(user)) {
+    return NextResponse.json({ error: 'Profile not found. Please complete setup.', needsProfile: true }, { status: 404 });
   }
   return NextResponse.json(enrichProfile(user));
 }

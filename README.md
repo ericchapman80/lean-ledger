@@ -10,6 +10,12 @@ Daily Wins is an opt-in surface:
 
 - new users start with zero active Daily Wins
 - Intake and Dashboard only show habits after explicit configuration in Profile
+
+Google auth groundwork is also opt-in:
+
+- auth code can be deployed safely before cutover
+- the app stays on the current single-user owner flow until `AUTH_ENABLED=true`
+- do not enable auth in preview or production until the owner-claim rehearsal is complete
 ## Build In Quality
 
 Lean Ledger should default to **building quality in**, not trying to test quality in later.
