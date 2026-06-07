@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { habitDefinitionsApi, profileApi } from '@/lib/api';
+import { authApi, habitDefinitionsApi, profileApi } from '@/lib/api';
 import { DAILY_WIN_DEFINITION_MAP, DEFAULT_ACTIVE_DAILY_WIN_KEYS, DEFAULT_DAILY_WIN_KEYS, getActiveDailyWinDefinitions } from '@/lib/dailyWins';
 import { applyDailyWinTemplate, buildDailyWinChallengeSummary, DAILY_WIN_TEMPLATES } from '@/lib/dailyWinTemplates';
 import {
@@ -111,6 +111,7 @@ export default function Profile() {
   const [error, setError] = useState(null);
   const [editing, setEditing] = useState(false);
   const [profile, setProfile] = useState(null);
+  const [authStatus, setAuthStatus] = useState({ mode: 'disabled', user: null });
   const [savedCustomHabits, setSavedCustomHabits] = useState([]);
   const [customHabits, setCustomHabits] = useState([]);
   const [newCustomHabitName, setNewCustomHabitName] = useState('');
@@ -137,11 +138,13 @@ export default function Profile() {
     try {
       setLoading(true);
       setError(null);
-      const [data, habitData] = await Promise.all([
+      const [data, habitData, authStatusData] = await Promise.all([
         profileApi.getProfile(),
         habitDefinitionsApi.getHabitDefinitions(),
+        authApi.getStatus(),
       ]);
       setProfile(data);
+      setAuthStatus(authStatusData);
       setSavedCustomHabits(habitData);
       setCustomHabits(habitData);
       setSelectedTemplateKey(data?.dailyWinsTemplateKey || '');
@@ -279,6 +282,14 @@ export default function Profile() {
     challengeStartDate: formData.dailyWinsChallengeStartDate,
     referenceDate: getTodayDate(),
   });
+  const isAuthLive = authStatus.mode === 'enabled';
+  const accountSummary = authStatus.user?.email
+    ? `Signed in as ${authStatus.user.email}.`
+    : isAuthLive
+      ? 'Google sign-in is enabled for this environment.'
+      : authStatus.mode === 'configured'
+        ? 'Google credentials are configured, but sign-in is intentionally still off in this environment.'
+        : 'Single-user mode is still active in this environment.';
 
   if (editing || !profile) {
     return (
@@ -821,6 +832,23 @@ export default function Profile() {
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: '32px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
+          <div>
+            <h2 style={{ marginBottom: '12px' }}>Account & Access</h2>
+            <p style={{ color: 'var(--text-secondary)', margin: '0 0 8px' }}>
+              {accountSummary}
+            </p>
+            <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '14px' }}>
+              Manage Google sign-in, session state, and future member access from here.
+            </p>
+          </div>
+          <Link href="/login" className="btn btn-outline">
+            {authStatus.user?.email ? 'Manage Sign-In' : 'Open Sign-In'}
+          </Link>
         </div>
       </div>
 

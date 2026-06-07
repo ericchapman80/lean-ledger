@@ -918,6 +918,175 @@ Rollback plan:
 - If production data ownership is wrong, prefer a targeted transaction that reassigns affected `user_id` values over broad deletes.
 - If the migration corrupts data or ownership in a way that cannot be fixed quickly, restore from the verified `npm run db:export` output or use Neon PITR.
 
+### Next Slice: Admin-Controlled Member Access
+
+**Goal:** Let the owner/admin explicitly grant access to additional emails, so multi-tenancy stays private by default and does not create surprise accounts on first Google sign-in.
+
+**Problem to solve**
+
+- Auth now works for the owner, but there is no administration layer yet.
+- If the app stays open-signup, any Google user could potentially create a Lean Ledger account once auth is enabled.
+- The owner needs a clear way to invite a family member such as a son, set their role, and revoke access later.
+
+**Recommended V1 behavior**
+
+- Default posture: **allow-list only**
+- First production owner remains `users.id = 1`
+- Only approved emails can complete first sign-in
+- Approved users become `member` by default
+- Admin users can:
+  - invite an email
+  - see pending vs accepted access
+  - revoke access
+  - promote/demote role between `admin` and `member`
+
+**Recommended schema**
+
+Add role directly to `users`:
+
+```sql
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'member'
+  CHECK (role IN ('admin', 'member'));
+```
+
+Add an allow-list / invitation table:
+
+```sql
+CREATE TABLE IF NOT EXISTS allowed_emails (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  role TEXT NOT NULL DEFAULT 'member'
+    CHECK (role IN ('admin', 'member')),
+  invited_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  note TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  accepted_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ,
+  UNIQUE (LOWER(email))
+);
+```
+
+Optional audit table for later, not MVP:
+
+```sql
+CREATE TABLE IF NOT EXISTS access_audit_log (
+  id SERIAL PRIMARY KEY,
+  actor_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  target_email VARCHAR(255) NOT NULL,
+  action TEXT NOT NULL,
+  details JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+**Why this shape**
+
+- `users.role` keeps authorization checks simple after sign-in.
+- `allowed_emails` controls who is allowed to onboard in the first place.
+- This avoids trying to infer membership purely from existing `users` rows.
+- It also keeps “invite” and “active user” as distinct concepts, which is cleaner for revocation and pending states.
+
+**First-login rule**
+
+During Google sign-in:
+
+1. normalize the Google email to lowercase
+2. look up a non-revoked row in `allowed_emails`
+3. if not found:
+   - deny access
+   - show a friendly `Access not yet granted` page
+4. if found and the user does not exist:
+   - allow Auth.js user creation
+5. if found and the user exists:
+   - allow account linking/sign-in
+6. after successful first sign-in:
+   - set `allowed_emails.accepted_at` if null
+   - set `users.role` from the invitation row
+
+**Owner bootstrap**
+
+- Seed `users.id = 1` as `admin`
+- Seed `allowed_emails` with `ericchapman80@gmail.com` as `admin`
+- Do not rely on the owner row alone; keep the owner email explicitly allow-listed too
+
+**Admin UI recommendation**
+
+Add a new Profile subsection later:
+
+- `Profile > Account & Access > Members`
+
+V1 actions:
+
+- invite email
+- choose role: `member` or `admin`
+- view:
+  - accepted members
+  - pending invites
+  - revoked invites
+- revoke access
+
+Do **not** start with:
+
+- organizations
+- teams
+- household sharing
+- impersonation
+- invite emails actually sent by the app
+
+For MVP, entering an email in the admin UI is enough. The invited user can then sign in with Google using that address.
+
+**Recommended API surface**
+
+- `GET /api/access/members`
+- `POST /api/access/members`
+- `PUT /api/access/members/:id`
+- `DELETE /api/access/members/:id`
+
+Rules:
+
+- admin-only
+- never trust role/email changes from non-admin users
+- every handler derives the actor from the current session
+
+**Authorization rules**
+
+- `admin`
+  - can manage allowed emails and roles
+  - can view member access state
+- `member`
+  - can only access their own Lean Ledger data
+  - cannot invite or revoke other users
+
+**Suggested rollout plan**
+
+### V1
+
+- add `users.role`
+- add `allowed_emails`
+- bootstrap owner as admin
+- block sign-in for emails not on allow-list
+- add minimal admin management UI in Profile
+
+### V1.5
+
+- add accepted/pending/revoked filters
+- add access audit logging
+- add clearer member onboarding copy
+
+### V2
+
+- optional invite emails
+- household/team concepts if the product later needs shared structures
+
+**Guardrails**
+
+- Do not open self-service sign-up by default.
+- Do not allow members to see any other user’s data.
+- Do not overload the first admin UI with organization concepts.
+- Do not send app-generated invite emails until the core access rules are proven.
+- Keep “private nutrition ledger” as the product default.
+
 Safest implementation sequence:
 
 1. Add migrations and multi-user isolation tests in preview.
