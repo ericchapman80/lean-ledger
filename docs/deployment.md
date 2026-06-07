@@ -30,6 +30,8 @@ Use one env file per local workflow and one database target per hosted environme
 - `.env.preview.local`: Neon preview / QA
 - `.env.production.local`: Neon production for careful local verification only
 
+Env-targeted scripts intentionally use `dotenv -o` so the selected env file overrides inherited shell variables. This is important for auth rollout rehearsal, where stale shell values can otherwise keep `AUTH_ENABLED=false` or blank Google credentials in effect even after `.env.local` is updated.
+
 Hosted environments:
 
 - Vercel Preview: Neon preview connection string
@@ -41,8 +43,63 @@ For staged Google auth rollout, keep auth disabled by default until owner-claim 
 - `AUTH_SECRET`
 - `AUTH_GOOGLE_ID`
 - `AUTH_GOOGLE_SECRET`
+- `AUTH_OWNER_EMAIL`
+- `AUTH_OWNER_NAME`
 
 Do not point Vercel Preview at the production database. Do not point preview and production at the same Neon branch or database.
+
+### Owner-claim rehearsal
+
+Before enabling Google auth in preview or production:
+
+1. set `AUTH_OWNER_EMAIL` to the Google account that should own the existing `users.id = 1` data
+2. optionally set `AUTH_OWNER_NAME`
+3. rehearse locally and in preview:
+
+```bash
+npm run auth:claim-owner:local
+npm run auth:verify-owner:local
+
+npm run auth:claim-owner:preview
+npm run auth:verify-owner:preview
+```
+
+4. confirm:
+   - `users.id = 1` has the owner email
+   - there is no conflicting user row with the same email
+   - all existing meal / beverage / weight / health counts still sit under `user_id = 1`
+5. only then enable `AUTH_ENABLED=true` in the target environment
+
+For local Google auth rehearsal:
+
+```bash
+npm run dev:local
+```
+
+With `.env.local` containing:
+
+```bash
+AUTH_ENABLED=true
+AUTH_GOOGLE_ID=...
+AUTH_GOOGLE_SECRET=...
+AUTH_SECRET=...
+AUTH_OWNER_EMAIL=...
+```
+
+If callback issues still happen locally, set:
+
+```bash
+AUTH_DEBUG=true
+```
+
+Then retry sign-in and inspect the local terminal for `[auth][error]`, `[auth][debug]`, `signIn`, and `linkAccount` logs.
+
+For production, the claim command requires an explicit confirmation phrase:
+
+```bash
+npm run auth:claim-owner:prod
+npm run auth:verify-owner:prod
+```
 
 Recommended local commands:
 
