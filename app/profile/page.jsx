@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { authApi, habitDefinitionsApi, profileApi } from '@/lib/api';
+import { accessApi, authApi, habitDefinitionsApi, profileApi } from '@/lib/api';
 import { DAILY_WIN_DEFINITION_MAP, DEFAULT_ACTIVE_DAILY_WIN_KEYS, DEFAULT_DAILY_WIN_KEYS, getActiveDailyWinDefinitions } from '@/lib/dailyWins';
 import { applyDailyWinTemplate, buildDailyWinChallengeSummary, DAILY_WIN_TEMPLATES } from '@/lib/dailyWinTemplates';
 import {
@@ -112,6 +112,10 @@ export default function Profile() {
   const [editing, setEditing] = useState(false);
   const [profile, setProfile] = useState(null);
   const [authStatus, setAuthStatus] = useState({ mode: 'disabled', user: null });
+  const [allowedMembers, setAllowedMembers] = useState([]);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('member');
+  const [inviteNote, setInviteNote] = useState('');
   const [savedCustomHabits, setSavedCustomHabits] = useState([]);
   const [customHabits, setCustomHabits] = useState([]);
   const [newCustomHabitName, setNewCustomHabitName] = useState('');
@@ -143,8 +147,12 @@ export default function Profile() {
         habitDefinitionsApi.getHabitDefinitions(),
         authApi.getStatus(),
       ]);
+      const memberData = authStatusData?.user?.role === 'admin'
+        ? await accessApi.getMembers()
+        : [];
       setProfile(data);
       setAuthStatus(authStatusData);
+      setAllowedMembers(memberData);
       setSavedCustomHabits(habitData);
       setCustomHabits(habitData);
       setSelectedTemplateKey(data?.dailyWinsTemplateKey || '');
@@ -185,6 +193,45 @@ export default function Profile() {
   };
 
   useEffect(() => { fetchProfile(); }, []);
+
+  const handleInviteMember = async (e) => {
+    e.preventDefault();
+    try {
+      const created = await accessApi.inviteMember({
+        email: inviteEmail,
+        role: inviteRole,
+        note: inviteNote,
+      });
+      setAllowedMembers((current) => [created, ...current.filter((member) => member.id !== created.id)]);
+      setInviteEmail('');
+      setInviteRole('member');
+      setInviteNote('');
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleRoleChange = async (memberId, role) => {
+    try {
+      const updated = await accessApi.updateMember(memberId, { role });
+      setAllowedMembers((current) => current.map((member) => (
+        member.id === memberId ? updated : member
+      )));
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleRevokeMember = async (memberId) => {
+    try {
+      const updated = await accessApi.revokeMember(memberId);
+      setAllowedMembers((current) => current.map((member) => (
+        member.id === memberId ? updated : member
+      )));
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -290,6 +337,7 @@ export default function Profile() {
       : authStatus.mode === 'configured'
         ? 'Google credentials are configured, but sign-in is intentionally still off in this environment.'
         : 'Single-user mode is still active in this environment.';
+  const isAdmin = authStatus.user?.role === 'admin';
 
   if (editing || !profile) {
     return (
@@ -851,6 +899,119 @@ export default function Profile() {
           </Link>
         </div>
       </div>
+
+      {isAdmin && (
+        <div className="card" style={{ marginBottom: '32px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
+            <div>
+              <h2 style={{ marginBottom: '12px' }}>Members & Invites</h2>
+              <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+                Access is approval-based. Only emails you allow here can complete Google sign-in.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleInviteMember} style={{ display: 'grid', gap: '12px', marginBottom: '20px' }}>
+            <div className="grid grid-2">
+              <div className="form-group">
+                <label className="form-label">Invite email</label>
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  className="form-input"
+                  placeholder="name@example.com"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Role</label>
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value)}
+                  className="form-select"
+                >
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Note (optional)</label>
+              <input
+                type="text"
+                value={inviteNote}
+                onChange={(e) => setInviteNote(e.target.value)}
+                className="form-input"
+                placeholder="Eric's son / family member / coach"
+                maxLength={120}
+              />
+            </div>
+            <div>
+              <button type="submit" className="btn btn-primary">Invite Member</button>
+            </div>
+          </form>
+
+          <div style={{ display: 'grid', gap: '12px' }}>
+            {allowedMembers.map((member) => (
+              <div
+                key={member.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: '16px',
+                  padding: '14px 16px',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '12px',
+                }}
+              >
+                <div>
+                  <p style={{ margin: '0 0 6px', fontWeight: 600 }}>{member.email}</p>
+                  <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                    {member.status === 'accepted'
+                      ? 'Accepted and able to sign in.'
+                      : member.status === 'revoked'
+                        ? 'Access revoked.'
+                        : 'Approved but has not signed in yet.'}
+                  </p>
+                  {member.note ? (
+                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
+                      {member.note}
+                    </p>
+                  ) : null}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <select
+                    value={member.role}
+                    onChange={(e) => handleRoleChange(member.id, e.target.value)}
+                    className="form-select"
+                    style={{ minWidth: '120px' }}
+                    disabled={member.status === 'revoked'}
+                  >
+                    <option value="member">Member</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                  {member.status !== 'revoked' ? (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => handleRevokeMember(member.id)}
+                    >
+                      Revoke
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+            {allowedMembers.length === 0 ? (
+              <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                No invited members yet.
+              </p>
+            ) : null}
+          </div>
+        </div>
+      )}
 
       <div className="card" style={{ marginBottom: '32px' }}>
         <h2 style={{ marginBottom: '16px' }}>Daily Wins</h2>
