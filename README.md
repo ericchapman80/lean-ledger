@@ -16,6 +16,12 @@ Google auth groundwork is also opt-in:
 - auth code can be deployed safely before cutover
 - the app stays on the current single-user owner flow until `AUTH_ENABLED=true`
 - do not enable auth in preview or production until the owner-claim rehearsal is complete
+- claim the existing owner row first with `AUTH_OWNER_EMAIL` and the `npm run auth:claim-owner:*` scripts
+
+Local auth note:
+
+- env-targeted scripts use `dotenv -o` so `.env.local`, `.env.preview.local`, and `.env.production.local` override inherited shell env vars
+- this matters for auth because stale shell values can make `AUTH_ENABLED`, `AUTH_GOOGLE_ID`, or `AUTH_GOOGLE_SECRET` appear unset even when the env file is correct
 ## Build In Quality
 
 Lean Ledger should default to **building quality in**, not trying to test quality in later.
