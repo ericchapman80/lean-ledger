@@ -2,9 +2,12 @@ import Link from 'next/link';
 import { auth, signIn, signOut } from '@/auth';
 import { getAuthMode } from '@/lib/authConfig';
 
-async function signInWithGoogle() {
+async function signInWithGoogle(formData) {
   'use server';
-  await signIn('google', { redirectTo: '/profile' });
+  const redirectTo = formData.get('redirectTo');
+  await signIn('google', {
+    redirectTo: typeof redirectTo === 'string' && redirectTo.startsWith('/') ? redirectTo : '/profile',
+  });
 }
 
 async function signOutToLogin() {
@@ -12,14 +15,32 @@ async function signOutToLogin() {
   await signOut({ redirectTo: '/login' });
 }
 
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }) {
   const authMode = getAuthMode(process.env);
   const session = authMode === 'enabled' ? await auth() : null;
+  const redirectTo = typeof searchParams?.next === 'string' && searchParams.next.startsWith('/')
+    ? searchParams.next
+    : '/profile';
+  const reason = searchParams?.reason;
 
   return (
     <div className="container" style={{ padding: '48px 20px', maxWidth: '640px' }}>
       <div className="card">
-        <h1 style={{ marginBottom: '12px' }}>Account</h1>
+        <h1 style={{ marginBottom: '12px' }}>Account & Access</h1>
+        {reason === 'session-expired' && (
+          <div
+            style={{
+              marginBottom: '16px',
+              padding: '12px 14px',
+              borderRadius: '12px',
+              border: '1px solid rgba(241, 196, 15, 0.28)',
+              background: 'rgba(241, 196, 15, 0.12)',
+              color: 'var(--text-primary)',
+            }}
+          >
+            Your session expired. Sign in again to keep using Lean Ledger.
+          </div>
+        )}
         {session?.user?.id && (
           <>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '8px' }}>
@@ -62,6 +83,7 @@ export default async function LoginPage() {
               Sign in with Google to access your private Lean Ledger data.
             </p>
             <form action={signInWithGoogle}>
+              <input type="hidden" name="redirectTo" value={redirectTo} />
               <button type="submit" className="btn btn-primary">
                 Sign in with Google
               </button>
@@ -70,7 +92,7 @@ export default async function LoginPage() {
         )}
 
         <div style={{ marginTop: '24px', fontSize: '14px' }}>
-          <Link href="/">Back to dashboard</Link>
+          <Link href="/profile">Back to profile</Link>
         </div>
       </div>
     </div>
