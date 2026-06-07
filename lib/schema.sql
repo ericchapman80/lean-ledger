@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
   email           TEXT,
   "emailVerified" TIMESTAMPTZ,
   image           TEXT,
+  role            TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
   age             INTEGER,
   height          DOUBLE PRECISION,
   weight          DOUBLE PRECISION,
@@ -25,6 +26,17 @@ CREATE TABLE IF NOT EXISTS users (
   custom_calories DOUBLE PRECISION,
   created_at      TIMESTAMPTZ DEFAULT NOW(),
   updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS allowed_emails (
+  id SERIAL PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+  invited_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  note TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  accepted_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS meals (

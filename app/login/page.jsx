@@ -41,6 +41,20 @@ export default async function LoginPage({ searchParams }) {
             Your session expired. Sign in again to keep using Lean Ledger.
           </div>
         )}
+        {reason === 'access-denied' && (
+          <div
+            style={{
+              marginBottom: '16px',
+              padding: '12px 14px',
+              borderRadius: '12px',
+              border: '1px solid rgba(231, 76, 60, 0.22)',
+              background: 'rgba(231, 76, 60, 0.1)',
+              color: 'var(--text-primary)',
+            }}
+          >
+            Access has not been approved for this Google account yet. Ask an admin to invite your email first.
+          </div>
+        )}
         {session?.user?.id && (
           <>
             <p style={{ color: 'var(--text-secondary)', marginBottom: '8px' }}>

@@ -3,6 +3,9 @@ import Google from 'next-auth/providers/google';
 import NeonAdapter from '@auth/neon-adapter';
 import { isAuthEnabled } from './lib/authConfig.js';
 import { createAuthAdapterClient } from './lib/authDbClient.js';
+import { canAccessByInvite, getAccessDeniedRedirect } from './lib/accessControl.js';
+import * as AllowedEmail from './lib/models/allowedEmail.js';
+import * as User from './lib/models/user.js';
 
 function createDisabledAuth() {
   const disabled = () => new Response('Auth is not enabled for this environment.', { status: 503 });
@@ -47,14 +50,6 @@ const authKit = isAuthEnabled(process.env)
         pages: {
           signIn: '/login',
         },
-        events: {
-          async signIn({ user, account }) {
-            console.info('[auth][signIn]', { userId: user?.id, email: user?.email, provider: account?.provider, adapterClient: kind });
-          },
-          async linkAccount({ user, account }) {
-            console.info('[auth][linkAccount]', { userId: user?.id, email: user?.email, provider: account?.provider });
-          },
-        },
         providers: [
           Google({
             clientId: process.env.AUTH_GOOGLE_ID,
@@ -65,11 +60,39 @@ const authKit = isAuthEnabled(process.env)
           }),
         ],
         callbacks: {
+          async signIn({ user, profile }) {
+            const email = user?.email || profile?.email;
+            if (!email) {
+              return getAccessDeniedRedirect();
+            }
+
+            const invite = await AllowedEmail.findByEmail(email);
+            if (!canAccessByInvite(invite)) {
+              return getAccessDeniedRedirect();
+            }
+
+            return true;
+          },
           session({ session, user }) {
             if (session.user && user?.id != null) {
               session.user.id = String(user.id);
             }
             return session;
+          },
+        },
+        events: {
+          async signIn({ user, account }) {
+            console.info('[auth][signIn]', { userId: user?.id, email: user?.email, provider: account?.provider, adapterClient: kind });
+
+            if (user?.email) {
+              const invite = await AllowedEmail.markAccepted(user.email);
+              if (invite && user?.id != null) {
+                await User.updateRole(Number(user.id), invite.role);
+              }
+            }
+          },
+          async linkAccount({ user, account }) {
+            console.info('[auth][linkAccount]', { userId: user?.id, email: user?.email, provider: account?.provider });
           },
         },
       };
