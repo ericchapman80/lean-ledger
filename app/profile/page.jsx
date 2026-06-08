@@ -9,11 +9,14 @@ import {
   calculateAgeFromDateOfBirth,
   deriveAgeGroup,
   deriveCoachingMode,
+  getAllowedGoalStrategies,
   getActivityFocusDescription,
   getAgeGroupDescription,
   getCoachingModeDescription,
   getGoalStrategyDescription,
+  getYouthSafetyMessage,
   mapGoalStrategyToLegacyGoal,
+  normalizeGoalStrategyForAge,
 } from '@/lib/coachingProfile';
 import { DAILY_WIN_DEFINITION_MAP, DEFAULT_ACTIVE_DAILY_WIN_KEYS, DEFAULT_DAILY_WIN_KEYS, getActiveDailyWinDefinitions } from '@/lib/dailyWins';
 import { applyDailyWinTemplate, buildDailyWinChallengeSummary, DAILY_WIN_TEMPLATES } from '@/lib/dailyWinTemplates';
@@ -275,6 +278,12 @@ export default function Profile() {
         weightInKg = parseFloat(formData.weight);
       }
 
+      const safeGoalStrategy = normalizeGoalStrategyForAge({
+        ageGroup: deriveAgeGroup({ dateOfBirth: formData.dateOfBirth }),
+        goalStrategy: formData.goalStrategy,
+        activityFocus: formData.activityFocus,
+      });
+
       const profileData = {
         dateOfBirth: formData.dateOfBirth,
         age: calculateAgeFromDateOfBirth(formData.dateOfBirth),
@@ -282,8 +291,8 @@ export default function Profile() {
         weight: weightInKg,
         gender: formData.gender,
         activityLevel: formData.activityLevel,
-        goalStrategy: formData.goalStrategy,
-        goal: mapGoalStrategyToLegacyGoal(formData.goalStrategy),
+        goalStrategy: safeGoalStrategy,
+        goal: mapGoalStrategyToLegacyGoal(safeGoalStrategy),
         activityFocus: formData.activityFocus,
         dietStyle: formData.dietStyle,
         units: formData.units,
@@ -361,10 +370,23 @@ export default function Profile() {
   });
   const derivedAge = calculateAgeFromDateOfBirth(formData.dateOfBirth);
   const derivedAgeGroup = deriveAgeGroup({ dateOfBirth: formData.dateOfBirth, age: derivedAge });
-  const derivedCoachingMode = deriveCoachingMode({
+  const allowedGoalStrategies = getAllowedGoalStrategies({
+    ageGroup: derivedAgeGroup,
+    activityFocus: formData.activityFocus,
+  });
+  const normalizedGoalStrategy = normalizeGoalStrategyForAge({
     ageGroup: derivedAgeGroup,
     goalStrategy: formData.goalStrategy,
     activityFocus: formData.activityFocus,
+  });
+  const derivedCoachingMode = deriveCoachingMode({
+    ageGroup: derivedAgeGroup,
+    goalStrategy: normalizedGoalStrategy,
+    activityFocus: formData.activityFocus,
+  });
+  const youthSafetyMessage = getYouthSafetyMessage({
+    ageGroup: derivedAgeGroup,
+    coachingMode: derivedCoachingMode,
   });
   const isAuthLive = authStatus.mode === 'enabled';
   const accountSummary = authStatus.user?.email
@@ -375,6 +397,12 @@ export default function Profile() {
         ? 'Google credentials are configured, but sign-in is intentionally still off in this environment.'
         : 'Single-user mode is still active in this environment.';
   const isAdmin = authStatus.user?.role === 'admin';
+
+  useEffect(() => {
+    if (normalizedGoalStrategy !== formData.goalStrategy) {
+      setFormData((current) => ({ ...current, goalStrategy: normalizedGoalStrategy }));
+    }
+  }, [formData.goalStrategy, normalizedGoalStrategy]);
 
   if (editing || !profile) {
     return (
@@ -451,14 +479,26 @@ export default function Profile() {
               <select value={formData.goalStrategy}
                 onChange={(e) => setFormData((p) => ({ ...p, goalStrategy: e.target.value }))}
                 className="form-select" required>
-                <option value="fat_loss">Fat Loss</option>
-                <option value="lean_recomp">Lean Recomp</option>
-                <option value="maintenance">Maintenance</option>
-                <option value="lean_mass_gain">Lean Mass Gain</option>
-                <option value="performance_fueling">Performance Fueling</option>
-                <option value="confidence_fitness">Confidence + Fitness</option>
+                {allowedGoalStrategies.map((goalStrategy) => (
+                  <option key={goalStrategy} value={goalStrategy}>
+                    {getGoalStrategyDescription(goalStrategy)}
+                  </option>
+                ))}
               </select>
-              {formData.goalStrategy === 'lean_recomp' && (
+              {youthSafetyMessage ? (
+                <div style={{
+                  marginTop: '12px',
+                  padding: '14px 16px',
+                  borderRadius: '12px',
+                  background: 'rgba(39, 174, 96, 0.08)',
+                  border: '1px solid rgba(39, 174, 96, 0.18)',
+                }}>
+                  <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
+                    {youthSafetyMessage}
+                  </p>
+                </div>
+              ) : null}
+              {normalizedGoalStrategy === 'lean_recomp' && (
                 <div style={{
                   marginTop: '12px',
                   padding: '14px 16px',
@@ -475,6 +515,21 @@ export default function Profile() {
                 </div>
               )}
             </div>
+            {youthSafetyMessage ? (
+              <div
+                style={{
+                  marginTop: '16px',
+                  padding: '14px 16px',
+                  borderRadius: '12px',
+                  background: 'rgba(241, 196, 15, 0.10)',
+                  border: '1px solid rgba(241, 196, 15, 0.22)',
+                }}
+              >
+                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                  {youthSafetyMessage}
+                </p>
+              </div>
+            ) : null}
 
             <h2 style={{ marginTop: '32px', marginBottom: '24px' }}>3. What activities matter most right now?</h2>
 
@@ -511,6 +566,9 @@ export default function Profile() {
               <p style={{ margin: '0 0 6px', fontWeight: 600 }}>Derived coaching preview</p>
               <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)' }}>
                 Age group: {getAgeGroupDescription(derivedAgeGroup) || 'Add date of birth'}
+              </p>
+              <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)' }}>
+                Goal strategy: {getGoalStrategyDescription(normalizedGoalStrategy)}
               </p>
               <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
                 Coaching mode: {getCoachingModeDescription(derivedCoachingMode)}
@@ -1000,6 +1058,14 @@ export default function Profile() {
               <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '4px' }}>Diet Style</p>
               <p style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>{getDietStyleDescription(profile.dietStyle)}</p>
             </div>
+            {profile.youthSafetyMessage ? (
+              <div>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '4px' }}>Safety Guardrail</p>
+                <p style={{ fontSize: '14px', margin: 0, color: 'var(--text-secondary)' }}>
+                  {profile.youthSafetyMessage}
+                </p>
+              </div>
+            ) : null}
             {profile.goalStrategy === 'lean_recomp' && (
               <div style={{
                 padding: '14px 16px',

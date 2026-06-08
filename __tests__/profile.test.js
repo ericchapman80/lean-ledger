@@ -47,6 +47,14 @@ describe('validateProfilePayload', () => {
       .toBe('Invalid activity focus');
   });
 
+  it('rejects youth-only restricted goal strategies', () => {
+    expect(validateProfilePayload({
+      ...valid,
+      dateOfBirth: '2014-06-07',
+      goalStrategy: 'fat_loss',
+    })).toBe('Goal strategy is not available for this age group');
+  });
+
   it('rejects an invalid units value (when provided)', () => {
     expect(validateProfilePayload({ ...valid, units: 'cubits' }))
       .toBe('Invalid units');
@@ -149,6 +157,19 @@ describe('enrichProfile', () => {
     expect(incomplete.needsProfile).toBe(true);
     expect(incomplete.recommendedMacros).toBeNull();
     expect(incomplete.activeMacros).toBeNull();
+  });
+
+  it('adds youth safety guidance for teen athlete profiles', () => {
+    const result = enrichProfile({
+      ...user,
+      dateOfBirth: '2010-06-07',
+      goalStrategy: 'performance_fueling',
+      activityFocus: ['football'],
+    });
+
+    expect(result.ageGroup).toBe('teen');
+    expect(result.coachingMode).toBe('youth_athlete');
+    expect(result.youthSafetyMessage).toContain('Teen athlete');
   });
 });
 

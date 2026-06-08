@@ -197,6 +197,7 @@ CREATE TABLE IF NOT EXISTS health_metrics (
   weight                       DOUBLE PRECISION,
   waist_measurement            DOUBLE PRECISION,
   workout_completed            BOOLEAN,
+  day_type                     TEXT,
   reading_completed            BOOLEAN,
   prayer_completed             BOOLEAN,
   hydration_ounces             DOUBLE PRECISION,

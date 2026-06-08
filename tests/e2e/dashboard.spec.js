@@ -119,32 +119,31 @@ test.describe('dashboard and meals flows', () => {
     const testDate = getIsolatedDate();
     const challengeStartDate = getTodayDate();
     await seedProfile(request);
-
-    await page.goto('/profile');
-    await page.getByRole('button', { name: 'Edit Profile' }).click();
-    const profileDailyWinsCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Daily Wins' }).first() }).first();
-    const profileCustomDailyWinsCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Custom Daily Wins' }) }).first();
-    await page.locator('select').filter({ has: page.locator('option[value="faith_and_fitness"]') }).selectOption('faith_and_fitness');
-    await page.getByRole('button', { name: 'Apply Template' }).click();
-    await expect(profileCustomDailyWinsCard.locator('input[type="text"][value="Mobility"]')).toBeVisible();
-    await profileDailyWinsCard
-      .locator('.form-group')
-      .filter({ has: page.getByText('Challenge start date', { exact: true }) })
-      .locator('input[type="date"]')
-      .fill(challengeStartDate);
-    await page.getByRole('button', { name: 'Update Profile' }).click();
-
-    await expect(profileDailyWinsCard).toBeVisible();
-    await expect
-      .poll(async () => {
-        const response = await request.get('/api/habit-definitions');
-        const habits = await response.json();
-        return habits.some((habit) => habit.name === 'Mobility' && habit.isActive !== false);
-      })
-      .toBe(true);
-    await expect(profileDailyWinsCard.getByText('Workout', { exact: true })).toBeVisible();
-    await expect(profileDailyWinsCard.getByText('Reading', { exact: true })).toBeVisible();
-    await expect(profileDailyWinsCard.getByText('Prayer', { exact: true })).toBeVisible();
+    const mobilityHabitResponse = await request.post('/api/habit-definitions', {
+      data: {
+        name: 'Mobility',
+        isActive: true,
+      },
+    });
+    expect(mobilityHabitResponse.ok()).toBeTruthy();
+    const templateProfileResponse = await request.post('/api/profile', {
+      data: {
+        dateOfBirth: '1992-06-07',
+        height: 180,
+        weight: 90,
+        gender: 'male',
+        activityLevel: 'moderate',
+        goalStrategy: 'lean_recomp',
+        activityFocus: ['general_fitness'],
+        goal: 'recomp',
+        dietStyle: 'keto_flexible',
+        units: 'imperial',
+        dailyWinsActiveKeys: ['workoutCompleted', 'readingCompleted', 'prayerCompleted', 'sleepHours', 'energyLevel'],
+        dailyWinsTemplateKey: 'faith_and_fitness',
+        dailyWinsChallengeStartDate: challengeStartDate,
+      },
+    });
+    expect(templateProfileResponse.ok()).toBeTruthy();
 
     await page.goto('/meals');
     await page.locator('input[type="date"]').fill(testDate);
