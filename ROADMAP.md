@@ -32,6 +32,14 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 - 🧭 next up
 - 🕒 later / future iteration
 
+**Current status snapshot**
+- ✅ Meal intelligence foundation is shipped on `main`
+- ✅ Hydration and beverage intelligence foundation is shipped on `main`
+- ✅ Daily Wins foundation, configurability, templates, and challenge progress are shipped on `main`
+- ✅ Multi-tenant auth and invite-only member access foundation are shipped on `main`
+- 🚧 Lean Ledger 2.0 guided onboarding foundation is now live on `main`
+- 🧭 Next likely product slice: `V2.1 Youth Safety + Athlete Context`
+
 ## Meal Intelligence & Behavioral Insights
 
 Meal intelligence should be treated as a **high-priority Phase 2 direction** because it aligns directly with the core Lean Recomp product philosophy:
@@ -161,7 +169,8 @@ This roadmap area should clearly guide future product decisions around these pri
 - **Status: in progress**
   - meal-level feedback is shipped
   - hydration feedback is shipped
-  - recovery / workout behavior insights are the active next coaching layer
+  - recovery / workout behavior insights are shipped
+  - the remaining work is deeper cross-signal coaching and more context-aware recommendations
 
 - **Future AI/coaching layer should focus on**:
   - consistency
@@ -194,10 +203,13 @@ This roadmap area should clearly guide future product decisions around these pri
   - beverage favorites
   - beverage trends / hydration behavior insights
   - hydration feedback on Dashboard and Intake
+  - adaptive hydration targets based on weight, workouts, and diet style
   - custom beverage names for `Other`
   - duplicate prevention for favorite foods and favorite beverages
-- 🚧 in progress
-  - adaptive hydration targets based on weight, workouts, and diet style
+- 🕒 later / future iteration
+  - workout / sweat adjustments
+  - sauna adjustments
+  - Apple Health hydration sync
 
 Hydration intelligence should be treated as a **high-priority Phase 2 direction** because it supports the Lean Recomp philosophy without increasing logging friction:
 
@@ -276,7 +288,7 @@ Hydration intelligence should be treated as a **high-priority Phase 2 direction*
   - compact
   - expandable on demand
 
-### Future Hydration Intelligence 🧭
+### Future Hydration Intelligence 🕒
 
 - **Workout / sweat hydration adjustments**
 - **Sauna adjustments**
@@ -333,7 +345,9 @@ Hydration intelligence should be treated as a **high-priority Phase 2 direction*
 
 **Phased implementation plan**
 
-### V1 — Fixed Daily Wins MVP 🧭
+### V1 — Fixed Daily Wins MVP ✅
+
+- **Status: shipped on main**
 
 **Goal**
 - Prove that Intake-first habit capture is valuable before introducing full configurability.
@@ -372,7 +386,9 @@ Hydration intelligence should be treated as a **high-priority Phase 2 direction*
 - advanced correlation analytics
 - challenge history
 
-### V1.5 — Configurable Suggested Habits
+### V1.5 — Configurable Suggested Habits ✅
+
+- **Status: shipped on main**
 
 **Goal**
 - Let users tailor Daily Wins without opening the door to fully open-ended habit tracking yet.
@@ -401,7 +417,13 @@ Hydration intelligence should be treated as a **high-priority Phase 2 direction*
 - adds personalization without forcing schema or UX complexity too early
 - keeps the system opinionated and product-shaped
 
-### V2 — Custom Habits + Challenge Templates
+### V2 — Custom Habits + Challenge Templates 🚧
+
+- **Status: foundation shipped on main**
+  - custom boolean Daily Wins habits are shipped
+  - challenge templates are shipped
+  - challenge progress UX is shipped across Profile, Intake, Dashboard, and Trends
+  - richer input types, deeper habit analytics, and more advanced challenge logic remain future work
 
 **Goal**
 - Support challenge-style tracking and personal discipline systems without turning Lean Ledger into a generic habit tracker.
@@ -587,7 +609,21 @@ Hydration intelligence should be treated as a **high-priority Phase 2 direction*
 
 ---
 
-## Multi-Tenancy + Google Auth (highest priority follow-up)
+## Multi-Tenancy + Google Auth ✅
+
+**Current status**
+- Auth.js + Google auth groundwork is shipped on `main`
+- local, preview, and production owner-claim rehearsals were completed successfully
+- production Google sign-in is live and linked to the existing owner row without data loss
+- `Profile` and `Account` UX have been consolidated
+- friendly session-expired handling is shipped
+- invite-only member access control and admin invite management are shipped on `main`
+
+**Remaining follow-up**
+- stronger multi-user isolation coverage across more end-to-end flows
+- request-access / approval queue as an alternative to pure pre-invite
+- account deletion / export flows
+- family profile / household layer on top of member access
 
 **Goal:** Let multiple users sign in with Google and have their own private macro data.
 
@@ -1060,7 +1096,9 @@ Rules:
 
 **Suggested rollout plan**
 
-### V1
+### V1 ✅
+
+- shipped on `main`
 
 - add `users.role`
 - add `allowed_emails`
@@ -1068,13 +1106,13 @@ Rules:
 - block sign-in for emails not on allow-list
 - add minimal admin management UI in Profile
 
-### V1.5
+### V1.5 🕒
 
 - add accepted/pending/revoked filters
 - add access audit logging
 - add clearer member onboarding copy
 
-### V2
+### V2 🕒
 
 - optional invite emails
 - household/team concepts if the product later needs shared structures
@@ -1188,7 +1226,20 @@ Vercel: set these in Project Settings → Environment Variables. Pull locally wi
 
 ---
 
-## Lean Ledger 2.0: Age-Aware Coaching and Athlete Profiles
+## Lean Ledger 2.0: Age-Aware Coaching and Athlete Profiles 🚧
+
+**Current status**
+- `V2.0 foundation` is shipped on `main`
+  - guided onboarding-style profile flow
+  - `date_of_birth`
+  - derived age group
+  - `goal_strategy`
+  - multi-select `activity_focus`
+  - derived `coaching_mode`
+- youth safety guardrails, day type, athlete context, and family profile modeling are not implemented yet
+
+**Recommended next slice**
+- `V2.1 Youth Safety + Athlete Context`
 
 **Vision**
 
@@ -1474,7 +1525,9 @@ This avoids forcing “one auth user = one coaching profile” forever.
 
 ### Suggested Rollout Plan
 
-#### V2.0 Foundation
+#### V2.0 Foundation ✅
+
+- shipped foundation on `main`
 
 - add DOB
 - derive age group
@@ -1483,20 +1536,20 @@ This avoids forcing “one auth user = one coaching profile” forever.
 - introduce derived coaching mode
 - add guided onboarding interview
 
-#### V2.1 Youth Safety + Athlete Context
+#### V2.1 Youth Safety + Athlete Context 🧭
 
 - apply youth safety guardrails
 - add day type
 - add athlete-focused recovery/hydration/sleep logic
 - adjust dashboard and Daily Wins prompts by coaching mode
 
-#### V2.2 Family Profiles
+#### V2.2 Family Profiles 🕒
 
 - support multiple profiles per household
 - parent/admin can create and manage child/teen profiles
 - explicit profile switching
 
-#### V2.3 Performance Extensions
+#### V2.3 Performance Extensions 🕒
 
 - event/lift metrics
 - trend and readiness interpretation
