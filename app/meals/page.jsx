@@ -53,6 +53,7 @@ import { getMealFeedback } from '@/lib/mealFeedback';
 import { buildDailyWinChallengeSummary } from '@/lib/dailyWinTemplates';
 import { lookupByBarcode } from '@/lib/foodLookup';
 import { getCustomDailyHabitPayloads, getDailyWinsSummary, getDailyWinsValues, mergeDailyWinDefinitions } from '@/lib/dailyWins';
+import { getDayTypeDescription, getDayTypeGuidance } from '@/lib/coachingProfile';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import HydrationFeedback from '@/components/HydrationFeedback';
@@ -416,6 +417,11 @@ export default function Meals() {
     }),
     [dailyWinsSummary, profile?.dailyWinsChallengeStartDate, profile?.dailyWinsTemplateKey, selectedDate],
   );
+  const dayTypeGuidance = useMemo(() => getDayTypeGuidance({
+    dayType: dailyWins.dayType,
+    coachingMode: profile?.coachingMode,
+    ageGroup: profile?.ageGroup,
+  }), [dailyWins.dayType, profile?.ageGroup, profile?.coachingMode]);
   const hydrationFeedback = useMemo(() => getHydrationFeedback({
     entries: beverageEntries,
     summary: beverageSummary,
@@ -501,6 +507,7 @@ export default function Meals() {
       await healthMetricsApi.createHealthMetric({
         recordedAt: dailyWins.recordedAt,
         workoutCompleted: dailyWins.workoutCompleted === '' ? null : dailyWins.workoutCompleted === 'true',
+        dayType: dailyWins.dayType || null,
         readingCompleted: dailyWins.readingCompleted === '' ? null : dailyWins.readingCompleted === 'true',
         prayerCompleted: dailyWins.prayerCompleted === '' ? null : dailyWins.prayerCompleted === 'true',
         sleepHours: dailyWins.sleepHours === '' ? null : Number(dailyWins.sleepHours),
@@ -978,6 +985,16 @@ export default function Meals() {
                     {dailyWinsChallenge.daysRemaining != null ? ` • ${dailyWinsChallenge.daysRemaining} days left` : ''}
                   </p>
                 ) : null}
+                {profile?.youthSafetyMessage ? (
+                  <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                    {profile.youthSafetyMessage}
+                  </p>
+                ) : null}
+                {dayTypeGuidance ? (
+                  <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                    {dayTypeGuidance}
+                  </p>
+                ) : null}
               </div>
               <div style={{ textAlign: 'right' }}>
                 <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
@@ -990,6 +1007,20 @@ export default function Meals() {
             </div>
 
             <form onSubmit={handleDailyWinsSubmit} style={{ display: 'grid', gap: '14px' }}>
+              <div>
+                <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Day Type</p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {['workout_day', 'practice_day', 'competition_day', 'recovery_day', 'rest_day'].map((dayType) => (
+                    <DailyWinToggle
+                      key={dayType}
+                      active={dailyWins.dayType === dayType}
+                      onClick={() => setDailyWins((current) => ({ ...current, dayType }))}
+                    >
+                      {getDayTypeDescription(dayType)}
+                    </DailyWinToggle>
+                  ))}
+                </div>
+              </div>
               <div className="grid grid-2">
                 {activeDailyWins.map((definition) => (
                   <div key={definition.key}>

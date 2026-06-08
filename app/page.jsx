@@ -13,6 +13,7 @@ import { getProgressSemantics, getWaterProgressSemantics } from '@/lib/dashboard
 import { getGoalDescription } from '@/lib/utils/macroUtils';
 import { formatWeight } from '@/lib/utils/unitUtils';
 import { getDailyWinsSummary, getDailyWinsValues, mergeDailyWinDefinitions } from '@/lib/dailyWins';
+import { getDayTypeDescription, getDayTypeGuidance } from '@/lib/coachingProfile';
 import {
   formatBeverageFromFlOz,
   getHydrationHelperCopy,
@@ -46,6 +47,7 @@ function hasCoreCheckInData(metric) {
   return [
     'waistMeasurement',
     'workoutCompleted',
+    'dayType',
     'readingCompleted',
     'prayerCompleted',
     'hydrationOunces',
@@ -62,6 +64,7 @@ function countLoggedSignals(checkIn) {
   return [
     checkIn.waistMeasurement,
     checkIn.workoutCompleted,
+    checkIn.dayType,
     checkIn.readingCompleted,
     checkIn.prayerCompleted,
     checkIn.sleepHours,
@@ -206,6 +209,11 @@ export default function Dashboard() {
     referenceDate: selectedDate,
     dailyWinsSummary,
   });
+  const dayTypeGuidance = getDayTypeGuidance({
+    dayType: checkIn.dayType,
+    coachingMode: profile.coachingMode,
+    ageGroup: profile.ageGroup,
+  });
 
   const handleCheckInSubmit = async (e) => {
     e.preventDefault();
@@ -214,6 +222,7 @@ export default function Dashboard() {
       await healthMetricsApi.createHealthMetric({
         ...checkIn,
         workoutCompleted: checkIn.workoutCompleted === '' ? null : checkIn.workoutCompleted === 'true',
+        dayType: checkIn.dayType || null,
       });
       await fetchData();
     } catch (err) {
@@ -494,6 +503,16 @@ export default function Dashboard() {
           <p style={{ color: 'var(--text-secondary)', margin: '16px 0 20px' }}>
             Keep this fast. Waist, workouts, sleep, and recovery are optional signals that sharpen the weekly trend. Hydration lives in Intake so the dashboard stays summary-first.
           </p>
+          {profile.youthSafetyMessage ? (
+            <p style={{ color: 'var(--text-secondary)', margin: '0 0 12px' }}>
+              {profile.youthSafetyMessage}
+            </p>
+          ) : null}
+          {dayTypeGuidance ? (
+            <p style={{ color: 'var(--text-secondary)', margin: '0 0 20px' }}>
+              {dayTypeGuidance}
+            </p>
+          ) : null}
 
           <form onSubmit={handleCheckInSubmit}>
             <div className="grid grid-2" style={{ marginBottom: '16px' }}>
@@ -520,6 +539,19 @@ export default function Dashboard() {
                   <option value="">Not tracked</option>
                   <option value="true">Yes</option>
                   <option value="false">No</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Day Type</label>
+                <select
+                  className="form-select"
+                  value={checkIn.dayType}
+                  onChange={(e) => setCheckIn((current) => ({ ...current, dayType: e.target.value }))}
+                >
+                  <option value="">Not tracked</option>
+                  {['workout_day', 'practice_day', 'competition_day', 'recovery_day', 'rest_day'].map((dayType) => (
+                    <option key={dayType} value={dayType}>{getDayTypeDescription(dayType)}</option>
+                  ))}
                 </select>
               </div>
               <div className="form-group">

@@ -3,6 +3,10 @@ import {
   calculateAgeFromDateOfBirth,
   deriveAgeGroup,
   deriveCoachingMode,
+  getAllowedGoalStrategies,
+  getDayTypeGuidance,
+  getSafeMacroGoal,
+  getYouthSafetyMessage,
   mapGoalStrategyToLegacyGoal,
   normalizeActivityFocus,
 } from '@/lib/coachingProfile.js';
@@ -50,5 +54,30 @@ describe('mapGoalStrategyToLegacyGoal', () => {
     expect(mapGoalStrategyToLegacyGoal('fat_loss')).toBe('lose');
     expect(mapGoalStrategyToLegacyGoal('lean_recomp')).toBe('recomp');
     expect(mapGoalStrategyToLegacyGoal('performance_fueling')).toBe('maintain');
+  });
+});
+
+describe('youth safety and athlete helpers', () => {
+  it('restricts youth goal strategies to safer options', () => {
+    expect(getAllowedGoalStrategies({ ageGroup: 'child', activityFocus: ['football'] }))
+      .toEqual(['performance_fueling', 'confidence_fitness', 'maintenance']);
+    expect(getAllowedGoalStrategies({ ageGroup: 'teen', activityFocus: ['general_fitness'] }))
+      .toEqual(['confidence_fitness', 'maintenance', 'lean_mass_gain']);
+  });
+
+  it('keeps youth macro goals out of deficit mode', () => {
+    expect(getSafeMacroGoal({ ageGroup: 'child', goalStrategy: 'fat_loss' })).toBe('maintain');
+    expect(getSafeMacroGoal({ ageGroup: 'teen', goalStrategy: 'lean_mass_gain' })).toBe('gain');
+    expect(getSafeMacroGoal({ ageGroup: 'teen', goalStrategy: 'lean_recomp' })).toBe('maintain');
+  });
+
+  it('returns supportive youth safety and day-type guidance', () => {
+    expect(getYouthSafetyMessage({ ageGroup: 'teen', coachingMode: 'youth_athlete' }))
+      .toContain('Teen athlete');
+    expect(getDayTypeGuidance({
+      dayType: 'competition_day',
+      coachingMode: 'youth_athlete',
+      ageGroup: 'teen',
+    })).toContain('Competition and game days');
   });
 });

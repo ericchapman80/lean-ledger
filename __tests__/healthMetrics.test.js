@@ -83,6 +83,7 @@ describe('validateHealthMetricEntry', () => {
   it('accepts optional core check-in and progress photo metadata without advanced metrics', () => {
     const result = validateHealthMetricEntry({
       recordedAt: '2026-05-24T20:00',
+      dayType: 'practice_day',
       workoutCompleted: false,
       readingCompleted: true,
       prayerCompleted: false,
@@ -91,11 +92,22 @@ describe('validateHealthMetricEntry', () => {
     });
 
     expect(result.errors).toEqual([]);
+    expect(result.normalized.dayType).toBe('practice_day');
     expect(result.normalized.workoutCompleted).toBe(false);
     expect(result.normalized.readingCompleted).toBe(true);
     expect(result.normalized.prayerCompleted).toBe(false);
     expect(result.normalized.progressPhotoCount).toBe(2);
     expect(result.normalized.progressPhotoNote).toBe('Front and side');
+  });
+
+  it('rejects unsupported day type values', () => {
+    const result = validateHealthMetricEntry({
+      recordedAt: '2026-05-24T20:00',
+      dayType: 'double-header',
+      workoutCompleted: true,
+    });
+
+    expect(result.errors).toContain('Day Type must be one of the supported day contexts');
   });
 });
 
