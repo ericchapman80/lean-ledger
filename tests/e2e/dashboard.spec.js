@@ -14,11 +14,13 @@ function getTodayDate() {
 async function seedProfile(request) {
   const response = await request.post('/api/profile', {
     data: {
-      age: 34,
+      dateOfBirth: '1992-06-07',
       height: 180,
       weight: 90,
       gender: 'male',
       activityLevel: 'moderate',
+      goalStrategy: 'lean_recomp',
+      activityFocus: ['general_fitness'],
       goal: 'recomp',
       dietStyle: 'keto_flexible',
       units: 'imperial',
