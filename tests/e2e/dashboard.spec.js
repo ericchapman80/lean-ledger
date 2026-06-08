@@ -122,11 +122,15 @@ test.describe('dashboard and meals flows', () => {
 
     await page.goto('/profile');
     const editProfileButton = page.getByRole('button', { name: 'Edit Profile' });
-    if (await editProfileButton.isVisible().catch(() => false)) {
+    const updateProfileButton = page.getByRole('button', { name: /Update Profile|Complete Setup/ });
+    if (await editProfileButton.waitFor({ state: 'visible', timeout: 5000 }).then(() => true).catch(() => false)) {
       await editProfileButton.click();
+    } else {
+      await expect(updateProfileButton).toBeVisible();
     }
     const profileDailyWinsCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Daily Wins' }).first() }).first();
     const profileCustomDailyWinsCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Custom Daily Wins' }) }).first();
+    await expect(profileDailyWinsCard.locator('select').first()).toBeVisible();
     await profileDailyWinsCard.locator('select').first().selectOption('faith_and_fitness');
     await page.getByRole('button', { name: 'Apply Template' }).click();
     await expect(profileCustomDailyWinsCard.locator('input[type="text"][value="Mobility"]')).toBeVisible();
