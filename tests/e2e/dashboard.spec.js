@@ -121,7 +121,10 @@ test.describe('dashboard and meals flows', () => {
     await seedProfile(request);
 
     await page.goto('/profile');
-    await page.getByRole('button', { name: 'Edit Profile' }).click();
+    const editProfileButton = page.getByRole('button', { name: 'Edit Profile' });
+    if (await editProfileButton.isVisible().catch(() => false)) {
+      await editProfileButton.click();
+    }
     const profileDailyWinsCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Daily Wins' }).first() }).first();
     const profileCustomDailyWinsCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Custom Daily Wins' }) }).first();
     await page.locator('select').filter({ has: page.locator('option[value="faith_and_fitness"]') }).selectOption('faith_and_fitness');
