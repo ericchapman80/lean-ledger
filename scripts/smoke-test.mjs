@@ -144,8 +144,16 @@ let mealId = null;
 if (!readOnly) {
   await step('Profile: create or update', async () => {
     const r = await request('POST', '/api/profile', {
-      age: 30, height: 175, weight: 75,
-      gender: 'male', activityLevel: 'moderate', goal: 'maintain', dietStyle: 'balanced', units: 'metric',
+      dateOfBirth: '1996-06-07',
+      height: 175,
+      weight: 75,
+      gender: 'male',
+      activityLevel: 'moderate',
+      goalStrategy: 'maintenance',
+      activityFocus: ['general_fitness'],
+      goal: 'maintain',
+      dietStyle: 'balanced',
+      units: 'metric',
     });
     assert('POST /api/profile → 200', r.status === 200, `got ${r.status}`);
     assert('Response includes recommendedMacros', r.data?.recommendedMacros?.calories > 0);

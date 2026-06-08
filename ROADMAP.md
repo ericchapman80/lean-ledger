@@ -1188,6 +1188,340 @@ Vercel: set these in Project Settings → Environment Variables. Pull locally wi
 
 ---
 
+## Lean Ledger 2.0: Age-Aware Coaching and Athlete Profiles
+
+**Vision**
+
+Lean Ledger should evolve from a nutrition tracker into a personalized coaching platform that adapts recommendations based on age, goals, activity focus, day type, and family context.
+
+The key change in 2.0 is that onboarding becomes more of a guided interview instead of a simple profile form. New users should be led through a short sequence that establishes:
+
+- who this profile is for
+- age band
+- coaching intent
+- activity focus
+- current routine
+- household context
+
+That interview should drive the product model automatically rather than asking users to understand internal modes like “kid mode” or “athlete mode.”
+
+### 2.0 Onboarding Direction: Guided Interview
+
+**Goal:** Replace the current “fill out your profile” setup with a friendlier first-visit flow that derives the correct coaching posture automatically.
+
+**Recommended interview flow**
+
+1. Who is this profile for?
+   - Me
+   - My child / teen
+   - Another family member
+
+2. Date of birth
+   - required
+   - used to derive age group automatically
+
+3. What are you working toward right now?
+   - Fat Loss
+   - Lean Recomp
+   - Maintenance
+   - Lean Mass Gain
+   - Performance Fueling
+   - Confidence + Fitness
+
+4. What activities matter most right now?
+   - multi-select from the supported activity list
+
+5. What kind of days do you typically have?
+   - practice / workout / recovery / rest context
+
+6. Optional household context
+   - parent/admin is creating another family member profile
+
+**Why interview-style onboarding**
+
+- reduces configuration anxiety
+- hides internal product complexity
+- supports youth/family use cases more naturally
+- creates cleaner derived coaching modes than a flat settings page
+
+### Age-Aware Profiles
+
+Add required `date_of_birth` to profile configuration.
+
+Derive automatically:
+
+- `Child` `<13`
+- `Teen` `13-17`
+- `Adult` `18+`
+
+Do **not** require users to manually enable a kid mode.
+
+The application should automatically adapt:
+
+- nutrition targets
+- coaching language
+- available goal strategies
+- warnings / safety rails
+- day-type recommendations
+- dashboard emphasis
+
+### Derived Coaching Modes
+
+Introduce a derived `coaching_mode` rather than asking users to choose one directly.
+
+Initial modes:
+
+- Weight Management
+- General Wellness
+- Youth Wellness
+- Youth Athlete
+- Athlete Performance
+- Lean Mass Gain
+
+Derived from:
+
+- age group
+- goal strategy
+- activity focus
+
+Examples:
+
+- adult + fat loss + general fitness => `Weight Management`
+- teen + football / track => `Youth Athlete`
+- adult + performance fueling + strength / track => `Athlete Performance`
+- child + confidence + fitness => `Youth Wellness`
+
+### Goal Strategy
+
+Replace the current simple goal selection with:
+
+- Fat Loss
+- Lean Recomp
+- Maintenance
+- Lean Mass Gain
+- Performance Fueling
+- Confidence + Fitness
+
+Notes:
+
+- `Confidence + Fitness` is especially important for youth and family-friendly use
+- under-18 profiles should not be nudged toward aggressive body-composition goals
+- current Lean Recomp work remains valid, but should become one branch of a broader coaching system
+
+### Activity Focus
+
+Support multi-select activity focus:
+
+- Football
+- Track & Field
+- Strength Training
+- General Fitness
+- Walking
+- Mobility / Recovery
+- None
+
+This should influence:
+
+- coaching mode derivation
+- hydration emphasis
+- protein guidance
+- recovery prompts
+- day-type logic
+
+### Day Type
+
+Add daily context that can shape targets and coaching:
+
+- Workout Day
+- Practice Day
+- Competition / Game Day
+- Recovery Day
+- Rest Day
+
+Day type should adjust:
+
+- hydration target
+- fueling emphasis
+- recovery messaging
+- Daily Wins prompts
+- athlete-specific check-ins
+
+### Youth Safety Guardrails
+
+For profiles under age 18:
+
+- prohibit aggressive calorie deficits
+- prohibit unsafe weight-loss targets
+- avoid body-shaming language
+- avoid appearance-focused coaching
+- emphasize:
+  - strength
+  - energy
+  - recovery
+  - participation
+  - confidence
+  - healthy habits
+
+For profiles under age 13:
+
+- do not display calorie deficit recommendations
+- do not display weight-loss coaching
+- do not emphasize scale-driven body change
+- emphasize:
+  - movement days
+  - hydration
+  - sleep
+  - active play
+  - participation
+  - confidence building
+
+### Youth Athlete Features
+
+Support youth athletes such as football, track, and strength-training participants.
+
+Core features:
+
+- recovery score
+- hydration score
+- sleep tracking
+- soreness tracking
+- energy tracking
+- workout completion tracking
+
+These should be framed as:
+
+- readiness
+- recovery
+- consistency
+- support
+
+not aesthetic optimization.
+
+### Future Athlete Performance Metrics
+
+Roadmap item for later athlete-performance expansion:
+
+- bench press
+- squat
+- deadlift
+- vertical jump
+- sprint times
+- throwing marks
+- event-specific performance indicators
+
+These should come **after** the age-aware coaching layer, not before it.
+
+### Family Profiles
+
+Support multiple profiles per household, for example:
+
+- Parent
+- Teen Athlete
+- Child Wellness
+
+Each profile should maintain its own:
+
+- goals
+- activity focus
+- coaching mode
+- daily wins
+- nutrition targets
+- progress history
+
+while sharing a common family account / admin owner.
+
+This should build on the new member-access foundation, but it is **not** just generic multi-tenancy:
+
+- household membership should be intentionally linked
+- parent/admin should be able to create/manage child profiles
+- profile switching must be explicit and safe
+
+### Recommended Data Model Direction
+
+**Do not** overload the current `users` table with every future family/profile concept.
+
+Recommended direction:
+
+- keep `users` as auth identities
+- introduce a separate `profiles` or `coaching_profiles` table later for:
+  - date of birth
+  - age group
+  - goal strategy
+  - activity focus
+  - coaching mode
+  - family role / profile label
+
+Likely future structure:
+
+`users`
+- auth identity
+- role / admin capabilities
+
+`profiles`
+- one or more coaching profiles owned by a user or household admin
+- domain-specific health / coaching state
+
+`profile_activity_focus`
+- join table for multi-select activity focus
+
+`profile_day_context`
+- per-day type selection / derivation
+
+`households` or `family_accounts`
+- future optional grouping model
+
+This avoids forcing “one auth user = one coaching profile” forever.
+
+### Suggested Rollout Plan
+
+#### V2.0 Foundation
+
+- add DOB
+- derive age group
+- introduce goal strategy
+- introduce activity focus
+- introduce derived coaching mode
+- add guided onboarding interview
+
+#### V2.1 Youth Safety + Athlete Context
+
+- apply youth safety guardrails
+- add day type
+- add athlete-focused recovery/hydration/sleep logic
+- adjust dashboard and Daily Wins prompts by coaching mode
+
+#### V2.2 Family Profiles
+
+- support multiple profiles per household
+- parent/admin can create and manage child/teen profiles
+- explicit profile switching
+
+#### V2.3 Performance Extensions
+
+- event/lift metrics
+- trend and readiness interpretation
+- athlete-performance summaries
+
+### Guardrails
+
+- Do not introduce “kid mode” as a manual toggle.
+- Do not show unsafe youth deficit or weight-loss guidance.
+- Do not let performance features override recovery and health guardrails.
+- Do not force adult-style body-composition language into youth flows.
+- Do not make the onboarding interview long or clinical.
+- Keep recommendations supportive, plain-language, and coach-like.
+
+### Product Positioning Outcome
+
+If done well, Lean Ledger 2.0 becomes:
+
+- useful for adults pursuing fat loss, recomp, and performance
+- safe and supportive for kids and teens
+- relevant for athletes
+- manageable for families
+
+without turning into a generic calorie tracker or a generic habit app.
+
 ## Other future work
 
 (Stub — add to as we go.)

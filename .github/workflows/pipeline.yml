@@ -81,6 +81,7 @@ jobs:
           --health-retries=5
     env:
       CI: true
+      AUTH_ENABLED: 'false'
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lean_ledger
       PLAYWRIGHT_ALLOW_MUTATION: true
     steps:

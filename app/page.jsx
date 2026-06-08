@@ -402,7 +402,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>Current Goal</p>
-              <p style={{ fontSize: '24px', fontWeight: 'bold' }}>{getGoalDescription(profile.goal)}</p>
+              <p style={{ fontSize: '24px', fontWeight: 'bold' }}>{getGoalDescription(profile.goalStrategy || profile.goal)}</p>
             </div>
             <div>
               <p style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>Calories Remaining</p>
@@ -483,7 +483,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {profile.goal === 'recomp' && (
+      {(profile.goalStrategy || profile.goal) === 'lean_recomp' || profile.goal === 'recomp' ? (
         <details className="card" style={{ marginTop: '32px' }}>
           <summary style={{ cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1rem' }}>
             Lean Recomp Check-In
@@ -606,9 +606,9 @@ export default function Dashboard() {
             </div>
           </form>
         </details>
-      )}
+      ) : null}
 
-      {profile.goal === 'recomp' && weeklyStats && (
+      {(((profile.goalStrategy || profile.goal) === 'lean_recomp') || profile.goal === 'recomp') && weeklyStats ? (
         <details className="card" style={{ marginTop: '32px' }}>
           <summary style={{ cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1rem' }}>Weekly Lean Recomp Check-In</summary>
           <div style={{ marginTop: '16px', display: 'grid', gap: '18px' }}>
@@ -691,7 +691,7 @@ export default function Dashboard() {
             )}
           </div>
         </details>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -4,12 +4,22 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { accessApi, authApi, habitDefinitionsApi, profileApi } from '@/lib/api';
+import {
+  ACTIVITY_FOCUS_OPTIONS,
+  calculateAgeFromDateOfBirth,
+  deriveAgeGroup,
+  deriveCoachingMode,
+  getActivityFocusDescription,
+  getAgeGroupDescription,
+  getCoachingModeDescription,
+  getGoalStrategyDescription,
+  mapGoalStrategyToLegacyGoal,
+} from '@/lib/coachingProfile';
 import { DAILY_WIN_DEFINITION_MAP, DEFAULT_ACTIVE_DAILY_WIN_KEYS, DEFAULT_DAILY_WIN_KEYS, getActiveDailyWinDefinitions } from '@/lib/dailyWins';
 import { applyDailyWinTemplate, buildDailyWinChallengeSummary, DAILY_WIN_TEMPLATES } from '@/lib/dailyWinTemplates';
 import {
   getActivityLevelDescription,
   getDietStyleDescription,
-  getGoalDescription,
 } from '@/lib/utils/macroUtils';
 import { getTodayDate } from '@/lib/utils/dateUtils';
 import { cmToFeetInches, feetInchesToCm, kgToLbs, lbsToKg, formatHeight, formatWeight, getWeightUnit } from '@/lib/utils/unitUtils';
@@ -48,6 +58,19 @@ function normalizeCustomHabits(habits) {
     ...habit,
     sortOrder: index,
   }));
+}
+
+function toggleActivityFocus(current, value) {
+  if (value === 'none') {
+    return current.includes('none') ? [] : ['none'];
+  }
+
+  const withoutNone = current.filter((entry) => entry !== 'none');
+  if (withoutNone.includes(value)) {
+    return withoutNone.filter((entry) => entry !== value);
+  }
+
+  return [...withoutNone, value];
 }
 
 function MacroSummaryCard({
@@ -121,6 +144,7 @@ export default function Profile() {
   const [newCustomHabitName, setNewCustomHabitName] = useState('');
   const [selectedTemplateKey, setSelectedTemplateKey] = useState('');
   const [formData, setFormData] = useState({
+    dateOfBirth: '',
     age: '',
     height: '',
     heightFeet: '',
@@ -128,7 +152,8 @@ export default function Profile() {
     weight: '',
     gender: 'male',
     activityLevel: 'moderate',
-    goal: 'maintain',
+    goalStrategy: 'maintenance',
+    activityFocus: [],
     dietStyle: 'balanced',
     units: 'imperial',
     dailyWinsActiveKeys: DEFAULT_ACTIVE_DAILY_WIN_KEYS,
@@ -161,6 +186,7 @@ export default function Profile() {
         const units = data.units || 'metric';
         const { feet, inches } = cmToFeetInches(data.height);
         setFormData({
+          dateOfBirth: data.dateOfBirth || '',
           age: data.age.toString(),
           height: data.height.toString(),
           heightFeet: feet.toString(),
@@ -168,7 +194,8 @@ export default function Profile() {
           weight: units === 'imperial' ? kgToLbs(data.weight).toString() : data.weight.toString(),
           gender: data.gender,
           activityLevel: data.activityLevel,
-          goal: data.goal,
+          goalStrategy: data.goalStrategy || 'maintenance',
+          activityFocus: data.activityFocus || [],
           dietStyle: data.dietStyle || 'balanced',
           units: units,
           dailyWinsActiveKeys: data.dailyWinsActiveKeys || DEFAULT_ACTIVE_DAILY_WIN_KEYS,
@@ -249,12 +276,15 @@ export default function Profile() {
       }
 
       const profileData = {
-        age: parseInt(formData.age),
+        dateOfBirth: formData.dateOfBirth,
+        age: calculateAgeFromDateOfBirth(formData.dateOfBirth),
         height: heightInCm,
         weight: weightInKg,
         gender: formData.gender,
         activityLevel: formData.activityLevel,
-        goal: formData.goal,
+        goalStrategy: formData.goalStrategy,
+        goal: mapGoalStrategyToLegacyGoal(formData.goalStrategy),
+        activityFocus: formData.activityFocus,
         dietStyle: formData.dietStyle,
         units: formData.units,
         dailyWinsActiveKeys: formData.dailyWinsActiveKeys,
@@ -329,6 +359,13 @@ export default function Profile() {
     challengeStartDate: formData.dailyWinsChallengeStartDate,
     referenceDate: getTodayDate(),
   });
+  const derivedAge = calculateAgeFromDateOfBirth(formData.dateOfBirth);
+  const derivedAgeGroup = deriveAgeGroup({ dateOfBirth: formData.dateOfBirth, age: derivedAge });
+  const derivedCoachingMode = deriveCoachingMode({
+    ageGroup: derivedAgeGroup,
+    goalStrategy: formData.goalStrategy,
+    activityFocus: formData.activityFocus,
+  });
   const isAuthLive = authStatus.mode === 'enabled';
   const accountSummary = authStatus.user?.email
     ? `Signed in as ${authStatus.user.email}.`
@@ -343,12 +380,29 @@ export default function Profile() {
     return (
       <div className="container" style={{ padding: '40px 20px', maxWidth: '800px' }}>
         <h1 style={{ marginBottom: '32px' }}>
-          {profile ? 'Edit Profile' : 'Complete Your Profile'}
+          {profile ? 'Edit Profile' : 'Let’s build your coaching profile'}
         </h1>
 
         <div className="card">
           <form onSubmit={handleSubmit}>
-            <h2 style={{ marginBottom: '24px' }}>Basic Information</h2>
+            {!profile && (
+              <div
+                style={{
+                  marginBottom: '24px',
+                  padding: '16px 18px',
+                  borderRadius: '12px',
+                  background: 'rgba(52, 152, 219, 0.08)',
+                  border: '1px solid rgba(52, 152, 219, 0.18)',
+                }}
+              >
+                <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Quick onboarding interview</p>
+                <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                  Answer a few questions and Lean Ledger will derive the right coaching mode, macro posture, and daily guidance automatically.
+                </p>
+              </div>
+            )}
+
+            <h2 style={{ marginBottom: '24px' }}>1. Who are we coaching?</h2>
 
             <div className="form-group">
               <label className="form-label">Units</label>
@@ -362,10 +416,20 @@ export default function Profile() {
 
             <div className="grid grid-2">
               <div className="form-group">
-                <label className="form-label">Age</label>
-                <input type="number" value={formData.age}
-                  onChange={(e) => setFormData((p) => ({ ...p, age: e.target.value }))}
-                  className="form-input" min="1" max="120" required />
+                <label className="form-label">Date of Birth</label>
+                <input
+                  type="date"
+                  value={formData.dateOfBirth}
+                  onChange={(e) => setFormData((p) => ({ ...p, dateOfBirth: e.target.value }))}
+                  className="form-input"
+                  max={getTodayDate()}
+                  required
+                />
+                {derivedAge != null ? (
+                  <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                    Age {derivedAge} • {getAgeGroupDescription(derivedAgeGroup)}
+                  </p>
+                ) : null}
               </div>
 
               <div className="form-group">
@@ -378,7 +442,99 @@ export default function Profile() {
                   <option value="other">Other</option>
                 </select>
               </div>
+            </div>
 
+            <h2 style={{ marginTop: '32px', marginBottom: '24px' }}>2. What are you working toward?</h2>
+
+            <div className="form-group">
+              <label className="form-label">Goal Strategy</label>
+              <select value={formData.goalStrategy}
+                onChange={(e) => setFormData((p) => ({ ...p, goalStrategy: e.target.value }))}
+                className="form-select" required>
+                <option value="fat_loss">Fat Loss</option>
+                <option value="lean_recomp">Lean Recomp</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="lean_mass_gain">Lean Mass Gain</option>
+                <option value="performance_fueling">Performance Fueling</option>
+                <option value="confidence_fitness">Confidence + Fitness</option>
+              </select>
+              {formData.goalStrategy === 'lean_recomp' && (
+                <div style={{
+                  marginTop: '12px',
+                  padding: '14px 16px',
+                  borderRadius: '12px',
+                  background: 'rgba(52, 152, 219, 0.08)',
+                  border: '1px solid rgba(52, 152, 219, 0.18)',
+                }}>
+                  <p style={{ margin: '0 0 6px', fontSize: '14px', color: 'var(--text-primary)' }}>
+                    {LEAN_RECOMP_HELPER_TEXT}
+                  </p>
+                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+                    {LEAN_RECOMP_PROTEIN_HELPER}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <h2 style={{ marginTop: '32px', marginBottom: '24px' }}>3. What activities matter most right now?</h2>
+
+            <div className="form-group">
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {ACTIVITY_FOCUS_OPTIONS.map((focus) => {
+                  const active = formData.activityFocus.includes(focus);
+                  return (
+                    <button
+                      key={focus}
+                      type="button"
+                      className={active ? 'btn btn-primary' : 'btn btn-outline'}
+                      onClick={() => setFormData((current) => ({
+                        ...current,
+                        activityFocus: toggleActivityFocus(current.activityFocus, focus),
+                      }))}
+                    >
+                      {getActivityFocusDescription(focus)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div
+              style={{
+                marginTop: '18px',
+                padding: '14px 16px',
+                borderRadius: '12px',
+                background: 'rgba(39, 174, 96, 0.08)',
+                border: '1px solid rgba(39, 174, 96, 0.18)',
+              }}
+            >
+              <p style={{ margin: '0 0 6px', fontWeight: 600 }}>Derived coaching preview</p>
+              <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)' }}>
+                Age group: {getAgeGroupDescription(derivedAgeGroup) || 'Add date of birth'}
+              </p>
+              <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                Coaching mode: {getCoachingModeDescription(derivedCoachingMode)}
+              </p>
+            </div>
+
+            <h2 style={{ marginTop: '32px', marginBottom: '24px' }}>4. What does your routine look like?</h2>
+
+            <div className="form-group">
+              <label className="form-label">Activity Level</label>
+              <select value={formData.activityLevel}
+                onChange={(e) => setFormData((p) => ({ ...p, activityLevel: e.target.value }))}
+                className="form-select" required>
+                <option value="sedentary">Sedentary - {getActivityLevelDescription('sedentary')}</option>
+                <option value="light">Light - {getActivityLevelDescription('light')}</option>
+                <option value="moderate">Moderate - {getActivityLevelDescription('moderate')}</option>
+                <option value="active">Active - {getActivityLevelDescription('active')}</option>
+                <option value="very_active">Very Active - {getActivityLevelDescription('very_active')}</option>
+              </select>
+            </div>
+
+            <h2 style={{ marginTop: '32px', marginBottom: '24px' }}>5. Current body metrics</h2>
+
+            <div className="grid grid-2">
               {formData.units === 'metric' ? (
                 <div className="form-group">
                   <label className="form-label">Height (cm)</label>
@@ -410,47 +566,7 @@ export default function Profile() {
               </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Activity Level</label>
-              <select value={formData.activityLevel}
-                onChange={(e) => setFormData((p) => ({ ...p, activityLevel: e.target.value }))}
-                className="form-select" required>
-                <option value="sedentary">Sedentary - {getActivityLevelDescription('sedentary')}</option>
-                <option value="light">Light - {getActivityLevelDescription('light')}</option>
-                <option value="moderate">Moderate - {getActivityLevelDescription('moderate')}</option>
-                <option value="active">Active - {getActivityLevelDescription('active')}</option>
-                <option value="very_active">Very Active - {getActivityLevelDescription('very_active')}</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Goal</label>
-              <select value={formData.goal}
-                onChange={(e) => setFormData((p) => ({ ...p, goal: e.target.value }))}
-                className="form-select" required>
-                <option value="recomp">Lean Recomp: Lose Fat + Build Muscle (Recommended)</option>
-                <option value="lose">Weight Loss (500 cal deficit)</option>
-                <option value="maintain">Maintain Weight</option>
-                <option value="gain">Muscle Gain (300 cal surplus)</option>
-              </select>
-              {formData.goal === 'recomp' && (
-                <div style={{
-                  marginTop: '12px',
-                  padding: '14px 16px',
-                  borderRadius: '12px',
-                  background: 'rgba(52, 152, 219, 0.08)',
-                  border: '1px solid rgba(52, 152, 219, 0.18)',
-                }}>
-                  <p style={{ margin: '0 0 6px', fontSize: '14px', color: 'var(--text-primary)' }}>
-                    {LEAN_RECOMP_HELPER_TEXT}
-                  </p>
-                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
-                    {LEAN_RECOMP_PROTEIN_HELPER}
-                  </p>
-                </div>
-              )}
-            </div>
-
+            <h2 style={{ marginTop: '32px', marginBottom: '24px' }}>6. Nutrition style</h2>
             <div className="form-group">
               <label className="form-label">Diet Style</label>
               <select value={formData.dietStyle}
@@ -461,7 +577,7 @@ export default function Profile() {
                 <option value="keto">Keto</option>
                 <option value="keto_flexible">Keto Weekdays / Flexible Weekends</option>
               </select>
-              {formData.goal === 'recomp' && (
+              {formData.goalStrategy === 'lean_recomp' && (
                 <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '8px' }}>
                   Protein stays high, calories stay fixed to the goal, carbs adapt to your selected style, and fat fills the remainder.
                 </p>
@@ -826,8 +942,16 @@ export default function Profile() {
           <h2 style={{ marginBottom: '24px' }}>Personal Info</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '4px' }}>Date of Birth</p>
+              <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>{profile.dateOfBirth || 'Not set'}</p>
+            </div>
+            <div>
               <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '4px' }}>Age</p>
               <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>{profile.age} years</p>
+            </div>
+            <div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '4px' }}>Age Group</p>
+              <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>{getAgeGroupDescription(profile.ageGroup)}</p>
             </div>
             <div>
               <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '4px' }}>Gender</p>
@@ -857,14 +981,26 @@ export default function Profile() {
               </p>
             </div>
             <div>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '4px' }}>Goal</p>
-              <p style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>{getGoalDescription(profile.goal)}</p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '4px' }}>Goal Strategy</p>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>{getGoalStrategyDescription(profile.goalStrategy)}</p>
+            </div>
+            <div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '4px' }}>Coaching Mode</p>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>{getCoachingModeDescription(profile.coachingMode)}</p>
+            </div>
+            <div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '4px' }}>Activity Focus</p>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>
+                {profile.activityFocus?.length > 0
+                  ? profile.activityFocus.map(getActivityFocusDescription).join(' • ')
+                  : 'None'}
+              </p>
             </div>
             <div>
               <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '4px' }}>Diet Style</p>
               <p style={{ fontSize: '18px', fontWeight: 'bold', margin: 0 }}>{getDietStyleDescription(profile.dietStyle)}</p>
             </div>
-            {profile.goal === 'recomp' && (
+            {profile.goalStrategy === 'lean_recomp' && (
               <div style={{
                 padding: '14px 16px',
                 borderRadius: '12px',
@@ -1098,7 +1234,7 @@ export default function Profile() {
                 <>
                   <p style={{ margin: 0 }}>BMR: {profile.recommendedMacros.bmr} kcal</p>
                   <p style={{ margin: 0 }}>TDEE: {profile.recommendedMacros.tdee} kcal</p>
-                  {profile.goal === 'recomp' && profile.recommendedMacros.deficit && (
+                  {profile.goalStrategy === 'lean_recomp' && profile.recommendedMacros.deficit && (
                     <p style={{ margin: 0 }}>Lean Recomp deficit: {profile.recommendedMacros.deficit} kcal</p>
                   )}
                 </>
@@ -1120,10 +1256,10 @@ export default function Profile() {
             macros={profile.activeMacros}
             badgeText={profile.hasCustomMacros ? 'Matches recommendation' : 'Recommended'}
             metadata={(
-              <>
-                <p style={{ margin: 0 }}>BMR: {profile.recommendedMacros.bmr} kcal</p>
-                <p style={{ margin: 0 }}>TDEE: {profile.recommendedMacros.tdee} kcal</p>
-                {profile.goal === 'recomp' && profile.recommendedMacros.deficit && (
+                <>
+                  <p style={{ margin: 0 }}>BMR: {profile.recommendedMacros.bmr} kcal</p>
+                  <p style={{ margin: 0 }}>TDEE: {profile.recommendedMacros.tdee} kcal</p>
+                {profile.goalStrategy === 'lean_recomp' && profile.recommendedMacros.deficit && (
                   <p style={{ margin: 0 }}>Lean Recomp deficit: {profile.recommendedMacros.deficit} kcal</p>
                 )}
               </>
