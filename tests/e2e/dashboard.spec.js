@@ -127,7 +127,7 @@ test.describe('dashboard and meals flows', () => {
     }
     const profileDailyWinsCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Daily Wins' }).first() }).first();
     const profileCustomDailyWinsCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Custom Daily Wins' }) }).first();
-    await page.locator('select').filter({ has: page.locator('option[value="faith_and_fitness"]') }).selectOption('faith_and_fitness');
+    await profileDailyWinsCard.locator('select').first().selectOption('faith_and_fitness');
     await page.getByRole('button', { name: 'Apply Template' }).click();
     await expect(profileCustomDailyWinsCard.locator('input[type="text"][value="Mobility"]')).toBeVisible();
     await profileDailyWinsCard
