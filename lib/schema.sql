@@ -42,9 +42,56 @@ CREATE TABLE IF NOT EXISTS allowed_emails (
   revoked_at TIMESTAMPTZ
 );
 
+CREATE TABLE IF NOT EXISTS households (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS household_members (
+  id SERIAL PRIMARY KEY,
+  household_id INTEGER NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (household_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS profiles (
+  id SERIAL PRIMARY KEY,
+  household_id INTEGER NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  source_user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE SET NULL,
+  managed_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  date_of_birth TEXT,
+  age INTEGER,
+  height DOUBLE PRECISION,
+  weight DOUBLE PRECISION,
+  gender TEXT CHECK (gender IN ('male', 'female', 'other')),
+  activity_level TEXT CHECK (activity_level IN ('sedentary', 'light', 'moderate', 'active', 'very_active')),
+  goal TEXT CHECK (goal IN ('lose', 'maintain', 'gain', 'recomp')),
+  goal_strategy TEXT,
+  activity_focus TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  diet_style TEXT DEFAULT 'balanced' CHECK (diet_style IN ('balanced', 'low_carb', 'keto', 'keto_flexible')),
+  units TEXT DEFAULT 'metric' CHECK (units IN ('metric', 'imperial')),
+  daily_wins_active_keys TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  daily_wins_template_key TEXT,
+  daily_wins_challenge_start_date TEXT,
+  custom_protein DOUBLE PRECISION,
+  custom_fat DOUBLE PRECISION,
+  custom_carbs DOUBLE PRECISION,
+  custom_calories DOUBLE PRECISION,
+  is_dependent BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS meals (
   id          SERIAL PRIMARY KEY,
   user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  profile_id  INTEGER REFERENCES profiles(id) ON DELETE CASCADE,
   date        TEXT NOT NULL,
   meal_name   TEXT NOT NULL,
   meal_type   TEXT DEFAULT 'breakfast',
@@ -63,6 +110,7 @@ CREATE TABLE IF NOT EXISTS meals (
 CREATE TABLE IF NOT EXISTS favorite_meals (
   id          SERIAL PRIMARY KEY,
   user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  profile_id  INTEGER REFERENCES profiles(id) ON DELETE CASCADE,
   name        TEXT NOT NULL,
   meal_type   TEXT NOT NULL,
   protein     DOUBLE PRECISION NOT NULL,
@@ -94,6 +142,7 @@ CREATE TABLE IF NOT EXISTS favorite_meal_items (
 CREATE TABLE IF NOT EXISTS favorite_foods (
   id              SERIAL PRIMARY KEY,
   user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  profile_id      INTEGER REFERENCES profiles(id) ON DELETE CASCADE,
   name            TEXT NOT NULL,
   default_meal_type TEXT DEFAULT 'breakfast',
   portion_amount  DOUBLE PRECISION,
@@ -128,6 +177,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_favorite_foods_user_exact_signature
 CREATE TABLE IF NOT EXISTS favorite_beverages (
   id                      SERIAL PRIMARY KEY,
   user_id                 INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  profile_id              INTEGER REFERENCES profiles(id) ON DELETE CASCADE,
   name                    TEXT NOT NULL,
   beverage_type           TEXT NOT NULL DEFAULT 'water',
   display_name            TEXT,
@@ -163,6 +213,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_favorite_beverages_user_exact_signature
 CREATE TABLE IF NOT EXISTS weight_logs (
   id          SERIAL PRIMARY KEY,
   user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  profile_id  INTEGER REFERENCES profiles(id) ON DELETE CASCADE,
   date        TEXT NOT NULL,
   weight      DOUBLE PRECISION NOT NULL,
   created_at  TIMESTAMPTZ DEFAULT NOW(),
@@ -172,6 +223,7 @@ CREATE TABLE IF NOT EXISTS weight_logs (
 CREATE TABLE IF NOT EXISTS water_entries (
   id                           SERIAL PRIMARY KEY,
   user_id                      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  profile_id                   INTEGER REFERENCES profiles(id) ON DELETE CASCADE,
   amount                       DOUBLE PRECISION NOT NULL,
   unit                         TEXT NOT NULL CHECK (unit IN ('fl_oz', 'cup', 'ml', 'l')),
   amount_fl_oz                 DOUBLE PRECISION NOT NULL,
@@ -192,6 +244,7 @@ CREATE TABLE IF NOT EXISTS water_entries (
 CREATE TABLE IF NOT EXISTS health_metrics (
   id                           SERIAL PRIMARY KEY,
   user_id                      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  profile_id                   INTEGER REFERENCES profiles(id) ON DELETE CASCADE,
   recorded_at                  TEXT NOT NULL,
   date                         TEXT NOT NULL,
   weight                       DOUBLE PRECISION,
@@ -231,6 +284,7 @@ CREATE TABLE IF NOT EXISTS health_metrics (
 CREATE TABLE IF NOT EXISTS habit_definitions (
   id                SERIAL PRIMARY KEY,
   user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  profile_id        INTEGER REFERENCES profiles(id) ON DELETE CASCADE,
   name              TEXT NOT NULL,
   category          TEXT NOT NULL DEFAULT 'custom',
   input_type        TEXT NOT NULL DEFAULT 'boolean',
@@ -245,6 +299,7 @@ CREATE TABLE IF NOT EXISTS habit_definitions (
 CREATE TABLE IF NOT EXISTS daily_habit_logs (
   id            SERIAL PRIMARY KEY,
   user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  profile_id    INTEGER REFERENCES profiles(id) ON DELETE CASCADE,
   habit_id      INTEGER NOT NULL REFERENCES habit_definitions(id) ON DELETE CASCADE,
   date          TEXT NOT NULL,
   value_boolean BOOLEAN,
@@ -255,9 +310,23 @@ CREATE TABLE IF NOT EXISTS daily_habit_logs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_meals_user_date       ON meals(user_id, date);
+CREATE INDEX IF NOT EXISTS idx_meals_profile_id ON meals(profile_id);
 CREATE INDEX IF NOT EXISTS idx_weight_logs_user_date ON weight_logs(user_id, date);
+CREATE INDEX IF NOT EXISTS idx_weight_logs_profile_id ON weight_logs(profile_id);
 CREATE INDEX IF NOT EXISTS idx_water_entries_user_date ON water_entries(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_water_entries_user_recorded_at ON water_entries(user_id, recorded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_water_entries_profile_id ON water_entries(profile_id);
+CREATE INDEX IF NOT EXISTS idx_households_creator_user_id ON households(created_by_user_id);
+CREATE INDEX IF NOT EXISTS idx_household_members_household_id ON household_members(household_id);
+CREATE INDEX IF NOT EXISTS idx_household_members_user_id ON household_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_household_id ON profiles(household_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_source_user_id ON profiles(source_user_id);
+CREATE INDEX IF NOT EXISTS idx_favorite_meals_profile_id ON favorite_meals(profile_id);
+CREATE INDEX IF NOT EXISTS idx_favorite_foods_profile_id ON favorite_foods(profile_id);
+CREATE INDEX IF NOT EXISTS idx_favorite_beverages_profile_id ON favorite_beverages(profile_id);
+CREATE INDEX IF NOT EXISTS idx_health_metrics_profile_id ON health_metrics(profile_id);
+CREATE INDEX IF NOT EXISTS idx_habit_definitions_profile_id ON habit_definitions(profile_id);
+CREATE INDEX IF NOT EXISTS idx_daily_habit_logs_profile_id ON daily_habit_logs(profile_id);
 CREATE INDEX IF NOT EXISTS idx_health_metrics_user_date ON health_metrics(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_health_metrics_user_recorded_at ON health_metrics(user_id, recorded_at);
 CREATE INDEX IF NOT EXISTS idx_habit_definitions_user_sort_order ON habit_definitions(user_id, sort_order, created_at);
