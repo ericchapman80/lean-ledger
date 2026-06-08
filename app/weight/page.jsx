@@ -120,7 +120,7 @@ export default function Weight() {
               )}
               <div>
                 <p style={{ color: 'var(--text-secondary)', marginBottom: '8px' }}>Goal</p>
-                <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{getGoalDescription(profile.goal)}</p>
+                <p style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{getGoalDescription(profile.goalStrategy || profile.goal)}</p>
               </div>
             </div>
           )}

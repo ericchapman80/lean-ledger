@@ -3,15 +3,21 @@ import { enrichProfile, hasCompletedProfile, validateProfilePayload } from '@/li
 
 describe('validateProfilePayload', () => {
   const valid = {
-    age: 30, height: 175, weight: 75,
-    gender: 'male', activityLevel: 'moderate', goal: 'maintain', dietStyle: 'balanced',
+    dateOfBirth: '1996-06-07',
+    height: 175,
+    weight: 75,
+    gender: 'male',
+    activityLevel: 'moderate',
+    goalStrategy: 'maintenance',
+    activityFocus: ['general_fitness'],
+    dietStyle: 'balanced',
   };
 
   it('returns null for a valid payload', () => {
     expect(validateProfilePayload(valid)).toBeNull();
   });
 
-  it.each(['age', 'height', 'weight', 'gender', 'activityLevel', 'goal'])(
+  it.each(['dateOfBirth', 'height', 'weight', 'gender', 'activityLevel', 'goalStrategy'])(
     'rejects missing %s',
     (field) => {
       const bad = { ...valid, [field]: undefined };
@@ -32,6 +38,13 @@ describe('validateProfilePayload', () => {
   it('rejects an invalid goal', () => {
     expect(validateProfilePayload({ ...valid, goal: 'become-the-rock' }))
       .toBe('Invalid goal');
+  });
+
+  it('rejects an invalid goal strategy and activity focus', () => {
+    expect(validateProfilePayload({ ...valid, goalStrategy: 'bulk-hard' }))
+      .toBe('Invalid goal strategy');
+    expect(validateProfilePayload({ ...valid, activityFocus: ['football', 'robotics'] }))
+      .toBe('Invalid activity focus');
   });
 
   it('rejects an invalid units value (when provided)', () => {
@@ -66,8 +79,10 @@ describe('validateProfilePayload', () => {
 describe('enrichProfile', () => {
   const user = {
     id: 1,
+    dateOfBirth: '1996-06-07',
     age: 30, height: 175, weight: 75,
-    gender: 'male', activityLevel: 'moderate', goal: 'maintain',
+    gender: 'male', activityLevel: 'moderate', goal: 'maintain', goalStrategy: 'maintenance',
+    activityFocus: ['general_fitness'],
     dietStyle: 'balanced',
     units: 'metric',
     dailyWinsActiveKeys: ['workoutCompleted', 'sleepHours', 'energyLevel'],
@@ -85,6 +100,8 @@ describe('enrichProfile', () => {
     expect(result.dailyWinsActiveKeys).toEqual(['workoutCompleted', 'sleepHours', 'energyLevel']);
     expect(result.activeDailyWins.map((definition) => definition.key)).toEqual(['workoutCompleted', 'sleepHours', 'energyLevel']);
     expect(result.dailyWinsTemplate?.name).toBe('Lean Recomp Foundations');
+    expect(result.ageGroup).toBe('adult');
+    expect(result.coachingMode).toBe('general_wellness');
   });
 
   it('uses customMacros when present', () => {
@@ -125,6 +142,7 @@ describe('enrichProfile', () => {
   it('marks incomplete profiles as needing setup without calculating macros', () => {
     const incomplete = enrichProfile({
       ...user,
+      dateOfBirth: null,
       age: null,
     });
 
@@ -137,6 +155,7 @@ describe('enrichProfile', () => {
 describe('hasCompletedProfile', () => {
   it('returns true only when the required onboarding fields are present', () => {
     expect(hasCompletedProfile({
+      dateOfBirth: '1996-06-07',
       age: 30,
       height: 175,
       weight: 75,
@@ -146,6 +165,7 @@ describe('hasCompletedProfile', () => {
     })).toBe(true);
 
     expect(hasCompletedProfile({
+      dateOfBirth: null,
       age: 30,
       height: 175,
       weight: 75,
