@@ -127,7 +127,11 @@ test.describe('dashboard and meals flows', () => {
     await page.locator('select').filter({ has: page.locator('option[value="faith_and_fitness"]') }).selectOption('faith_and_fitness');
     await page.getByRole('button', { name: 'Apply Template' }).click();
     await expect(profileCustomDailyWinsCard.locator('input[type="text"][value="Mobility"]')).toBeVisible();
-    await profileDailyWinsCard.locator('input[type="date"]').fill(challengeStartDate);
+    await profileDailyWinsCard
+      .locator('.form-group')
+      .filter({ has: page.getByText('Challenge start date', { exact: true }) })
+      .locator('input[type="date"]')
+      .fill(challengeStartDate);
     await page.getByRole('button', { name: 'Update Profile' }).click();
 
     await expect(profileDailyWinsCard).toBeVisible();
