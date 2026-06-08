@@ -249,6 +249,8 @@ export default function Meals() {
   const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
   const [isFavoriteFoodsOpen, setIsFavoriteFoodsOpen] = useState(false);
   const [isFavoriteBeveragesOpen, setIsFavoriteBeveragesOpen] = useState(false);
+  const [favoriteFoodSearch, setFavoriteFoodSearch] = useState('');
+  const [favoriteBeverageSearch, setFavoriteBeverageSearch] = useState('');
   const [favoriteDraft, setFavoriteDraft] = useState(null);
   const [favoriteFoodDraft, setFavoriteFoodDraft] = useState(null);
   const [favoriteBeverageDraft, setFavoriteBeverageDraft] = useState(null);
@@ -339,10 +341,35 @@ export default function Meals() {
   const visibleFavoriteSuggestions = useMemo(() => (
     favoriteSuggestions.filter((suggestion) => !dismissedSuggestionKeys.includes(`${suggestion.mealType}::${suggestion.signature}`))
   ), [dismissedSuggestionKeys, favoriteSuggestions]);
+  const preferredBeverageUnit = getPreferredBeverageUnit(profile?.units);
+  const filteredFavoriteFoods = useMemo(() => {
+    const query = favoriteFoodSearch.trim().toLowerCase();
+    if (!query) return favoriteFoods;
+
+    return favoriteFoods.filter((favoriteFood) => {
+      const mealTypeLabel = getMealTypeLabel(favoriteFood.defaultMealType || 'breakfast').toLowerCase();
+      const portion = formatFoodPortion(favoriteFood)?.toLowerCase() || '';
+      return (
+        favoriteFood.name.toLowerCase().includes(query)
+        || mealTypeLabel.includes(query)
+        || portion.includes(query)
+      );
+    });
+  }, [favoriteFoodSearch, favoriteFoods]);
+  const filteredFavoriteBeverages = useMemo(() => {
+    const query = favoriteBeverageSearch.trim().toLowerCase();
+    if (!query) return favoriteBeverages;
+
+    return favoriteBeverages.filter((favoriteBeverage) => (
+      favoriteBeverage.name.toLowerCase().includes(query)
+      || getBeverageDisplayName(favoriteBeverage).toLowerCase().includes(query)
+      || formatFavoriteBeverageDetails(favoriteBeverage, preferredBeverageUnit)
+        .some((detail) => detail.toLowerCase().includes(query))
+    ));
+  }, [favoriteBeverageSearch, favoriteBeverages, preferredBeverageUnit]);
   const favoriteSuggestionMap = useMemo(() => new Map(
     visibleFavoriteSuggestions.map((suggestion) => [`${suggestion.mealType}::${suggestion.signature}`, suggestion]),
   ), [visibleFavoriteSuggestions]);
-  const preferredBeverageUnit = getPreferredBeverageUnit(profile?.units);
   const beverageHydrationPreview = useMemo(() => {
     if (beverageForm.amount === '') return null;
     const amountFlOz = convertBeverageToFlOz(beverageForm.amount, beverageForm.unit);
@@ -1664,7 +1691,14 @@ export default function Meals() {
         )}
       </Modal>
 
-      <Modal isOpen={isFavoriteFoodsOpen} onClose={() => setIsFavoriteFoodsOpen(false)} title="Favorite Foods">
+      <Modal
+        isOpen={isFavoriteFoodsOpen}
+        onClose={() => {
+          setIsFavoriteFoodsOpen(false);
+          setFavoriteFoodSearch('');
+        }}
+        title="Favorite Foods"
+      >
         {favoriteFoods.length === 0 ? (
           <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
             No favorite foods yet. Favorite an item from your intake log to reuse it without duplicate/edit work.
@@ -1674,7 +1708,22 @@ export default function Meals() {
             <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
               Add to current target meal: <strong>{getMealTypeLabel(selectedMealType)}</strong>
             </p>
-            {favoriteFoods.map((favoriteFood) => (
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" htmlFor="favorite-food-search" style={{ marginBottom: '6px' }}>Search favorites</label>
+              <input
+                id="favorite-food-search"
+                type="search"
+                value={favoriteFoodSearch}
+                onChange={(e) => setFavoriteFoodSearch(e.target.value)}
+                className="form-input"
+                placeholder="Search by name, meal, or portion"
+              />
+            </div>
+            {filteredFavoriteFoods.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+                No favorite foods match that search yet.
+              </p>
+            ) : filteredFavoriteFoods.map((favoriteFood) => (
               <div key={favoriteFood.id} className="card" style={{ boxShadow: 'none', padding: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', marginBottom: '8px' }}>
                   <div>
@@ -1698,14 +1747,36 @@ export default function Meals() {
         )}
       </Modal>
 
-      <Modal isOpen={isFavoriteBeveragesOpen} onClose={() => setIsFavoriteBeveragesOpen(false)} title="Favorite Beverages">
+      <Modal
+        isOpen={isFavoriteBeveragesOpen}
+        onClose={() => {
+          setIsFavoriteBeveragesOpen(false);
+          setFavoriteBeverageSearch('');
+        }}
+        title="Favorite Beverages"
+      >
         {favoriteBeverages.length === 0 ? (
           <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
             No favorite beverages yet. Favorite a beverage entry from your intake log to reuse it without rebuilding the hydration or macro details.
           </p>
         ) : (
           <div style={{ display: 'grid', gap: '12px' }}>
-            {favoriteBeverages.map((favoriteBeverage) => (
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" htmlFor="favorite-beverage-search" style={{ marginBottom: '6px' }}>Search favorites</label>
+              <input
+                id="favorite-beverage-search"
+                type="search"
+                value={favoriteBeverageSearch}
+                onChange={(e) => setFavoriteBeverageSearch(e.target.value)}
+                className="form-input"
+                placeholder="Search by name, type, or hydration details"
+              />
+            </div>
+            {filteredFavoriteBeverages.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+                No favorite beverages match that search yet.
+              </p>
+            ) : filteredFavoriteBeverages.map((favoriteBeverage) => (
               <div key={favoriteBeverage.id} className="card" style={{ boxShadow: 'none', padding: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', marginBottom: '8px' }}>
                   <div>

@@ -10,6 +10,9 @@ import {
 
 function getInitialUnit(product) {
   const profile = inferFoodPortionProfile(product);
+  if (profile.units.includes('serving')) {
+    return 'serving';
+  }
   return profile.defaultUnit;
 }
 
