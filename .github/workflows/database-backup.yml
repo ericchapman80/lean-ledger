@@ -31,7 +31,7 @@ jobs:
           sha256sum "$filename" > "${filename}.sha256"
           echo "BACKUP_FILE=$filename" >> "$GITHUB_ENV"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ env.BACKUP_FILE }}
           path: |
