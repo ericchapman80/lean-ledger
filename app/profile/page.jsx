@@ -356,8 +356,6 @@ export default function Profile() {
     }
   };
 
-  if (loading) return <Loading />;
-
   const activeDailyWins = getActiveDailyWinDefinitions(formData.dailyWinsActiveKeys);
   const inactiveDailyWins = DEFAULT_DAILY_WIN_KEYS
     .filter((key) => !formData.dailyWinsActiveKeys.includes(key))
@@ -403,6 +401,8 @@ export default function Profile() {
       setFormData((current) => ({ ...current, goalStrategy: normalizedGoalStrategy }));
     }
   }, [formData.goalStrategy, normalizedGoalStrategy]);
+
+  if (loading) return <Loading />;
 
   if (editing || !profile) {
     return (
