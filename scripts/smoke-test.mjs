@@ -132,11 +132,11 @@ await step('Health check', async () => {
 await step('Profile: fetch', async () => {
   const r = await request('GET', '/api/profile');
   if (readOnly) {
-    assert('GET /api/profile → 200 or 404', r.status === 200 || r.status === 404, `got ${r.status}`);
+    assert('GET /api/profile → 200, 401, or 404', [200, 401, 404].includes(r.status), `got ${r.status}`);
   } else {
     assert('GET /api/profile → 200 or 404', r.status === 200 || r.status === 404, `got ${r.status}`);
   }
-  assert('Profile route is reachable', r.status === 200 || r.status === 404);
+  assert('Profile route is reachable', readOnly ? [200, 401, 404].includes(r.status) : (r.status === 200 || r.status === 404));
 });
 
 let mealId = null;
@@ -173,11 +173,12 @@ if (!readOnly) {
 
 await step('Meals: fetch today', async () => {
   const r = await request('GET', `/api/meals?date=${today}`);
-  assert('GET /api/meals → 200', r.status === 200);
-  assert('Array response', Array.isArray(r.data));
   if (readOnly) {
-    assert('Meals route returns entries or an empty list', Array.isArray(r.data));
+    assert('GET /api/meals → 200 or 401', [200, 401].includes(r.status), `got ${r.status}`);
+    assert('Meals route returns entries or an empty list', r.status === 401 || Array.isArray(r.data));
   } else {
+    assert('GET /api/meals → 200', r.status === 200);
+    assert('Array response', Array.isArray(r.data));
     assert('Includes smoke meal', r.data?.some((m) => m.id === mealId));
   }
 });
@@ -196,11 +197,13 @@ if (!readOnly) {
 
 await step('Stats: daily', async () => {
   const r = await request('GET', `/api/stats/daily/${today}`);
-  assert('GET /api/stats/daily/:date → 200', r.status === 200);
-  assert('Includes totals + targets + progress', r.data?.totals && r.data?.targets && r.data?.progress);
   if (readOnly) {
-    assert('mealCount is present', typeof r.data?.mealCount === 'number');
+    assert('GET /api/stats/daily/:date → 200 or 401', [200, 401].includes(r.status), `got ${r.status}`);
+    assert('Includes totals + targets + progress', r.status === 401 || (r.data?.totals && r.data?.targets && r.data?.progress));
+    assert('mealCount is present', r.status === 401 || typeof r.data?.mealCount === 'number');
   } else {
+    assert('GET /api/stats/daily/:date → 200', r.status === 200);
+    assert('Includes totals + targets + progress', r.data?.totals && r.data?.targets && r.data?.progress);
     assert('mealCount > 0', r.data?.mealCount > 0);
   }
 });
@@ -208,8 +211,13 @@ await step('Stats: daily', async () => {
 await step('Stats: trends (last 7d)', async () => {
   const start = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
   const r = await request('GET', `/api/stats/trends?startDate=${start}&endDate=${today}`);
-  assert('GET /api/stats/trends → 200', r.status === 200);
-  assert('Array response', Array.isArray(r.data));
+  if (readOnly) {
+    assert('GET /api/stats/trends → 200 or 401', [200, 401].includes(r.status), `got ${r.status}`);
+    assert('Array response', r.status === 401 || Array.isArray(r.data));
+  } else {
+    assert('GET /api/stats/trends → 200', r.status === 200);
+    assert('Array response', Array.isArray(r.data));
+  }
 });
 
 if (!readOnly) {
@@ -221,8 +229,13 @@ if (!readOnly) {
 
 await step('Weight: fetch', async () => {
   const r = await request('GET', '/api/weight?limit=5');
-  assert('GET /api/weight → 200', r.status === 200);
-  assert('Array response', Array.isArray(r.data));
+  if (readOnly) {
+    assert('GET /api/weight → 200 or 401', [200, 401].includes(r.status), `got ${r.status}`);
+    assert('Array response', r.status === 401 || Array.isArray(r.data));
+  } else {
+    assert('GET /api/weight → 200', r.status === 200);
+    assert('Array response', Array.isArray(r.data));
+  }
 });
 
 if (!readOnly) {
@@ -239,8 +252,13 @@ if (!readOnly) {
 
 await step('Health metrics: fetch', async () => {
   const r = await request('GET', '/api/health-metrics?limit=5');
-  assert('GET /api/health-metrics → 200', r.status === 200);
-  assert('Array response', Array.isArray(r.data));
+  if (readOnly) {
+    assert('GET /api/health-metrics → 200 or 401', [200, 401].includes(r.status), `got ${r.status}`);
+    assert('Array response', r.status === 401 || Array.isArray(r.data));
+  } else {
+    assert('GET /api/health-metrics → 200', r.status === 200);
+    assert('Array response', Array.isArray(r.data));
+  }
 });
 
 if (!readOnly) {

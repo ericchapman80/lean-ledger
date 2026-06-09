@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
+import { apiRouteErrorResponse } from '@/lib/apiRouteError';
 import * as HabitDefinition from '@/lib/models/habitDefinition';
 
 function validateHabitDefinitionPayload(body) {
@@ -10,9 +11,13 @@ function validateHabitDefinitionPayload(body) {
 }
 
 export async function GET(request) {
-  const userId = await getCurrentUserId(request);
-  const habits = await HabitDefinition.findByUser(userId);
-  return NextResponse.json(habits);
+  try {
+    const userId = await getCurrentUserId(request);
+    const habits = await HabitDefinition.findByUser(userId);
+    return NextResponse.json(habits);
+  } catch (error) {
+    return apiRouteErrorResponse(error, 'Failed to fetch habit definitions');
+  }
 }
 
 export async function POST(request) {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
+import { apiRouteErrorResponse } from '@/lib/apiRouteError';
 import * as HealthMetric from '@/lib/models/healthMetric';
 import * as User from '@/lib/models/user';
 import * as Weight from '@/lib/models/weight';
@@ -12,17 +13,21 @@ async function syncWeight(userId, user, entry) {
 }
 
 export async function GET(request) {
-  const userId = await getCurrentUserId(request);
-  const { searchParams } = new URL(request.url);
-  const startDate = searchParams.get('startDate');
-  const endDate = searchParams.get('endDate');
-  const limit = searchParams.get('limit');
+  try {
+    const userId = await getCurrentUserId(request);
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+    const limit = searchParams.get('limit');
 
-  const metrics = (startDate && endDate)
-    ? await HealthMetric.findByUserAndDateRange(userId, startDate, endDate)
-    : await HealthMetric.findByUser(userId, limit ? parseInt(limit, 10) : 30);
+    const metrics = (startDate && endDate)
+      ? await HealthMetric.findByUserAndDateRange(userId, startDate, endDate)
+      : await HealthMetric.findByUser(userId, limit ? parseInt(limit, 10) : 30);
 
-  return NextResponse.json(metrics);
+    return NextResponse.json(metrics);
+  } catch (error) {
+    return apiRouteErrorResponse(error, 'Failed to fetch health metrics');
+  }
 }
 
 export async function POST(request) {

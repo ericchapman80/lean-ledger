@@ -1,24 +1,29 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
+import { apiRouteErrorResponse } from '@/lib/apiRouteError';
 import * as Meal from '@/lib/models/meal';
 import { optionalNumberOrNull } from '@/lib/carbUtils';
 import { getRequestLocalDate } from '@/lib/utils/dateUtils';
 
 export async function GET(request) {
-  const userId = await getCurrentUserId(request);
-  const { searchParams } = new URL(request.url);
-  const date = searchParams.get('date');
-  const startDate = searchParams.get('startDate');
-  const endDate = searchParams.get('endDate');
+  try {
+    const userId = await getCurrentUserId(request);
+    const { searchParams } = new URL(request.url);
+    const date = searchParams.get('date');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
 
-  let meals;
-  if (startDate && endDate) {
-    meals = await Meal.findByUserAndDateRange(userId, startDate, endDate);
-  } else {
-    const targetDate = date ?? getRequestLocalDate(request);
-    meals = await Meal.findByUserAndDate(userId, targetDate);
+    let meals;
+    if (startDate && endDate) {
+      meals = await Meal.findByUserAndDateRange(userId, startDate, endDate);
+    } else {
+      const targetDate = date ?? getRequestLocalDate(request);
+      meals = await Meal.findByUserAndDate(userId, targetDate);
+    }
+    return NextResponse.json(meals);
+  } catch (error) {
+    return apiRouteErrorResponse(error, 'Failed to fetch meals');
   }
-  return NextResponse.json(meals);
 }
 
 export async function POST(request) {
