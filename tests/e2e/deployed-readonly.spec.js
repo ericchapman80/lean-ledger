@@ -18,4 +18,14 @@ test.describe('deployed read-only checks', () => {
 
     await expect(page.getByRole('heading', { name: 'Intake', exact: true })).toBeVisible();
   });
+
+  test('profile page is reachable', async ({ page }) => {
+    await page.goto('/profile');
+
+    await expect(
+      page.getByRole('heading', {
+        name: /Your Profile|Edit Profile|Let’s build your coaching profile/i,
+      }),
+    ).toBeVisible();
+  });
 });
