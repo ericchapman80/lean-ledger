@@ -1,24 +1,26 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
+import { apiRouteErrorResponse } from '@/lib/apiRouteError';
 import { calculateNetCarbs } from '@/lib/carbUtils';
 import * as Meal from '@/lib/models/meal';
 import * as Beverage from '@/lib/models/beverageEntry';
 import { calculateBeverageNutritionTotals } from '@/lib/beverages';
 
 export async function GET(request) {
-  const userId = await getCurrentUserId(request);
-  const { searchParams } = new URL(request.url);
-  const startDate = searchParams.get('startDate');
-  const endDate = searchParams.get('endDate');
+  try {
+    const userId = await getCurrentUserId(request);
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
 
-  if (!startDate || !endDate) {
-    return NextResponse.json({ error: 'Start date and end date are required' }, { status: 400 });
-  }
+    if (!startDate || !endDate) {
+      return NextResponse.json({ error: 'Start date and end date are required' }, { status: 400 });
+    }
 
-  const meals = await Meal.findByUserAndDateRange(userId, startDate, endDate);
-  const beverages = await Beverage.findByUserAndDateRange(userId, startDate, endDate);
+    const meals = await Meal.findByUserAndDateRange(userId, startDate, endDate);
+    const beverages = await Beverage.findByUserAndDateRange(userId, startDate, endDate);
 
-  const byDate = meals.reduce((acc, m) => {
+    const byDate = meals.reduce((acc, m) => {
     if (!acc[m.date]) {
       acc[m.date] = {
         protein: 0,
@@ -72,7 +74,7 @@ export async function GET(request) {
     return acc;
   }, {});
 
-  for (const beverage of beverages) {
+    for (const beverage of beverages) {
     if (!byDate[beverage.date]) {
       byDate[beverage.date] = {
         protein: 0,
@@ -94,16 +96,19 @@ export async function GET(request) {
     byDate[beverage.date].calories += beverageTotals.calories;
   }
 
-  const trends = Object.entries(byDate)
-    .map(([date, stats]) => ({
-      date,
-      ...stats,
-      mealBreakdown: Object.values(stats.mealBreakdown || {}).map((mealSection) => ({
-        ...mealSection,
-        loggedAt: mealSection.loggedAt.sort(),
-      })),
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date));
+    const trends = Object.entries(byDate)
+      .map(([date, stats]) => ({
+        date,
+        ...stats,
+        mealBreakdown: Object.values(stats.mealBreakdown || {}).map((mealSection) => ({
+          ...mealSection,
+          loggedAt: mealSection.loggedAt.sort(),
+        })),
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
 
-  return NextResponse.json(trends);
+    return NextResponse.json(trends);
+  } catch (error) {
+    return apiRouteErrorResponse(error, 'Failed to fetch trend stats');
+  }
 }

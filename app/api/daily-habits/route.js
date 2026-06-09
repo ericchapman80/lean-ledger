@@ -1,23 +1,28 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
+import { apiRouteErrorResponse } from '@/lib/apiRouteError';
 import * as DailyHabitLog from '@/lib/models/dailyHabitLog';
 import * as HabitDefinition from '@/lib/models/habitDefinition';
 import { formatDate, getTodayDate } from '@/lib/utils/dateUtils';
 
 export async function GET(request) {
-  const userId = await getCurrentUserId(request);
-  const { searchParams } = new URL(request.url);
-  const startDate = searchParams.get('startDate');
-  const endDate = searchParams.get('endDate');
+  try {
+    const userId = await getCurrentUserId(request);
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
 
-  if (!startDate || !endDate) {
-    const today = getTodayDate();
-    const logs = await DailyHabitLog.findByUserAndDateRange(userId, today, today);
+    if (!startDate || !endDate) {
+      const today = getTodayDate();
+      const logs = await DailyHabitLog.findByUserAndDateRange(userId, today, today);
+      return NextResponse.json(logs);
+    }
+
+    const logs = await DailyHabitLog.findByUserAndDateRange(userId, startDate, endDate);
     return NextResponse.json(logs);
+  } catch (error) {
+    return apiRouteErrorResponse(error, 'Failed to fetch daily habit logs');
   }
-
-  const logs = await DailyHabitLog.findByUserAndDateRange(userId, startDate, endDate);
-  return NextResponse.json(logs);
 }
 
 export async function POST(request) {

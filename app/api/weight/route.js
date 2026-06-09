@@ -1,21 +1,26 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
+import { apiRouteErrorResponse } from '@/lib/apiRouteError';
 import * as Weight from '@/lib/models/weight';
 import * as User from '@/lib/models/user';
 import { getRequestLocalDate } from '@/lib/utils/dateUtils';
 
 export async function GET(request) {
-  const userId = await getCurrentUserId(request);
-  const { searchParams } = new URL(request.url);
-  const startDate = searchParams.get('startDate');
-  const endDate = searchParams.get('endDate');
-  const limit = searchParams.get('limit');
+  try {
+    const userId = await getCurrentUserId(request);
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+    const limit = searchParams.get('limit');
 
-  const weights = (startDate && endDate)
-    ? await Weight.findByUserAndDateRange(userId, startDate, endDate)
-    : await Weight.findByUser(userId, limit ? parseInt(limit, 10) : 30);
+    const weights = (startDate && endDate)
+      ? await Weight.findByUserAndDateRange(userId, startDate, endDate)
+      : await Weight.findByUser(userId, limit ? parseInt(limit, 10) : 30);
 
-  return NextResponse.json(weights);
+    return NextResponse.json(weights);
+  } catch (error) {
+    return apiRouteErrorResponse(error, 'Failed to fetch weight logs');
+  }
 }
 
 export async function POST(request) {
