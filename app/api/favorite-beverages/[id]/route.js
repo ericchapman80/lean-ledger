@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getCurrentUserId } from '@/lib/auth';
+import { getActiveProfileId } from '@/lib/activeProfile';
 import * as FavoriteBeverage from '@/lib/models/favoriteBeverage';
 
 export async function DELETE(request, { params }) {
-  const userId = await getCurrentUserId(request);
-  const removed = await FavoriteBeverage.remove(params.id, userId);
+  const profileId = await getActiveProfileId(request);
+  const { id } = await params;
+  const removed = await FavoriteBeverage.remove(id, profileId);
 
   if (!removed) {
     return NextResponse.json({ error: 'Favorite beverage not found' }, { status: 404 });
