@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
+import { getActiveProfileId } from '@/lib/activeProfile';
 import { apiRouteErrorResponse } from '@/lib/apiRouteError';
 import * as User from '@/lib/models/user';
 import * as Meal from '@/lib/models/meal';
@@ -12,14 +13,15 @@ import { summarizeMealLog } from '@/lib/mealTemplates';
 export async function GET(request, { params }) {
   try {
     const userId = await getCurrentUserId(request);
+    const profileId = await getActiveProfileId(request);
     const user = await User.findById(userId);
     if (!user) {
       return NextResponse.json({ error: 'Profile not found. Please complete setup.' }, { status: 404 });
     }
 
     const { date } = await params;
-    const meals = await Meal.findByUserAndDate(userId, date);
-    const beverages = await Beverage.findByUserAndDate(userId, date);
+    const meals = await Meal.findByProfileAndDate(profileId, date);
+    const beverages = await Beverage.findByProfileAndDate(profileId, date);
 
     const totals = calculateNutritionTotals(meals);
 
