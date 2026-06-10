@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getCurrentUserId } from '@/lib/auth';
+import { getActiveProfileId } from '@/lib/activeProfile';
 import * as HabitDefinition from '@/lib/models/habitDefinition';
 
 export async function PUT(request, context) {
-  const userId = await getCurrentUserId(request);
+  const profileId = await getActiveProfileId(request);
   const { id } = await context.params;
   const body = await request.json();
 
@@ -21,7 +21,7 @@ export async function PUT(request, context) {
   if (body.isActive != null) payload.isActive = Boolean(body.isActive);
   if (body.sortOrder != null) payload.sortOrder = Number(body.sortOrder);
 
-  const updated = await HabitDefinition.update(userId, Number(id), payload);
+  const updated = await HabitDefinition.update(profileId, Number(id), payload);
   if (!updated) {
     return NextResponse.json({ error: 'Habit not found.' }, { status: 404 });
   }
@@ -30,9 +30,9 @@ export async function PUT(request, context) {
 }
 
 export async function DELETE(request, context) {
-  const userId = await getCurrentUserId(request);
+  const profileId = await getActiveProfileId(request);
   const { id } = await context.params;
-  const deleted = await HabitDefinition.deleteById(userId, Number(id));
+  const deleted = await HabitDefinition.deleteById(profileId, Number(id));
 
   if (!deleted) {
     return NextResponse.json({ error: 'Habit not found.' }, { status: 404 });

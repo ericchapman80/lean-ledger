@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
+import { getActiveProfileId } from '@/lib/activeProfile';
 import { optionalNumberOrNull } from '@/lib/carbUtils';
 import * as FavoriteMeal from '@/lib/models/favoriteMeal';
 
@@ -11,8 +12,8 @@ function isMissingFavoriteMealsTable(error) {
 
 export async function GET(request) {
   try {
-    const userId = await getCurrentUserId(request);
-    const favoriteMeals = await FavoriteMeal.findByUser(userId);
+    const profileId = await getActiveProfileId(request);
+    const favoriteMeals = await FavoriteMeal.findByProfile(profileId);
     return NextResponse.json(favoriteMeals);
   } catch (error) {
     if (isMissingFavoriteMealsTable(error)) {
@@ -25,6 +26,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const userId = await getCurrentUserId(request);
+    const profileId = await getActiveProfileId(request);
     const { name, mealType, protein, fat, carbs, fiber, sugarAlcohols, calories, items } = await request.json();
 
     if (!name || !mealType || !Array.isArray(items) || items.length === 0) {
@@ -33,6 +35,7 @@ export async function POST(request) {
 
     const favoriteMeal = await FavoriteMeal.create({
       userId,
+      profileId,
       name,
       mealType,
       protein: Number(protein),

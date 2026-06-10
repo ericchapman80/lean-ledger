@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getCurrentUserId } from '@/lib/auth';
+import { getActiveProfileId } from '@/lib/activeProfile';
 import * as FavoriteMeal from '@/lib/models/favoriteMeal';
 
 function isMissingFavoriteMealsTable(error) {
@@ -10,9 +10,9 @@ function isMissingFavoriteMealsTable(error) {
 
 export async function DELETE(request, { params }) {
   try {
-    const userId = await getCurrentUserId(request);
+    const profileId = await getActiveProfileId(request);
     const { id } = await params;
-    const deleted = await FavoriteMeal.remove(id, userId);
+    const deleted = await FavoriteMeal.remove(id, profileId);
 
     if (!deleted) {
       return NextResponse.json({ error: 'Favorite meal not found' }, { status: 404 });

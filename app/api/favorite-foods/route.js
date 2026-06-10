@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
+import { getActiveProfileId } from '@/lib/activeProfile';
 import { optionalNumberOrNull } from '@/lib/carbUtils';
 import * as FavoriteFood from '@/lib/models/favoriteFood';
 
@@ -11,13 +12,13 @@ function isMissingFavoriteFoodsTable(error) {
 
 function isDuplicateFavoriteFoodError(error) {
   return error?.code === '23505'
-    && error?.constraint === 'idx_favorite_foods_user_exact_signature';
+    && error?.constraint === 'idx_favorite_foods_profile_exact_signature';
 }
 
 export async function GET(request) {
   try {
-    const userId = await getCurrentUserId(request);
-    const favoriteFoods = await FavoriteFood.findByUser(userId);
+    const profileId = await getActiveProfileId(request);
+    const favoriteFoods = await FavoriteFood.findByProfile(profileId);
     return NextResponse.json(favoriteFoods);
   } catch (error) {
     if (isMissingFavoriteFoodsTable(error)) {
@@ -32,6 +33,7 @@ export async function POST(request) {
 
   try {
     const userId = await getCurrentUserId(request);
+    const profileId = await getActiveProfileId(request);
     const {
       name,
       defaultMealType = 'breakfast',
@@ -52,6 +54,7 @@ export async function POST(request) {
 
     favoriteFoodPayload = {
       userId,
+      profileId,
       name,
       defaultMealType,
       portionAmount: portionAmount == null || portionAmount === '' ? null : Number(portionAmount),
