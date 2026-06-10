@@ -7,12 +7,14 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 ## What's next (prioritized — updated 2026-06-09)
 
 1. **V2.2 Family Profiles — application layer** 🧭 — the schema + model foundation shipped (PR #42) but nothing in `app/` uses it; the `profile_id` columns are dead weight until wired up. Highest leverage: finishing this unlocks the family/household use case and makes the just-landed migration pay off. Phased plan under the **V2.2 Family Profiles** rollout section.
-2. **Food database integration** — `FoodSearch.jsx` / `ProductLookup.jsx` are partially wired; target OpenFoodFacts (no key) or USDA FoodData Central. High daily-logging value.
-3. **Continuous barcode scanning** — move `BarcodeScanner.jsx` from single-frame capture to a continuous scanner (ZXing or equivalent).
-4. **Mobile responsiveness pass** — current CSS is desktop-first; needs a real breakpoint audit.
-5. **CI/CD pipeline review** — speed the pipeline up via parallelism/caching **without dropping any quality gate** (quality > speed). Quick win: a path filter so docs-only changes skip the heavy pipeline. Full scope under the **CI/CD Pipeline Review** section.
-6. **Multi-user isolation E2E hardening** — extend Profile A vs Profile B / User A vs User B isolation coverage across more end-to-end flows (pairs naturally with V2.2 Phase 2).
-7. **V2.3 Performance Extensions** 🕒 — event/lift metrics and readiness interpretation; explicitly after the family-profile layer.
+2. **Application UX / quality-of-life cleanup** — act on the full per-page UX review in [`docs/ux-review.md`](docs/ux-review.md). P0s: replace `alert()`/`confirm()` with inline errors + undo, resolve the duplicate Dashboard/Intake check-in, Modal focus-trap a11y. See the **Application UX & Theming** section.
+3. **Theming (light / dark / system)** — match the device theme via `prefers-color-scheme` plus a user-selectable System / Always Light / Always Dark preference. Tracked as its **own phase** (a color-token refactor with a clean definition of done) after the inline-style→class cleanup. See the **Application UX & Theming** section.
+4. **Food database integration** — `FoodSearch.jsx` / `ProductLookup.jsx` are partially wired; target OpenFoodFacts (no key) or USDA FoodData Central. High daily-logging value.
+5. **Continuous barcode scanning** — move `BarcodeScanner.jsx` from single-frame capture to a continuous scanner (ZXing or equivalent).
+6. **Mobile responsiveness pass** — current CSS is desktop-first; needs a real breakpoint audit (overlaps with the UX cleanup).
+7. **CI/CD pipeline review** — speed the pipeline up via parallelism/caching **without dropping any quality gate** (quality > speed). Quick win: a path filter so docs-only changes skip the heavy pipeline. Full scope under the **CI/CD Pipeline Review** section.
+8. **Multi-user isolation E2E hardening** — extend Profile A vs Profile B / User A vs User B isolation coverage across more end-to-end flows (pairs naturally with V2.2 Phase 2).
+9. **V2.3 Performance Extensions** 🕒 — event/lift metrics and readiness interpretation; explicitly after the family-profile layer.
 
 ---
 
@@ -1667,6 +1669,26 @@ without turning into a generic calorie tracker or a generic habit app.
 3. Parallelize `validate`/`local-functional` and split out `npm audit`.
 4. Shard vitest/Playwright if wall-clock still dominates.
 5. Measure and document the before/after.
+
+## Application UX & Theming
+
+A full per-page UX/UI review was done before making changes — see [`docs/ux-review.md`](docs/ux-review.md) for per-page findings, a prioritized QoL recommendation list, quick wins, and the theming analysis. This is intentionally **review-first**: no UX changes ship until the recommendations are triaged.
+
+### Phase A — UX / quality-of-life cleanup 🧭
+Behavioral and a11y improvements from the review. Headline P0s:
+- Replace ~25 `alert(err.message)` sites with inline/toast errors.
+- Replace browser `confirm()` deletes with an undo affordance (Intake has one-tap inline deletes today, no undo).
+- Resolve the duplicate check-in: Dashboard "Lean Recomp Check-In" and Intake "Today's Wins" both write the same health metrics — make Intake the single editor (the copy even says Dashboard should be summary-only).
+- Modal focus-trap + labeled close + initial focus; FoodSearch results as real focusable buttons; header `aria-expanded`.
+- Quick wins (all small): "Today" date reset, `role="status"` on Loading, delete the duplicated youth-safety block in Profile, hide the non-functional Progress Photo placeholder, sign/icon on Weight change.
+- **Do recommendation: move inline styles → classes first** — it shrinks the theming surface dramatically and is the natural bridge into Phase B.
+
+### Phase B — Theming (light / dark / system) 🧭 (separate phase)
+Tracked separately from Phase A because it is a horizontal color-token refactor with a clean definition of done; interleaving it with behavioral changes would make diffs hard to review. Current state: a clean `:root` token block exists in `app/globals.css`, but the app never honors `prefers-color-scheme` and colors are hardcoded inline in many places (FoodSearch/ProductLookup `white`/`#f5f5f5`, ErrorMessage/scanner `#ffebee`/`#fff8e1`, Recharts hex strokes, button hovers), so a naive dark flip would render unreadable. Sequence:
+1. Token hardening — replace hardcoded colors with semantic tokens; add chart/feedback tokens; set `color-scheme`.
+2. Dark palette via `prefers-color-scheme` and `:root[data-theme="dark"]`.
+3. Preference + persistence — a `data-theme` attribute driven by a **cookie read in the server `layout.jsx`** (no flash-of-unstyled-content; works for single-user/unauthenticated today; optional `users.theme_preference` / `profiles` column once profile state is the source of truth), with a 3-state System / Light / Dark control in the Header/Profile.
+4. QA across light/dark/system including Recharts and the scanner overlays.
 
 ## Other future work
 
