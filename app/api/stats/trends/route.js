@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getCurrentUserId } from '@/lib/auth';
+import { getActiveProfileId } from '@/lib/activeProfile';
 import { apiRouteErrorResponse } from '@/lib/apiRouteError';
 import { calculateNetCarbs } from '@/lib/carbUtils';
 import * as Meal from '@/lib/models/meal';
@@ -8,7 +8,7 @@ import { calculateBeverageNutritionTotals } from '@/lib/beverages';
 
 export async function GET(request) {
   try {
-    const userId = await getCurrentUserId(request);
+    const profileId = await getActiveProfileId(request);
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
@@ -17,8 +17,8 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Start date and end date are required' }, { status: 400 });
     }
 
-    const meals = await Meal.findByUserAndDateRange(userId, startDate, endDate);
-    const beverages = await Beverage.findByUserAndDateRange(userId, startDate, endDate);
+    const meals = await Meal.findByProfileAndDateRange(profileId, startDate, endDate);
+    const beverages = await Beverage.findByProfileAndDateRange(profileId, startDate, endDate);
 
     const byDate = meals.reduce((acc, m) => {
     if (!acc[m.date]) {

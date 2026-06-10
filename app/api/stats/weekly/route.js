@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
+import { getActiveProfileId } from '@/lib/activeProfile';
 import { apiRouteErrorResponse } from '@/lib/apiRouteError';
 import * as User from '@/lib/models/user';
 import * as Meal from '@/lib/models/meal';
@@ -12,6 +13,7 @@ import { getDateDaysBefore, getEndOfWeek, getRequestLocalDate, getStartOfWeek } 
 export async function GET(request) {
   try {
     const userId = await getCurrentUserId(request);
+    const profileId = await getActiveProfileId(request);
     const user = await User.findById(userId);
     if (!user) {
       return NextResponse.json({ error: 'Profile not found. Please complete setup.' }, { status: 404 });
@@ -22,9 +24,9 @@ export async function GET(request) {
     const weekStart = getStartOfWeek(date);
     const weekEnd = getEndOfWeek(date);
     const rollingWeightStart = getDateDaysBefore(date, 6);
-    const meals = await Meal.findByUserAndDateRange(userId, weekStart, weekEnd);
-    const beverages = await Beverage.findByUserAndDateRange(userId, weekStart, weekEnd);
-    const weights = await Weight.findByUserAndDateRange(userId, rollingWeightStart, date);
+    const meals = await Meal.findByProfileAndDateRange(profileId, weekStart, weekEnd);
+    const beverages = await Beverage.findByProfileAndDateRange(profileId, weekStart, weekEnd);
+    const weights = await Weight.findByProfileAndDateRange(profileId, rollingWeightStart, date);
     const { activeMacros: targets } = enrichProfile(user);
     const summary = calculateWeeklyNutritionSummary({
       date,
