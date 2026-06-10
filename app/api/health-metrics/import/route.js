@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
+import { getActiveProfileId } from '@/lib/activeProfile';
 import * as HealthMetric from '@/lib/models/healthMetric';
 import * as User from '@/lib/models/user';
 import * as Weight from '@/lib/models/weight';
@@ -7,6 +8,7 @@ import { validateHealthMetricEntry } from '@/lib/healthMetrics';
 
 export async function POST(request) {
   const userId = await getCurrentUserId(request);
+  const profileId = await getActiveProfileId(request);
   const user = await User.findById(userId);
   if (!user) {
     return NextResponse.json({ error: 'Profile not found. Please complete setup.' }, { status: 404 });
@@ -26,9 +28,9 @@ export async function POST(request) {
       continue;
     }
 
-    await HealthMetric.upsert({ userId, ...normalized });
+    await HealthMetric.upsert({ userId, profileId, ...normalized });
     if (normalized.weight != null && normalized.date) {
-      await Weight.upsert({ userId, date: normalized.date, weight: normalized.weight });
+      await Weight.upsert({ userId, profileId, date: normalized.date, weight: normalized.weight });
       if (!latestWeightedEntry || normalized.recordedAt > latestWeightedEntry.recordedAt) {
         latestWeightedEntry = normalized;
       }
