@@ -36,14 +36,13 @@ describe('getActiveProfileId', () => {
     expect(ensurePrimaryProfileForUser).toHaveBeenCalledWith({ id: 2, name: 'Konnor' });
   });
 
-  it('falls back to a minimal user object when the user row cannot be loaded', async () => {
+  it('returns null without self-healing when the user row does not exist (no FK violation)', async () => {
     getCurrentUserId.mockResolvedValue(3);
     findPrimaryByUserId.mockResolvedValue(null);
     findUserById.mockResolvedValue(null);
-    ensurePrimaryProfileForUser.mockResolvedValue({ id: 50 });
 
-    expect(await getActiveProfileId({})).toBe(50);
-    expect(ensurePrimaryProfileForUser).toHaveBeenCalledWith({ id: 3 });
+    expect(await getActiveProfileId({})).toBeNull();
+    expect(ensurePrimaryProfileForUser).not.toHaveBeenCalled();
   });
 
   it('returns null if a profile still cannot be resolved', async () => {
