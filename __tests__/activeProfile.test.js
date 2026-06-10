@@ -1,18 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/auth', () => ({ getCurrentUserId: vi.fn() }));
-vi.mock('@/lib/models/profile', () => ({ findPrimaryByUserId: vi.fn() }));
+vi.mock('@/lib/models/profile', () => ({ findPrimaryByUserId: vi.fn(), isAccessibleToUser: vi.fn() }));
 vi.mock('@/lib/models/user', () => ({ findById: vi.fn() }));
 vi.mock('@/lib/models/profileHousehold', () => ({ ensurePrimaryProfileForUser: vi.fn() }));
 
 import { getActiveProfileId } from '@/lib/activeProfile.js';
 import { getCurrentUserId } from '@/lib/auth';
-import { findPrimaryByUserId } from '@/lib/models/profile';
+import { findPrimaryByUserId, isAccessibleToUser } from '@/lib/models/profile';
 import { findById as findUserById } from '@/lib/models/user';
 import { ensurePrimaryProfileForUser } from '@/lib/models/profileHousehold';
 
+function withCookie(value) {
+  return { cookies: { get: (name) => (name === 'll_active_profile' && value != null ? { value: String(value) } : undefined) } };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  isAccessibleToUser.mockResolvedValue(false);
 });
 
 describe('getActiveProfileId', () => {
@@ -52,5 +57,31 @@ describe('getActiveProfileId', () => {
     ensurePrimaryProfileForUser.mockResolvedValue(null);
 
     expect(await getActiveProfileId({})).toBeNull();
+  });
+
+  it('honors a valid active-profile cookie pointing at an accessible profile', async () => {
+    getCurrentUserId.mockResolvedValue(1);
+    isAccessibleToUser.mockResolvedValue(true);
+
+    expect(await getActiveProfileId(withCookie(99))).toBe(99);
+    expect(isAccessibleToUser).toHaveBeenCalledWith(99, 1);
+    expect(findPrimaryByUserId).not.toHaveBeenCalled();
+  });
+
+  it('ignores a cookie pointing at a profile outside the user\'s households', async () => {
+    getCurrentUserId.mockResolvedValue(1);
+    isAccessibleToUser.mockResolvedValue(false);
+    findPrimaryByUserId.mockResolvedValue({ id: 31, source_user_id: 1 });
+
+    expect(await getActiveProfileId(withCookie(99))).toBe(31);
+    expect(isAccessibleToUser).toHaveBeenCalledWith(99, 1);
+  });
+
+  it('ignores a malformed cookie value', async () => {
+    getCurrentUserId.mockResolvedValue(1);
+    findPrimaryByUserId.mockResolvedValue({ id: 31, source_user_id: 1 });
+
+    expect(await getActiveProfileId(withCookie('not-a-number'))).toBe(31);
+    expect(isAccessibleToUser).not.toHaveBeenCalled();
   });
 });
