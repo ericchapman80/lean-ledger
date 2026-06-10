@@ -313,6 +313,37 @@ npm run migrate-db
 
 `init-db` now delegates to the migration runner so local, CI, preview, and production use the same path.
 
+### Data migration (DDL/DML) pipeline across Dev / QA / Prod
+
+Schema (DDL) and data backfills (DML) ship as versioned files, not ad-hoc SQL:
+
+- Author one file per change in `db/migrations/NNN_description.sql`. A migration may contain both DDL (`CREATE TABLE`, `ALTER TABLE ... ADD COLUMN`) and DML (`INSERT`/`UPDATE` backfills) — see `016_add_household_profile_foundation.sql`, which creates the household/profile tables *and* backfills `profile_id` across existing rows in one transaction.
+- `scripts/migrate-db.mjs` applies `lib/schema.sql` as the baseline, then every `db/migrations/*.sql` in lexical order, each in its own transaction, recording applied versions in `schema_migrations`. Re-runs are safe (already-applied versions are skipped; write migrations idempotently with `IF NOT EXISTS` / `ON CONFLICT`).
+
+Run the **same** migration set against each environment, promoting in order:
+
+```bash
+# Dev (local Postgres)
+npm run migrate-db:local
+
+# QA (Neon preview)
+npm run migrate-db:preview
+
+# Prod (Neon production) — guarded; type "migrate production" to proceed
+npm run migrate-db:prod
+```
+
+`migrate-db:prod` runs `scripts/confirm-migrate-db-prod.mjs` first (bypass in automation with `CONFIRM_MIGRATE_DB_PROD=YES`). The bare `npm run migrate-db` uses whatever `DATABASE_URL` is already in the environment and is what CI uses against its ephemeral Postgres.
+
+Recommended promotion sequence for any schema/data change (this is the "test local → QA → prod" path):
+
+1. `npm run migrate-db:local`, then `npm test` and `npm run build`
+2. `npm run migrate-db:preview`, then verify the Vercel Preview deployment (and run `npm run smoke -- <preview-url> --read-only`)
+3. `npm run db:export` (production backup) — confirm it is restorable
+4. `npm run migrate-db:prod` intentionally, then verify production
+
+Never run migrations during a Vercel build (see the build safety warning below).
+
 ### Important build safety warning
 
 Do not run `npm run init-db` during a Vercel build.
