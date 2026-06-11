@@ -3,17 +3,13 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { beverageApi, dailyHabitsApi, habitDefinitionsApi, healthMetricsApi, statsApi, profileApi } from '@/lib/api';
-import {
-  getHealthMetricDisplayValue,
-  getHealthMetricFieldMeta,
-  getHealthMetricInputProps,
-} from '@/lib/healthMetrics';
+import { toast } from '@/lib/toast';
+import { getHealthMetricDisplayValue } from '@/lib/healthMetrics';
 import { getTodayDate, formatDisplayDate } from '@/lib/utils/dateUtils';
 import { getProgressSemantics, getWaterProgressSemantics } from '@/lib/dashboardProgress';
 import { getGoalDescription } from '@/lib/utils/macroUtils';
 import { formatWeight } from '@/lib/utils/unitUtils';
 import { getDailyWinsSummary, getDailyWinsValues, mergeDailyWinDefinitions } from '@/lib/dailyWins';
-import { getDayTypeDescription, getDayTypeGuidance } from '@/lib/coachingProfile';
 import {
   formatBeverageFromFlOz,
   getHydrationHelperCopy,
@@ -60,20 +56,6 @@ function hasCoreCheckInData(metric) {
   ].some((key) => metric[key] != null && metric[key] !== '');
 }
 
-function countLoggedSignals(checkIn) {
-  return [
-    checkIn.waistMeasurement,
-    checkIn.workoutCompleted,
-    checkIn.dayType,
-    checkIn.readingCompleted,
-    checkIn.prayerCompleted,
-    checkIn.sleepHours,
-    checkIn.energyLevel,
-    checkIn.hungerLevel,
-    checkIn.sorenessLevel,
-  ].filter((value) => value !== '' && value != null).length;
-}
-
 export default function Dashboard() {
   const initialDate = typeof window === 'undefined' ? '' : getTodayDate();
   const [loading, setLoading] = useState(true);
@@ -85,8 +67,6 @@ export default function Dashboard() {
   const [checkIn, setCheckIn] = useState(getEmptyCheckIn(initialDate));
   const [customHabits, setCustomHabits] = useState([]);
   const [beverageEntries, setBeverageEntries] = useState([]);
-  const [checkInSavedAt, setCheckInSavedAt] = useState(null);
-  const [savingCheckIn, setSavingCheckIn] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -111,7 +91,6 @@ export default function Dashboard() {
         ...getDailyWinsValues(selectedDate, dailyCheckIn, customHabitData, dailyHabitLogData),
       });
       setBeverageEntries(beverageData);
-      setCheckInSavedAt(dailyCheckIn?.updatedAt || null);
     } catch (err) {
       setError(err.message || 'Failed to load data');
     } finally {
@@ -142,7 +121,6 @@ export default function Dashboard() {
     foodEntryCount = stats.meals?.length ?? 0,
     mealTypes = [],
   } = stats;
-  const loggedSignals = countLoggedSignals(checkIn);
   const mealTypeSummary = mealTypes.map((meal) => meal.label).join(' • ');
   const preferredBeverageUnit = getPreferredBeverageUnit(profile.units);
   const beverageSummary = summarizeBeverageEntries(beverageEntries, {
@@ -183,8 +161,6 @@ export default function Dashboard() {
       ? `${beverageSummary.dietStyleBonusLabel} ${formatBeverageFromFlOz(beverageSummary.dietStyleBonusFlOz, preferredBeverageUnit)}`
       : null,
   ].filter(Boolean);
-  const waistMeta = getHealthMetricFieldMeta('waistMeasurement', profile.units);
-  const waistInputProps = getHealthMetricInputProps('waistMeasurement', profile.units);
   const calorieProgress = getProgressSemantics({
     macroKey: 'calories',
     current: totals.calories,
@@ -209,29 +185,6 @@ export default function Dashboard() {
     referenceDate: selectedDate,
     dailyWinsSummary,
   });
-  const dayTypeGuidance = getDayTypeGuidance({
-    dayType: checkIn.dayType,
-    coachingMode: profile.coachingMode,
-    ageGroup: profile.ageGroup,
-  });
-
-  const handleCheckInSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      setSavingCheckIn(true);
-      await healthMetricsApi.createHealthMetric({
-        ...checkIn,
-        workoutCompleted: checkIn.workoutCompleted === '' ? null : checkIn.workoutCompleted === 'true',
-        dayType: checkIn.dayType || null,
-      });
-      await fetchData();
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setSavingCheckIn(false);
-    }
-  };
-
   return (
     <div className="container" style={{ padding: '20px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
@@ -492,152 +445,26 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {(profile.goalStrategy || profile.goal) === 'lean_recomp' || profile.goal === 'recomp' ? (
-        <details className="card" style={{ marginTop: '32px' }}>
-          <summary style={{ cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1rem' }}>
-            Lean Recomp Check-In
-            <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>
-              {` • ${loggedSignals} signals logged`}
-            </span>
-          </summary>
-          <p style={{ color: 'var(--text-secondary)', margin: '16px 0 20px' }}>
-            Keep this fast. Waist, workouts, sleep, and recovery are optional signals that sharpen the weekly trend. Hydration lives in Intake so the dashboard stays summary-first.
-          </p>
-          {profile.youthSafetyMessage ? (
-            <p style={{ color: 'var(--text-secondary)', margin: '0 0 12px' }}>
-              {profile.youthSafetyMessage}
-            </p>
+      {dailyWinsSummary.total > 0 ? (
+        <div className="card" style={{ marginTop: '32px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>
+              Today&apos;s Wins
+              <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>
+                {` • ${dailyWinsSummary.completed} of ${dailyWinsSummary.total}`}
+              </span>
+            </h3>
+            <Link
+              href="/meals#daily-wins"
+              style={{ color: 'var(--primary-color)', fontWeight: 600, fontSize: '14px', textDecoration: 'none' }}
+            >
+              Edit in Intake →
+            </Link>
+          </div>
+          {activeDailyWinLabels ? (
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>{activeDailyWinLabels}</p>
           ) : null}
-          {dayTypeGuidance ? (
-            <p style={{ color: 'var(--text-secondary)', margin: '0 0 20px' }}>
-              {dayTypeGuidance}
-            </p>
-          ) : null}
-
-          <form onSubmit={handleCheckInSubmit}>
-            <div className="grid grid-2" style={{ marginBottom: '16px' }}>
-              <div className="form-group">
-                <label className="form-label">Waist ({waistMeta.unit})</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  min={waistInputProps.min}
-                  max={waistInputProps.max}
-                  step={waistInputProps.step}
-                  value={checkIn.waistMeasurement}
-                  onChange={(e) => setCheckIn((current) => ({ ...current, waistMeasurement: e.target.value }))}
-                  placeholder="Optional"
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Workout Completed</label>
-                <select
-                  className="form-select"
-                  value={checkIn.workoutCompleted}
-                  onChange={(e) => setCheckIn((current) => ({ ...current, workoutCompleted: e.target.value }))}
-                >
-                  <option value="">Not tracked</option>
-                  <option value="true">Yes</option>
-                  <option value="false">No</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Day Type</label>
-                <select
-                  className="form-select"
-                  value={checkIn.dayType}
-                  onChange={(e) => setCheckIn((current) => ({ ...current, dayType: e.target.value }))}
-                >
-                  <option value="">Not tracked</option>
-                  {['workout_day', 'practice_day', 'competition_day', 'recovery_day', 'rest_day'].map((dayType) => (
-                    <option key={dayType} value={dayType}>{getDayTypeDescription(dayType)}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Sleep Hours</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  min="0"
-                  max="16"
-                  step="0.1"
-                  value={checkIn.sleepHours}
-                  onChange={(e) => setCheckIn((current) => ({ ...current, sleepHours: e.target.value }))}
-                  placeholder="Optional"
-                />
-              </div>
-            </div>
-
-            <details style={{ marginBottom: '20px' }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Recovery Signals</summary>
-              <div className="grid grid-3" style={{ marginTop: '12px' }}>
-                {[
-                  ['energyLevel', 'Energy'],
-                  ['hungerLevel', 'Hunger'],
-                  ['sorenessLevel', 'Soreness'],
-                ].map(([key, label]) => (
-                  <div className="form-group" key={key}>
-                    <label className="form-label">{label} (1-5)</label>
-                    <select
-                      className="form-select"
-                      value={checkIn[key]}
-                      onChange={(e) => setCheckIn((current) => ({ ...current, [key]: e.target.value }))}
-                    >
-                      <option value="">Not tracked</option>
-                      {[1, 2, 3, 4, 5].map((value) => (
-                        <option key={value} value={value}>{value}</option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-              </div>
-            </details>
-
-            <details style={{ marginBottom: '20px' }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Progress Photo Placeholder</summary>
-              <p style={{ color: 'var(--text-secondary)', margin: '12px 0 16px' }}>
-                Image uploads are not live yet. Use this to note that photos were taken.
-              </p>
-              <div className="grid grid-2">
-                <div className="form-group">
-                  <label className="form-label">Photo Count</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    min="0"
-                    max="20"
-                    step="1"
-                    value={checkIn.progressPhotoCount}
-                    onChange={(e) => setCheckIn((current) => ({ ...current, progressPhotoCount: e.target.value }))}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Note</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={checkIn.progressPhotoNote}
-                    onChange={(e) => setCheckIn((current) => ({ ...current, progressPhotoNote: e.target.value }))}
-                    placeholder="Front / side / back, lighting, etc."
-                  />
-                </div>
-              </div>
-            </details>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={savingCheckIn}>
-                {savingCheckIn ? 'Saving...' : 'Save Check-In'}
-              </button>
-              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
-                {checkInSavedAt
-                  ? `Updated for ${formatDisplayDate(selectedDate)}.`
-                  : 'All fields are optional. Leave anything blank that you do not want to track.'}
-              </p>
-            </div>
-          </form>
-        </details>
+        </div>
       ) : null}
 
       {(((profile.goalStrategy || profile.goal) === 'lean_recomp') || profile.goal === 'recomp') && weeklyStats ? (
@@ -659,7 +486,7 @@ export default function Dashboard() {
                 fontWeight: 'bold',
                 padding: '6px 10px',
                 borderRadius: '999px',
-                background: 'rgba(52, 152, 219, 0.08)',
+                background: 'var(--feedback-info-surface)',
                 color: 'var(--primary-color)',
               }}>
                 {weeklyStats.elapsedDays}/7 days

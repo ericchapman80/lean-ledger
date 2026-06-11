@@ -1,4 +1,6 @@
 :root {
+  color-scheme: light dark;
+
   --primary-color: #4CAF50;
   --secondary-color: #2196F3;
   --danger-color: #f44336;
@@ -11,6 +13,47 @@
   --border-color: #e0e0e0;
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+  /* Semantic surface tokens */
+  --surface-muted: #f5f5f5;
+  --danger-surface: #ffebee;
+  --warning-surface: #fff8e1;
+  --feedback-positive-surface: rgba(46, 125, 50, 0.08);
+  --feedback-positive-border: rgba(46, 125, 50, 0.2);
+  --feedback-info-surface: rgba(2, 119, 189, 0.08);
+  --feedback-info-border: rgba(2, 119, 189, 0.18);
+
+  /* Chart tokens */
+  --chart-1: #1f6feb;
+  --chart-2: #e74c3c;
+  --chart-3: #16a085;
+  --chart-4: #8e44ad;
+  --chart-5: #f39c12;
+  --chart-grid: #dfe6e9;
+
+  /* Button hover tokens */
+  --btn-primary-hover: #45a049;
+  --btn-secondary-hover: #0b7dda;
+  --btn-danger-hover: #da190b;
+}
+
+[data-theme="dark"] {
+  --background: #0d1117;
+  --card-background: #161b22;
+  --border-color: #30363d;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.6);
+
+  --surface-muted: #21262d;
+  --danger-surface: #2d1b1b;
+  --warning-surface: #2d2208;
+  --feedback-positive-surface: rgba(46, 125, 50, 0.15);
+  --feedback-positive-border: rgba(46, 125, 50, 0.3);
+  --feedback-info-surface: rgba(2, 119, 189, 0.15);
+  --feedback-info-border: rgba(2, 119, 189, 0.28);
+  --chart-grid: #30363d;
 }
 
 * {
@@ -92,7 +135,7 @@ code {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: #45a049;
+  background-color: var(--btn-primary-hover);
   transform: translateY(-2px);
 }
 
@@ -102,7 +145,7 @@ code {
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background-color: #0b7dda;
+  background-color: var(--btn-secondary-hover);
 }
 
 .btn-danger {
@@ -111,7 +154,7 @@ code {
 }
 
 .btn-danger:hover:not(:disabled) {
-  background-color: #da190b;
+  background-color: var(--btn-danger-hover);
 }
 
 .btn-outline {
@@ -146,6 +189,8 @@ code {
   transition: border-color 0.3s ease;
   -webkit-appearance: none;
   appearance: none;
+  background-color: var(--card-background);
+  color: var(--text-primary);
 }
 
 /* Prevent zoom on input focus for iOS */

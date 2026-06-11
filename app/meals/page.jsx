@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { beverageApi, dailyHabitsApi, favoriteBeveragesApi, favoriteFoodsApi, favoriteMealsApi, habitDefinitionsApi, healthMetricsApi, mealsApi, profileApi } from '@/lib/api';
+import { toast } from '@/lib/toast';
 import {
   calculateNetCarbs,
   getPrimaryCarbLabel,
@@ -189,15 +190,15 @@ function DailyWinToggle({ active, children, onClick }) {
 function getMealFeedbackStyles(tone) {
   if (tone === 'positive') {
     return {
-      background: 'rgba(46, 125, 50, 0.08)',
-      border: '1px solid rgba(46, 125, 50, 0.2)',
+      background: 'var(--feedback-positive-surface)',
+      border: '1px solid var(--feedback-positive-border)',
       labelColor: 'var(--success-color)',
     };
   }
 
   return {
-    background: 'rgba(2, 119, 189, 0.08)',
-    border: '1px solid rgba(2, 119, 189, 0.18)',
+    background: 'var(--feedback-info-surface)',
+    border: '1px solid var(--feedback-info-border)',
     labelColor: 'var(--primary-color)',
   };
 }
@@ -496,7 +497,7 @@ export default function Meals() {
       setManualMacroOverride(false);
       fetchMeals();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -521,7 +522,7 @@ export default function Meals() {
       setActionMessage(`Saved ${dailyWinsSummary.completed} of ${dailyWinsSummary.total} daily wins`);
       await fetchMeals();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setSavingDailyWins(false);
     }
@@ -548,14 +549,33 @@ export default function Meals() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Delete this food item?')) return;
-    try {
-      await mealsApi.deleteMeal(id);
-      fetchMeals();
-    } catch (err) {
-      alert(err.message);
-    }
+  const handleDelete = (id) => {
+    const item = meals.find((m) => m.id === id);
+    if (!item) return;
+    setMeals((current) => current.filter((m) => m.id !== id));
+    toast(`${item.mealName} deleted`, {
+      duration: 5000,
+      action: {
+        label: 'Undo',
+        onClick: () => setMeals((current) => {
+          const index = meals.findIndex((m) => m.id === id);
+          const updated = [...current];
+          updated.splice(index, 0, item);
+          return updated;
+        }),
+      },
+      onDismiss: () => {
+        mealsApi.deleteMeal(id).catch((err) => {
+          setMeals((current) => {
+            const index = meals.findIndex((m) => m.id === id);
+            const updated = [...current];
+            updated.splice(index, 0, item);
+            return updated;
+          });
+          toast.error(err.message);
+        });
+      },
+    });
   };
 
   const handleDuplicateMeal = async (meal) => {
@@ -564,7 +584,7 @@ export default function Meals() {
       setActionMessage(`Duplicated ${meal.mealName}`);
       await fetchMeals();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -602,7 +622,7 @@ export default function Meals() {
       setScannedProduct(product);
       setIsScannerOpen(false);
     } catch (err) {
-      alert(err.message || 'Failed to lookup product. Please try again or enter manually.');
+      toast.error(err.message || 'Failed to lookup product. Please try again or enter manually.');
     } finally {
       setLookupLoading(false);
     }
@@ -627,7 +647,7 @@ export default function Meals() {
       setScannedProduct(null);
       fetchMeals();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -660,7 +680,7 @@ export default function Meals() {
       setFavoriteDraft(null);
       fetchMeals();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -673,7 +693,7 @@ export default function Meals() {
       setFavoriteFoodDraft(null);
       await fetchMeals();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -684,7 +704,7 @@ export default function Meals() {
       setIsFavoritesOpen(false);
       fetchMeals();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -695,7 +715,7 @@ export default function Meals() {
       setActionMessage(`Added ${favoriteFood.name}`);
       await fetchMeals();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -706,38 +726,65 @@ export default function Meals() {
       setActionMessage(`Added ${favoriteBeverage.name}`);
       await fetchMeals();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
-  const removeFavoriteMeal = async (id) => {
-    if (!confirm('Delete this favorite meal?')) return;
-    try {
-      await favoriteMealsApi.deleteFavoriteMeal(id);
-      fetchMeals();
-    } catch (err) {
-      alert(err.message);
-    }
+  const removeFavoriteMeal = (id) => {
+    const item = favoriteMeals.find((m) => m.id === id);
+    if (!item) return;
+    setFavoriteMeals((current) => current.filter((m) => m.id !== id));
+    toast(`${item.name} deleted`, {
+      duration: 5000,
+      action: {
+        label: 'Undo',
+        onClick: () => setFavoriteMeals((current) => [...current, item]),
+      },
+      onDismiss: () => {
+        favoriteMealsApi.deleteFavoriteMeal(id).catch((err) => {
+          setFavoriteMeals((current) => [...current, item]);
+          toast.error(err.message);
+        });
+      },
+    });
   };
 
-  const removeFavoriteFood = async (id) => {
-    if (!confirm('Delete this favorite food?')) return;
-    try {
-      await favoriteFoodsApi.deleteFavoriteFood(id);
-      await fetchMeals();
-    } catch (err) {
-      alert(err.message);
-    }
+  const removeFavoriteFood = (id) => {
+    const item = favoriteFoods.find((f) => f.id === id);
+    if (!item) return;
+    setFavoriteFoods((current) => current.filter((f) => f.id !== id));
+    toast(`${item.name} deleted`, {
+      duration: 5000,
+      action: {
+        label: 'Undo',
+        onClick: () => setFavoriteFoods((current) => [...current, item]),
+      },
+      onDismiss: () => {
+        favoriteFoodsApi.deleteFavoriteFood(id).catch((err) => {
+          setFavoriteFoods((current) => [...current, item]);
+          toast.error(err.message);
+        });
+      },
+    });
   };
 
-  const removeFavoriteBeverage = async (id) => {
-    if (!confirm('Delete this favorite beverage?')) return;
-    try {
-      await favoriteBeveragesApi.deleteFavoriteBeverage(id);
-      await fetchMeals();
-    } catch (err) {
-      alert(err.message);
-    }
+  const removeFavoriteBeverage = (id) => {
+    const item = favoriteBeverages.find((b) => b.id === id);
+    if (!item) return;
+    setFavoriteBeverages((current) => current.filter((b) => b.id !== id));
+    toast(`${item.name} deleted`, {
+      duration: 5000,
+      action: {
+        label: 'Undo',
+        onClick: () => setFavoriteBeverages((current) => [...current, item]),
+      },
+      onDismiss: () => {
+        favoriteBeveragesApi.deleteFavoriteBeverage(id).catch((err) => {
+          setFavoriteBeverages((current) => [...current, item]);
+          toast.error(err.message);
+        });
+      },
+    });
   };
 
   const repeatSection = async (section) => {
@@ -746,7 +793,7 @@ export default function Meals() {
       await Promise.all(payloads.map((payload) => mealsApi.createMeal(payload)));
       fetchMeals();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -756,7 +803,7 @@ export default function Meals() {
       setActionMessage(`Added ${meal.mealName} to today`);
       await fetchMeals();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -770,7 +817,7 @@ export default function Meals() {
       }
       await fetchMeals();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setSavingBeverage(false);
     }
@@ -797,14 +844,24 @@ export default function Meals() {
     setBeverageEditorOpen(true);
   };
 
-  const handleDeleteBeverage = async (id) => {
-    if (!confirm('Delete this beverage entry?')) return;
-    try {
-      await beverageApi.deleteBeverage(id);
-      await fetchMeals();
-    } catch (err) {
-      alert(err.message);
-    }
+  const handleDeleteBeverage = (id) => {
+    const entry = beverageEntries.find((b) => b.id === id);
+    if (!entry) return;
+    const label = getBeverageDisplayName(entry);
+    setBeverageEntries((current) => current.filter((b) => b.id !== id));
+    toast(`${label} deleted`, {
+      duration: 5000,
+      action: {
+        label: 'Undo',
+        onClick: () => setBeverageEntries((current) => [...current, entry]),
+      },
+      onDismiss: () => {
+        beverageApi.deleteBeverage(id).catch((err) => {
+          setBeverageEntries((current) => [...current, entry]);
+          toast.error(err.message);
+        });
+      },
+    });
   };
 
   const handleDuplicateBeverage = async (entry) => {
@@ -814,7 +871,7 @@ export default function Meals() {
       setActionMessage(`Added another ${formatBeverageFromFlOz(entry.amountFlOz, preferredBeverageUnit)} ${beverageLabel}`);
       await fetchMeals();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -828,7 +885,7 @@ export default function Meals() {
 
   const submitFavoriteBeverageDraft = async () => {
     if (!favoriteBeverageDraft?.name?.trim()) {
-      alert('Enter a favorite beverage name.');
+      toast.error('Enter a favorite beverage name.');
       return;
     }
 
@@ -841,7 +898,7 @@ export default function Meals() {
       setActionMessage(`Saved ${favoriteBeverageDraft.name.trim()}`);
       await fetchMeals();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -1417,8 +1474,8 @@ export default function Meals() {
                       marginBottom: '16px',
                       padding: '12px 14px',
                       borderRadius: '12px',
-                      background: 'rgba(46, 125, 50, 0.08)',
-                      border: '1px solid rgba(46, 125, 50, 0.2)',
+                      background: 'var(--feedback-positive-surface)',
+                      border: '1px solid var(--feedback-positive-border)',
                       display: 'flex',
                       justifyContent: 'space-between',
                       gap: '12px',

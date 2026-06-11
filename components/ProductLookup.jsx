@@ -168,8 +168,8 @@ export default function ProductLookup({ product, onAddToMeal, onBack }) {
               style={{
                 padding: '12px',
                 borderRadius: '8px',
-                backgroundColor: 'rgba(33, 150, 243, 0.08)',
-                border: '1px solid rgba(33, 150, 243, 0.18)',
+                backgroundColor: 'var(--feedback-info-surface)',
+                border: '1px solid var(--feedback-info-border)',
                 marginBottom: '16px',
               }}
             >
@@ -258,7 +258,7 @@ export default function ProductLookup({ product, onAddToMeal, onBack }) {
             style={{
               marginTop: '16px',
               padding: '12px',
-              backgroundColor: '#f5f5f5',
+              backgroundColor: 'var(--surface-muted)',
               borderRadius: '6px',
               fontSize: '12px',
               color: 'var(--text-secondary)',

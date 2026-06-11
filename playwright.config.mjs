@@ -15,6 +15,7 @@ export default defineConfig({
     timeout: 10_000,
   },
   fullyParallel: true,
+  workers: process.env.PLAYWRIGHT_ALLOW_MUTATION ? 1 : undefined,
   retries: process.env.CI ? 1 : 0,
   use: {
     baseURL,

@@ -42,6 +42,7 @@ export default function HouseholdPage() {
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState(null);
+  const [confirmRemoveId, setConfirmRemoveId] = useState(null);
 
   async function load() {
     try {
@@ -111,8 +112,8 @@ export default function HouseholdPage() {
   }
 
   async function handleRemove(profile) {
-    if (!window.confirm(`Remove ${profile.name}? This permanently deletes their logged data.`)) return;
     setBusyId(profile.id);
+    setConfirmRemoveId(null);
     setError(null);
     try {
       await profilesApi.deleteProfile(profile.id);
@@ -166,7 +167,19 @@ export default function HouseholdPage() {
               {p.isDependent && (
                 <>
                   <button type="button" className="btn btn-secondary" onClick={() => startEdit(p)}>Edit</button>
-                  <button type="button" className="btn btn-danger" disabled={busyId === p.id} onClick={() => handleRemove(p)}>Remove</button>
+                  {confirmRemoveId === p.id ? (
+                    <>
+                      <span style={{ fontSize: '13px', color: 'var(--text-secondary)', alignSelf: 'center' }}>
+                        Remove {p.name}? All their data will be deleted.
+                      </span>
+                      <button type="button" className="btn btn-danger" disabled={busyId === p.id} onClick={() => handleRemove(p)}>
+                        {busyId === p.id ? '…' : 'Confirm'}
+                      </button>
+                      <button type="button" className="btn btn-secondary" onClick={() => setConfirmRemoveId(null)}>Cancel</button>
+                    </>
+                  ) : (
+                    <button type="button" className="btn btn-danger" disabled={busyId === p.id} onClick={() => setConfirmRemoveId(p.id)}>Remove</button>
+                  )}
                 </>
               )}
             </div>

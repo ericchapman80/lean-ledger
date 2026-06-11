@@ -301,7 +301,7 @@ export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, o
       {error ? (
         <div style={{
           padding: '12px',
-          backgroundColor: '#ffebee',
+          backgroundColor: 'var(--danger-surface)',
           borderLeft: '4px solid var(--danger-color)',
           borderRadius: '4px',
           marginBottom: '16px',
@@ -314,8 +314,8 @@ export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, o
       {cameraHelp ? (
         <div style={{
           padding: '14px',
-          backgroundColor: '#fff8e1',
-          border: '1px solid #f2d38a',
+          backgroundColor: 'var(--warning-surface)',
+          border: '1px solid var(--warning-color)',
           borderRadius: '8px',
           marginBottom: '16px',
         }}>

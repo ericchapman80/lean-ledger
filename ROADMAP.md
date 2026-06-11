@@ -6,7 +6,7 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 
 ## What's next (prioritized — updated 2026-06-09)
 
-1. **V2.2 Family Profiles — application layer** 🧭 — the schema + model foundation shipped (PR #42) but nothing in `app/` uses it; the `profile_id` columns are dead weight until wired up. Highest leverage: finishing this unlocks the family/household use case and makes the just-landed migration pay off. Phased plan under the **V2.2 Family Profiles** rollout section.
+1. ✅ **V2.2 Family Profiles — shipped end to end** (foundation + Phases 1–5, PRs #42, #48–#56). Households, dependent profiles, switching, per-profile data isolation, and youth-safe per-profile coaching are live. See [`docs/family-profiles.md`](docs/family-profiles.md). — **next real priority is Food database integration (below).**
 2. **Application UX / quality-of-life cleanup** — act on the full per-page UX review in [`docs/ux-review.md`](docs/ux-review.md). P0s: replace `alert()`/`confirm()` with inline errors + undo, resolve the duplicate Dashboard/Intake check-in, Modal focus-trap a11y. See the **Application UX & Theming** section.
 3. **Theming (light / dark / system)** — match the device theme via `prefers-color-scheme` plus a user-selectable System / Always Light / Always Dark preference. Tracked as its **own phase** (a color-token refactor with a clean definition of done) after the inline-style→class cleanup. See the **Application UX & Theming** section.
 4. **Food database integration** — `FoodSearch.jsx` / `ProductLookup.jsx` are partially wired; target OpenFoodFacts (no key) or USDA FoodData Central. High daily-logging value.
@@ -53,8 +53,8 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 - ✅ Multi-tenant auth and invite-only member access foundation are shipped on `main`
 - ✅ Lean Ledger 2.0 guided onboarding foundation is shipped on `main`
 - ✅ V2.1 youth safety guardrails + athlete day-type context are shipped on `main` (PR #41)
-- 🚧 V2.2 Family Profiles: household/profile schema + model foundation shipped (PR #42); the application layer is not built yet
-- 🧭 Next product slice: **V2.2 Family Profiles — application layer** (wire the foundation into API, profile-scoped data, and switcher/management UI)
+- ✅ V2.2 Family Profiles shipped end to end (foundation + Phases 1–5, PRs #42, #48–#56): households, dependent profiles, switching, per-profile data isolation, and youth-safe per-profile coaching — see [`docs/family-profiles.md`](docs/family-profiles.md)
+- 🧭 Next product slice: **Food database integration** (OpenFoodFacts / USDA)
 
 ## Meal Intelligence & Behavioral Insights
 
@@ -1789,21 +1789,21 @@ This avoids forcing “one auth user = one coaching profile” forever.
 - add athlete-focused recovery/hydration/sleep logic
 - adjust dashboard and Daily Wins prompts by coaching mode
 
-#### V2.2 Family Profiles 🚧
+#### V2.2 Family Profiles ✅ (shipped)
 
 **Data foundation ✅ (PR #42)** — `households`, `household_members`, `profiles` tables; `profile_id` FK on all 9 user-owned data tables (backfilled); idempotent `ensureDefaultHouseholdForUser` / `ensurePrimaryProfileForUser` helpers.
 
-**Application layer 🧭 (next up)** — wire the foundation into the running app. The core architectural change is moving the per-request data boundary from "current user" to "current *active profile*", scoped to a household the user belongs to. Phased so the risky data-scoping change lands behind tests, one concern per PR.
+**Application layer ✅ (PRs #48, #49, #50, #52, #53, #54, #55, #56, + Phase 5)** — wired into the running app. The per-request data boundary moved from "current user" to "current *active profile*", scoped to a household the user belongs to. Landed behind tests, one concern per PR. See [`docs/family-profiles.md`](docs/family-profiles.md).
 
 Goal: support multiple profiles per household, let a parent/admin create and manage child/teen profiles, and switch profiles explicitly and safely.
 
-##### Phase 1 — Wire in the foundation + active-profile seam (no behavior change)
+##### Phase 1 — Wire in the foundation + active-profile seam (no behavior change) ✅ (PR #48)
 - Call `ensurePrimaryProfileForUser` on sign-in (Auth.js `signIn` event) and during owner bootstrap so every existing/new user has a household + primary profile.
 - Add `lib/models/profile.js` read helpers (`findById`, `findByHousehold`, `findManagedBy`, `findActiveForUser`).
 - Add a `getActiveProfileId(request)` seam in `lib/auth.js` that resolves the active profile from a signed/validated cookie (`ll_active_profile`), falling back to the user's primary profile (`profiles.source_user_id = userId`). The cookie value is re-validated against household membership on every request — never trusted from the client.
 - No data route changes yet → zero behavior change. Pure plumbing + unit tests.
 
-##### Phase 2 — Profile-scoped data access (the risky core)
+##### Phase 2 — Profile-scoped data access (the risky core) ✅ (PRs #49 meals, #50 weight/beverages/health, #52 favorites/habits, #53 stats + retire user-scoped reads)
 - Switch data routes/models to scope reads and writes by `profile_id` (derived from `getActiveProfileId`) instead of `user_id`. Keep `user_id` on rows for ownership; add `profile_id` to all new INSERTs.
 - Authorization: the active profile must belong to a household the current user is a member of; dependent (child/teen) profiles must be `managed_by_user_id = currentUser` or owner/admin of the household.
 - Do this table-by-table (`meals`, `weight_logs`, `water_entries`, `health_metrics`, `favorite_*`, `habit_definitions`, `daily_habit_logs`) with **profile-isolation tests** mirroring the existing multi-tenant user-isolation tests: Profile A cannot read/write Profile B's rows.
@@ -1817,7 +1817,7 @@ Goal: support multiple profiles per household, let a parent/admin create and man
 
 **Reward vs. risk.** The schema/backfill cost (the expensive, hard-to-reverse part) is already merged and is otherwise dead weight; finishing realizes that investment and unlocks the family/household use case central to the 2.0 vision. The key product question that should gate Phase 2+: *how common is the multi-profile/family case?* If families are core (the stated 2.0 direction), the reward clearly justifies the contained, mitigatable risk. If one-human-one-profile dominates in practice, Phase 1 can land (harmless) and Phase 2+ can be deferred, leaving the columns dormant rather than removing them.
 
-##### Phase 3 — Profile management API (admin/owner gated)
+##### Phase 3 — Profile management API (admin/owner gated) ✅ (PR #54)
 - `GET /api/profiles` — list profiles in the caller's household.
 - `POST /api/profiles` — create a dependent (child/teen) profile; owner/admin only; reuse `validateProfilePayload` + youth-safety derivation from DOB.
 - `PUT /api/profiles/:id` — edit a profile the caller manages.
@@ -1825,15 +1825,16 @@ Goal: support multiple profiles per household, let a parent/admin create and man
 - `POST /api/profiles/:id/activate` — set the active profile (writes the validated cookie).
 - Rules: never trust `profileId`/role/email from the client; every handler derives the actor from the session.
 
-##### Phase 4 — Switcher + management UI
-- Profile switcher in the header (current profile name/avatar → household profile list → switch).
-- `Profile > Account & Access > Household` section: list profiles, add child/teen (reuse the guided-interview "Who is this profile for?" flow), edit, remove.
-- Youth-safety guardrails (already in `lib/coachingProfile.js`) apply per profile automatically from each profile's DOB.
+##### Phase 4 — Switcher + management UI ✅ (PR #55)
+- Header profile switcher (active profile → household list → switch).
+- `/household` management page: list profiles, add child/teen, edit, remove.
 
-##### Phase 5 — Isolation E2E, polish, docs
-- E2E: create a child profile → switch → confirm data isolation between profiles → switch back.
-- Update auth-aware smoke/e2e checks if the active-profile cookie affects unauthenticated paths.
-- Document the household/profile model and switching in `README.md` / `docs/`.
+##### Phase 4.5 — Per-profile coaching state ✅ (PR #56)
+- Targets/macros/diet style/daily wins + youth-safety guardrails derive from the **active** profile (`resolveActiveCoachingSubject`), so a switched-to child sees its own age-safe numbers instead of the account holder's. `/api/profile` and stats are active-aware; the primary still uses the authoritative `users` row.
+
+##### Phase 5 — Isolation E2E, polish, docs ✅
+- Browser E2E (`tests/e2e/householdProfiles.spec.js`): create a child → switch → confirm per-profile data isolation + youth-safe coaching → switch back.
+- Household/profile model documented in [`docs/family-profiles.md`](docs/family-profiles.md) (+ README pointer).
 
 **Guardrails (carry over):** household membership must be intentional (not generic multi-tenancy); profile switching must be explicit and safe; keep `user_id` as the ownership/auth anchor and `profile_id` as the data-scope key; do not expose other households' data; preserve low-friction logging.
 
@@ -1867,57 +1868,447 @@ without turning into a generic calorie tracker or a generic habit app.
 
 **Goal:** make the pipeline faster to iterate on **without weakening any quality gate**. Quality is the priority; speed is the optimization. No gate (tests, coverage, build, audit, smoke, e2e, deployed checks) may be removed or downgraded — only re-orchestrated, parallelized, or cached.
 
-**Current shape (for reference)**
+**Current shape**
 - PR path: `validate` → `local-functional` → `deploy-preview` → `preview-post-deploy`
 - main path: `validate` → `local-functional` → `deploy-production` → `production-post-deploy`
-- `validate` and `local-functional` both `npm ci`, both spin up Postgres, and both run `npm run build`; deploy jobs build again via `vercel build`. There is meaningful duplicated work.
+- Both `validate` and `local-functional` run `npm ci` + spin up Postgres + `npm run build`. Deploy jobs run `vercel build` (a third/fourth build). Meaningful duplicated work.
 
-**Candidate speedups (all preserve gates)**
-- **Parallelize independent gates.** `validate` (vitest + coverage + build + audit) and `local-functional` (smoke + e2e against a locally built app) are independent quality gates run sequentially. Running them in parallel trades fast-fail for wall-clock; both still run. Evaluate the fast-fail tradeoff.
-- **Cache aggressively.** `actions/cache` for `.next/cache` (Next build), Playwright browsers (`~/.cache/ms-playwright`), and confirm npm cache is effective. Browser install + rebuilds are large, repeated costs.
-- **De-duplicate the build.** Build once, share the artifact across jobs that need it instead of building 3–4 times per run.
-- **Shard the slow suites.** Vitest and Playwright both support sharding via a matrix; fan out long suites and join on a gate job. More gates run in parallel, same coverage.
-- **Split `npm audit`** into its own parallel job so a security gate doesn't serialize behind the build.
-- **Path filters (quick win, do first).** Skip the heavy pipeline on docs-only changes (`**.md`, `docs/**`, `ROADMAP.md`). Design note: if these Pipeline checks are/become *required* for merge, a plain `paths-ignore` will block docs PRs (the required check never reports). Use the "skip-but-report-success" pattern — a lightweight gate job that always runs and reports success when only docs changed — so required-check branch protection still passes. (This very PR is a docs-only change that ran the full pipeline; the filter prevents that going forward.)
-
-**Guardrails**
-- Keep every existing gate required and blocking.
+**Guardrails (carry through every step)**
+- Every existing gate stays required and blocking — no gate removed, demoted, or stubbed.
 - Prefer orchestration/caching changes over changing what is tested.
-- Measure before/after wall-clock; don't add complexity that doesn't pay for itself.
-- Deployed-environment checks (preview/production post-deploy) stay as real gates; do not stub them to save time.
+- Deployed-environment checks (preview/production post-deploy) remain real gates against live Vercel URLs.
+- Measure wall-clock before and after each step; don't add complexity that doesn't pay for itself.
 
-**Suggested sequence**
-1. Path filter for docs-only changes (quick win).
-2. Add caching (`.next/cache`, Playwright browsers).
-3. Parallelize `validate`/`local-functional` and split out `npm audit`.
-4. Shard vitest/Playwright if wall-clock still dominates.
-5. Measure and document the before/after.
+---
+
+### Step 1 — Docs path filter ✅ (ship immediately)
+
+Skip the heavy pipeline on docs-only pushes/PRs. Design constraint: if pipeline jobs are *required checks* for merge, `paths-ignore` alone blocks docs PRs (the required check never reports). Solution: a lightweight `changes` job that always runs and short-circuits the rest when only docs changed.
+
+```yaml
+# Add to the top of pipeline.yml, before all other jobs:
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            code:
+              - '**'
+              - '!**.md'
+              - '!docs/**'
+              - '!ROADMAP.md'
+
+  validate:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    # ... rest unchanged
+
+  # All other jobs keep their existing `needs:` — they already gate on validate/local-functional
+  # so they implicitly skip when validate is skipped.
+```
+
+**Required PR status checks** in GitHub branch protection: change from `validate` to `changes` + `validate` so docs-only PRs pass on `changes` alone.
+
+**Acceptance criteria:**
+- A PR that touches only `.md` / `docs/` files completes in < 30 s (only `changes` runs)
+- A PR that touches any `.js`/`.jsx`/`.mjs`/`.yml`/`.sql` file runs the full pipeline
+
+---
+
+### Step 2 — Aggressive caching 🧭
+
+Three high-value caches, each a small `actions/cache` block:
+
+**2a. Next.js build cache** (`.next/cache`) — avoids full incremental rebuild on unchanged pages. Add to `validate` and `local-functional`:
+```yaml
+- uses: actions/cache@v4
+  with:
+    path: .next/cache
+    key: nextjs-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.js','**/*.jsx','**/*.mjs') }}
+    restore-keys: nextjs-${{ runner.os }}-
+```
+
+**2b. Playwright browsers** (`~/.cache/ms-playwright`) — browser install is the single largest repeated cost in `local-functional`:
+```yaml
+- name: Cache Playwright browsers
+  uses: actions/cache@v4
+  id: playwright-cache
+  with:
+    path: ~/.cache/ms-playwright
+    key: playwright-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+- run: npx playwright install --with-deps chromium
+  if: steps.playwright-cache.outputs.cache-hit != 'true'
+- run: npx playwright install-deps chromium
+  if: steps.playwright-cache.outputs.cache-hit == 'true'
+```
+
+**2c. npm cache** — already partially handled by `actions/setup-node cache: npm`; no change needed.
+
+**Expected savings:** ~2–3 min per run on unchanged builds, ~1–2 min on Playwright install cache hits.
+
+---
+
+### Step 3 — Parallelize validate + local-functional 🧭
+
+Currently `local-functional` waits for `validate` to finish before starting. These are independent quality gates — parallelizing trades the "fail fast on unit tests before spending time on E2E" fast-fail for wall-clock time.
+
+**Decision:** parallelize (wall-clock matters more for a small-team project; either job failing still blocks the pipeline).
+
+Change `local-functional`:
+```yaml
+local-functional:
+  needs: changes          # was: needs: validate
+  if: needs.changes.outputs.code == 'true'
+```
+
+Add a gate job so `deploy-preview` and `deploy-production` still wait for both:
+```yaml
+quality-gate:
+  needs: [validate, local-functional]
+  if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+  runs-on: ubuntu-latest
+  steps:
+    - run: echo "All quality gates passed"
+
+deploy-preview:
+  needs: [changes, quality-gate]   # was: needs: [validate, local-functional]
+  ...
+
+deploy-production:
+  needs: [changes, quality-gate]
+  ...
+```
+
+**Expected savings:** wall-clock drops by ~(duration of validate) since both run simultaneously.
+
+---
+
+### Step 4 — Split `npm audit` into a parallel job 🧭
+
+Currently `npm audit` runs inside `validate`, serialized behind `npm run build`. A security finding blocks the build step from reporting.
+
+Extract to a parallel job:
+```yaml
+security-audit:
+  needs: changes
+  if: needs.changes.outputs.code == 'true'
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-node@v6
+      with: { node-version: '20', cache: npm }
+    - run: npm ci
+    - run: npm audit --audit-level=high
+```
+
+Remove `npm audit` from `validate`. Add `security-audit` to the `quality-gate` needs list.
+
+---
+
+### Step 5 — Shard vitest/Playwright if still needed 🧭
+
+Evaluate after Steps 1–4. If `validate` or `local-functional` still dominates wall-clock:
+
+**Vitest sharding** (matrix):
+```yaml
+strategy:
+  matrix:
+    shard: [1/2, 2/2]
+steps:
+  - run: npm run test:coverage -- --shard=${{ matrix.shard }}
+```
+
+**Playwright sharding** (matrix):
+```yaml
+strategy:
+  matrix:
+    shard: [1/2, 2/2]
+steps:
+  - run: npm run test:e2e -- --shard=${{ matrix.shard }}
+```
+
+Add a merge-report step to combine coverage artifacts before the gate.
+
+**Only add sharding if wall-clock after Steps 1–4 is still > 10 min.**
+
+---
+
+### Measurement plan
+
+Before starting Step 2: record current wall-clock for a typical PR run (validate duration, local-functional duration, total from push to deploy-preview). After each step, record the same. Log in a comment on the CI/CD PR.
 
 ## Application UX & Theming
 
 A full per-page UX/UI review was done before making changes — see [`docs/ux-review.md`](docs/ux-review.md) for per-page findings, a prioritized QoL recommendation list, quick wins, and the theming analysis. This is intentionally **review-first**: no UX changes ship until the recommendations are triaged.
 
 ### Phase A — UX / quality-of-life cleanup 🧭
-Behavioral and a11y improvements from the review. Headline P0s:
-- Replace ~25 `alert(err.message)` sites with inline/toast errors.
-- Replace browser `confirm()` deletes with an undo affordance (Intake has one-tap inline deletes today, no undo).
-- Resolve the duplicate check-in: Dashboard "Lean Recomp Check-In" and Intake "Today's Wins" both write the same health metrics — make Intake the single editor (the copy even says Dashboard should be summary-only).
-- Modal focus-trap + labeled close + initial focus; FoodSearch results as real focusable buttons; header `aria-expanded`.
-- Quick wins (all small): "Today" date reset, `role="status"` on Loading, delete the duplicated youth-safety block in Profile, hide the non-functional Progress Photo placeholder, sign/icon on Weight change.
-- **Do recommendation: move inline styles → classes first** — it shrinks the theming surface dramatically and is the natural bridge into Phase B.
+
+**Stack addition:** `sonner` — the current Next.js standard for toast notifications (~3 kb, Radix-based, accessible). Add `<Toaster />` once in `app/layout.jsx`.
+
+**Pattern rules (applied everywhere in this phase):**
+- Field/form validation errors → inline `<p class="field-error">` below the relevant input, persistent until corrected.
+- Transient success messages → `toast.success('…')` from sonner (auto-dismiss 3 s).
+- Destructive action undo → `toast('Item deleted', { action: { label: 'Undo', onClick: restore }, duration: 5000 })`. Optimistic: remove from UI immediately, restore on undo, send DELETE only after toast expires.
+- Zero `alert()` / `confirm()` calls anywhere in application code after this phase.
+
+#### P0 tasks (must all ship together)
+
+**1. Add sonner**
+- `npm install sonner`
+- `<Toaster />` in `app/layout.jsx` (client boundary wrapper)
+- `lib/toast.js` re-export for consistent import path
+
+**2. Replace ~25 `alert(err.message)` calls**
+- `app/page.jsx` line 229 (Dashboard save failure)
+- `app/meals/page.jsx` ~20 call sites (add meal, add beverage, favorites, habits)
+- `app/weight/page.jsx` line 56
+- `app/profile/page.jsx` (profile save, habits loop, member management)
+- `app/health/page.jsx` lines 96, 120
+- Replace with `toast.error(err.message)` (non-blocking, dismissable)
+
+**3. Replace `confirm()` with undo toasts**
+- `app/meals/page.jsx` lines 552, 714, 723, 733, 801 (delete food, favorite meal/food/beverage, beverage entry)
+- Pattern: optimistic delete → undo toast (5 s window) → send DELETE after expiry
+
+**4. Resolve duplicate Dashboard check-in**
+- `app/page.jsx` lines 517–639: remove the editable "Lean Recomp Check-In" form
+- Replace with a read-only summary card: today's logged wins count + names
+- Add "Edit in Intake →" deep link to `/meals#daily-wins`
+- Intake `Today's Wins` becomes the single editor
+
+**5. Modal a11y**
+- `components/Modal.jsx`: add focus trap (tab/shift-tab cycles within modal), `role="dialog"`, `aria-modal="true"`, `aria-labelledby` pointing to modal title, `aria-label="Close"` on `×` button, restore focus to trigger on close
+
+#### P1 tasks (ship in Phase A or immediate follow-on)
+
+**6. FoodSearch results → buttons** (`components/FoodSearch.jsx` lines 137–149)
+- `<div onClick>` → `<button type="button">`; CSS `:hover`/`:focus-visible` replaces `onMouseEnter`/`onMouseLeave` recoloring
+
+**7. Header a11y** (`components/Header.jsx`)
+- Add `aria-expanded={menuOpen}` to hamburger button, `aria-controls="nav-menu"`, `id="nav-menu"` on nav
+- Move injected `<style>` block responsive rules into `globals.css` (remove `!important` fragility)
+
+**8. Page chrome standardization**
+- Add `.page-container`, `.page-header`, `.data-table` classes to `globals.css`
+- Unify padding: Dashboard/Intake `20px` vs Weight/Trends/Health/Profile `40px 20px` — pick one and use the class everywhere
+
+**9. Date prev/next/"Today" stepper**
+- `DateStepper` component: `← [date input] → [Today]`; use in Dashboard and Intake date pickers
+
+**10. Touch targets** — `InlineActionButton` (or equivalent): min `padding: 8px 4px`, `font-size: 14px`, 44×44 px touch area
+
+**11. Fix duplicate youth-safety message** — remove one of the two duplicate `youthSafetyMessage` blocks in `app/profile/page.jsx` (lines 488–500 vs 518–532)
+
+**12. Quick wins batch** (each S effort, ship together)
+- `Loading.jsx`: `role="status"` + `aria-live="polite"`
+- `app/page.jsx`: hide "Progress Photo Placeholder" section until uploads exist
+- `app/weight/page.jsx`: add `+`/`−` sign + `▲`/`▼` icon to weight change stat card
+- `components/ErrorMessage.jsx`: replace `backgroundColor: '#ffebee'` with `var(--danger-surface)` (add the CSS var with a light-mode value here; Phase B handles dark)
+
+#### Acceptance criteria
+- `grep -r "alert(" app/ components/` → zero matches
+- `grep -r "confirm(" app/ components/` → zero matches
+- Dashboard check-in form removed; Intake is the sole `Today's Wins` editor
+- `Modal` passes keyboard trap: tab cycles within, Escape closes, focus restores to trigger
+- `FoodSearch` results are keyboard/touch accessible
+- All existing Vitest unit tests and Playwright E2E pass without regression
+
+#### Tests to add
+- Unit: toast utility exports work
+- Unit: `Modal` focus trap — focus moves to first focusable element on open; does not leave modal on tab
+- E2E: add meal → delete → undo → meal reappears (Intake)
+- E2E: form validation surfaces inline error text, no browser dialog
+
+---
 
 ### Phase B — Theming (light / dark / system) 🧭 (separate phase)
-Tracked separately from Phase A because it is a horizontal color-token refactor with a clean definition of done; interleaving it with behavioral changes would make diffs hard to review. Current state: a clean `:root` token block exists in `app/globals.css`, but the app never honors `prefers-color-scheme` and colors are hardcoded inline in many places (FoodSearch/ProductLookup `white`/`#f5f5f5`, ErrorMessage/scanner `#ffebee`/`#fff8e1`, Recharts hex strokes, button hovers), so a naive dark flip would render unreadable. Sequence:
-1. Token hardening — replace hardcoded colors with semantic tokens; add chart/feedback tokens; set `color-scheme`.
-2. Dark palette via `prefers-color-scheme` and `:root[data-theme="dark"]`.
-3. Preference + persistence — a `data-theme` attribute driven by a **cookie read in the server `layout.jsx`** (no flash-of-unstyled-content; works for single-user/unauthenticated today; optional `users.theme_preference` / `profiles` column once profile state is the source of truth), with a 3-state System / Light / Dark control in the Header/Profile.
-4. QA across light/dark/system including Recharts and the scanner overlays.
+
+**Stack addition:** `next-themes` — SSR-safe, FOUC-free, ~2 kb. The current Next.js standard for theme switching.
+
+Tracked separately because token hardening is a horizontal refactor across every component; interleaving it with behavioral changes makes diffs hard to review and regressions hard to bisect.
+
+#### Step 1 — Token hardening (prerequisite, can be its own PR)
+
+Add semantic tokens to `app/globals.css` `:root`:
+```css
+--surface-muted: #f5f5f5;
+--danger-surface: #ffebee;
+--warning-surface: #fff8e1;
+--feedback-positive-surface: rgba(46,125,50,0.08);
+--feedback-info-surface: rgba(2,119,189,0.08);
+--chart-1: #1f6feb;  --chart-2: #e74c3c;  --chart-3: #16a085;
+--chart-4: #8e44ad;  --chart-5: #f39c12;  --chart-grid: #dfe6e9;
+--btn-primary-hover: color-mix(in srgb, var(--primary-color) 80%, black);
+--btn-secondary-hover: color-mix(in srgb, var(--secondary-color) 80%, black);
+--btn-danger-hover: color-mix(in srgb, var(--danger-color) 80%, black);
+```
+
+Replace hardcoded colors in these specific files:
+- `components/ErrorMessage.jsx:5` → `var(--danger-surface)`
+- `components/FoodSearch.jsx` → `var(--card-background)`, `var(--surface-muted)`, `var(--danger-surface)`, `var(--text-secondary)`
+- `components/ProductLookup.jsx:261` → `var(--surface-muted)`
+- `components/BarcodeScanner.jsx` → `var(--danger-surface)`, `var(--warning-surface)`
+- `app/login/page.jsx` inline `rgba()` banners → `var(--danger-surface)`, `var(--feedback-info-surface)`
+- `components/HydrationFeedback.jsx` + Intake `MealFeedback` tone backgrounds → `var(--feedback-positive-surface)`, `var(--feedback-info-surface)`
+- All inline `rgba(52,152,219,0.08)` info panels → `var(--feedback-info-surface)`
+- `globals.css` button hover colors → `var(--btn-*-hover)` tokens
+- Recharts: create `lib/chartTheme.js` that reads `--chart-1…5` and `--chart-grid` from `getComputedStyle(document.documentElement)` at render time; pass to all chart stroke/fill props in `app/trends/page.jsx` and `app/weight/page.jsx`
+
+#### Step 2 — Dark palette
+
+```css
+:root { color-scheme: light dark; }
+
+[data-theme="dark"] {
+  --background: #0d1117;       --card-background: #161b22;
+  --border-color: #30363d;     --text-primary: #e6edf3;
+  --text-secondary: #8b949e;   --shadow: 0 1px 3px rgba(0,0,0,0.5);
+  --surface-muted: #21262d;    --danger-surface: #2d1b1b;
+  --warning-surface: #2d2208;
+  --feedback-positive-surface: rgba(46,125,50,0.15);
+  --feedback-info-surface: rgba(2,119,189,0.15);
+  --chart-grid: #30363d;
+}
+```
+
+#### Step 3 — next-themes wiring
+
+- `npm install next-themes`
+- `components/ThemeProvider.jsx` — client wrapper: `<NextThemesProvider attribute="data-theme" defaultTheme="system" enableSystem storageKey="ll_theme">`
+- Wrap `{children}` in `app/layout.jsx` with `<ThemeProvider>`
+- `components/ThemeToggle.jsx` — 3-state segmented control (System / Light / Dark) using `useTheme()` from next-themes
+
+#### Step 4 — Toggle placement
+
+- `<ThemeToggle />` in `components/Header.jsx` (right side, before profile switcher)
+- "Appearance" row in Profile settings page pointing to the same 3-state control
+
+#### Acceptance criteria
+- `grep -rE "backgroundColor: '(white|#[0-9a-fA-F]{3,6})" app/ components/` → zero matches (Nutri-Score brand colors in `ProductLookup` are an accepted exception)
+- Dark mode: all surfaces readable — no white-on-white panels, no invisible text
+- Recharts charts use dark-appropriate colors in dark mode
+- BarcodeScanner overlays readable in dark mode
+- `prefers-color-scheme: dark` honored without user setting (default system)
+- User preference persists across reloads (localStorage via next-themes, no FOUC)
+- All existing tests pass
+
+## Food Database Integration 🧭
+
+**Goal:** let users search a real food/nutrition database to auto-fill the Add Meal form, eliminating manual macro entry for common foods. Auto-save as a favorite food after two uses.
+
+### API strategy
+
+**Primary: OpenFoodFacts** (`https://world.openfoodfacts.org/cgi/search.pl`) — free, no API key, broad coverage, community-driven. Use for all searches first.
+
+**Fallback: USDA FoodData Central** (`https://api.nal.usda.gov/fdc/v1/foods/search`) — requires a free API key (`USDA_FOOD_API_KEY` env var). Triggered when OpenFoodFacts returns zero results. Store the key in Vercel env vars + `.env.local`.
+
+Never expose API keys client-side. All food lookups go through a server-side route handler.
+
+### User flow
+
+1. User opens the Add Meal modal on Intake and clicks **"Search Food"** (existing `FoodSearch.jsx` entry point).
+2. Types a query (e.g. "greek yogurt chobani"). Results stream from `/api/food-search?q=…`.
+3. Selects a result — macros, calories, and serving size auto-fill the Add Meal form fields.
+4. User adjusts serving size (optional) → logs normally via existing `POST /api/meals`.
+5. After the meal is logged, the app increments a use-count for that food item. If the count reaches 2, a sonner toast fires: **"You've used Greek Yogurt twice — save as a favorite?"** with `[Save]` / `[Not now]` actions.
+
+### New API route
+
+**`GET /api/food-search?q={query}&source={auto|openfoodfacts|usda}`**
+- Server-side only (API key safety)
+- Calls OpenFoodFacts first; if 0 results, falls back to USDA
+- Returns a normalized array (max 10 results):
+  ```json
+  [
+    {
+      "id": "off:3017624010701",
+      "source": "openfoodfacts",
+      "name": "Greek Yogurt",
+      "brand": "Chobani",
+      "servingSize": 170,
+      "servingUnit": "g",
+      "calories": 100,
+      "protein": 17,
+      "fat": 0,
+      "carbs": 6
+    }
+  ]
+  ```
+- Response cached for 1 hour via `Cache-Control: public, max-age=3600` (food data doesn't change often)
+- Returns `{ source: "openfoodfacts"|"usda"|"none", results: [] }` so the UI can display "Results from USDA FoodData Central" when the fallback fires
+
+### Auto-save to favorites
+
+**Data model:** add `food_use_count` table (or a column on `favorite_foods`):
+```sql
+-- migration 019
+ALTER TABLE favorite_foods
+  ADD COLUMN IF NOT EXISTS external_id TEXT,
+  ADD COLUMN IF NOT EXISTS source TEXT,          -- 'openfoodfacts' | 'usda' | 'manual'
+  ADD COLUMN IF NOT EXISTS use_count INTEGER NOT NULL DEFAULT 0;
+```
+
+**Logic (server-side, in `POST /api/meals` handler):**
+1. If `externalFoodId` is present in the meal payload, upsert a `favorite_foods` row with `use_count = use_count + 1`.
+2. If `use_count` transitions from 1 → 2, include `"suggestFavorite": true` in the `POST /api/meals` response.
+3. Client receives the flag → fires the "Save as favorite?" toast.
+4. If user clicks Save: `POST /api/favorites/foods` with the normalized food data (already in client state). If Not Now: no action, no re-prompt.
+
+### `FoodSearch.jsx` changes
+
+- Wire the existing component to `GET /api/food-search?q=…` (currently stubbed or hitting a different source).
+- Show a "Results from USDA FoodData Central" subtitle when source is `usda`.
+- Show a "No results found" empty state (already exists) when source is `none`.
+- Convert result rows from `<div>` to `<button>` (also a Phase A P1 task — do here if Phase A hasn't shipped yet).
+- Add a skeleton loader (3 shimmer rows) while the request is in flight.
+
+### `ProductLookup.jsx` changes
+
+Barcode scan → product lookup already hits OpenFoodFacts by barcode. No change needed to the lookup itself. After a barcode-scanned food is logged, apply the same `use_count` / suggest-favorite flow above.
+
+### Environment variables
+
+```
+# .env.local / Vercel env vars
+USDA_FOOD_API_KEY=your_key_here   # free at https://fdc.nal.usda.gov/api-guide.html
+```
+
+No key needed for OpenFoodFacts primary path.
+
+### Acceptance criteria
+
+- Searching "chicken breast" returns ≥1 result from OpenFoodFacts with correct macros
+- Searching a niche item with 0 OFF results falls back to USDA and shows "Results from USDA FoodData Central"
+- Selecting a result auto-fills all macro fields in the Add Meal form; user can still edit them
+- Logging the same food twice triggers the "Save as favorite?" toast
+- Accepting the toast saves the food to `favorite_foods` and it appears in the Favorites list
+- Declining the toast does not re-prompt
+- `GET /api/food-search` is never called from the client directly (server route only)
+- `USDA_FOOD_API_KEY` is never exposed in any client bundle (`grep -r "USDA_FOOD" .next/` → zero matches)
+- All existing meal logging tests pass without regression
+
+### Tests to add
+
+- Unit: `lib/foodSearch.js` — OpenFoodFacts response normalizer maps fields correctly
+- Unit: `lib/foodSearch.js` — USDA response normalizer maps fields correctly
+- Unit: `lib/foodSearch.js` — fallback triggers when OFF returns empty array
+- Integration: `GET /api/food-search?q=banana` returns normalized shape (mocked HTTP)
+- Integration: `use_count` increments on meal log with `externalFoodId`; `suggestFavorite: true` fires at count=2
+- E2E: search → select → log flow (mock the external API with Playwright `page.route`)
+
+---
 
 ## Other future work
 
 (Stub — add to as we go.)
 
-- **Food database integration** — `FoodSearch.jsx` and `ProductLookup.jsx` components exist in the codebase, partially wired. Likely target: OpenFoodFacts API (free, no key needed) or USDA FoodData Central.
+- **Food database integration** — ✅ fully specced above.
 - **Barcode scanning** — `BarcodeScanner.jsx` component exists. Needs camera permission flow + a barcode decoding library (e.g., `@zxing/library`).
   Next priority: move to a dedicated continuous scanner with ZXing or equivalent instead of single-frame capture.
 - **Mobile responsiveness pass** — current CSS is desktop-first; needs a real audit on mobile breakpoints.
