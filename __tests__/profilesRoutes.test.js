@@ -14,8 +14,10 @@ vi.mock('@/lib/models/profileHousehold', () => ({
   isHouseholdManager: (role) => role === 'owner' || role === 'admin',
 }));
 vi.mock('@/lib/profile', () => ({ validateProfilePayload: vi.fn(() => null) }));
+vi.mock('@/lib/activeProfile', () => ({ getActiveProfileId: vi.fn(), ACTIVE_PROFILE_COOKIE: 'll_active_profile' }));
 
 import { getCurrentUserId } from '@/lib/auth';
+import { getActiveProfileId } from '@/lib/activeProfile';
 import * as Profile from '@/lib/models/profile';
 import { findMembershipForUser } from '@/lib/models/profileHousehold';
 
@@ -33,12 +35,16 @@ beforeEach(() => {
 });
 
 describe('GET /api/profiles', () => {
-  it('lists profiles for the caller\'s household', async () => {
-    Profile.listByHousehold.mockResolvedValue([{ id: 1, isPrimary: true }]);
+  it('lists profiles for the caller\'s household and marks the active one', async () => {
+    Profile.listByHousehold.mockResolvedValue([{ id: 1, isPrimary: true }, { id: 2, isPrimary: false }]);
+    getActiveProfileId.mockResolvedValue(2);
     const { GET } = await import('@/app/api/profiles/route.js');
     const res = await GET(req());
     expect(res.status).toBe(200);
     expect(Profile.listByHousehold).toHaveBeenCalledWith(HOUSEHOLD_ID);
+    const body = await res.json();
+    expect(body.find((p) => p.id === 2).isActive).toBe(true);
+    expect(body.find((p) => p.id === 1).isActive).toBe(false);
   });
 
   it('returns [] when the user has no household', async () => {

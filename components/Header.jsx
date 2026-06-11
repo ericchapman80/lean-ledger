@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import ProfileSwitcher from '@/components/ProfileSwitcher';
 
 export default function Header() {
   const pathname = usePathname();
@@ -18,8 +19,11 @@ export default function Header() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ margin: 0, color: 'var(--primary-color)' }}>📒 Lean Ledger</h2>
 
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ProfileSwitcher />
+
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
               style={{
                 display: 'none',
                 background: 'none',
@@ -33,7 +37,8 @@ export default function Header() {
               aria-label="Toggle menu"
             >
               {menuOpen ? '✕' : '☰'}
-            </button>
+              </button>
+            </div>
           </div>
 
           <ul className={menuOpen ? 'nav-open' : ''}>
