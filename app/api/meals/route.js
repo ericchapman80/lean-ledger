@@ -3,6 +3,7 @@ import { getCurrentUserId } from '@/lib/auth';
 import { getActiveProfileId } from '@/lib/activeProfile';
 import { apiRouteErrorResponse } from '@/lib/apiRouteError';
 import * as Meal from '@/lib/models/meal';
+import * as FavoriteFood from '@/lib/models/favoriteFood';
 import { optionalNumberOrNull } from '@/lib/carbUtils';
 import { getRequestLocalDate } from '@/lib/utils/dateUtils';
 
@@ -44,6 +45,9 @@ export async function POST(request) {
       fiber = null,
       sugarAlcohols = null,
       calories,
+      // Optional: populated when food was selected from the search database
+      externalFoodId = null,
+      externalFoodSource = null,
     } = await request.json();
 
     const targetDate = date || getRequestLocalDate(request);
@@ -68,7 +72,36 @@ export async function POST(request) {
       sugarAlcohols: optionalNumberOrNull(sugarAlcohols),
       calories: Number(calories),
     });
-    return NextResponse.json(meal, { status: 201 });
+
+    // Track use_count for foods from the search database.
+    // When use_count transitions 1→2, signal the client to offer saving as a favorite.
+    let suggestFavorite = false;
+    if (externalFoodId && externalFoodSource) {
+      try {
+        const { prevUseCount } = await FavoriteFood.upsertExternalAndIncrementUseCount({
+          userId,
+          profileId,
+          name: mealName,
+          defaultMealType: mealType,
+          portionAmount: portionAmount == null || portionAmount === '' ? null : Number(portionAmount),
+          portionUnit: portionUnit || null,
+          portionGrams: portionGrams == null || portionGrams === '' ? null : Number(portionGrams),
+          protein: Number(protein),
+          fat: Number(fat),
+          carbs: Number(carbs),
+          fiber: optionalNumberOrNull(fiber),
+          sugarAlcohols: optionalNumberOrNull(sugarAlcohols),
+          calories: Number(calories),
+          externalId: externalFoodId,
+          source: externalFoodSource,
+        });
+        suggestFavorite = prevUseCount === 1;
+      } catch {
+        // Non-fatal: use_count tracking failing should not block meal creation
+      }
+    }
+
+    return NextResponse.json({ ...meal, suggestFavorite }, { status: 201 });
   } catch (error) {
     return apiRouteErrorResponse(error, 'Failed to create meal');
   }

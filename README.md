@@ -191,6 +191,20 @@ Builds should not mutate schema because that can:
 
 Use migrations or init commands as deliberate operational steps outside the Vercel build itself.
 
+### USDA Food API key (optional)
+
+The food search uses OpenFoodFacts as the primary source (no key needed). USDA FoodData Central is the fallback for items with zero OpenFoodFacts results. To enable it:
+
+1. Go to **https://fdc.nal.usda.gov/api-guide.html**
+2. Click **Sign Up for an API Key** — enter your name and email, key is emailed instantly
+3. Add to `.env.local` for local dev:
+   ```
+   USDA_FOOD_API_KEY=your_key_here
+   ```
+4. Add to Vercel for deployed environments: **Project Settings → Environment Variables → Add** `USDA_FOOD_API_KEY`, scoped to Production (and Preview if desired)
+
+The key is free, requires no billing info, and allows 1,000 requests/hour. The app works without it — food search still returns OpenFoodFacts results.
+
 ### Protected preview and production verification
 
 The CI workflow supports Vercel Deployment Protection bypass for automation.
