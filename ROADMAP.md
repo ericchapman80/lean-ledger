@@ -1259,6 +1259,7 @@ Vercel: set these in Project Settings → Environment Variables. Pull locally wi
 - `V2.2 Family Profiles` **data foundation** is shipped on `main` (PR #42), but the **application layer is not built yet**
   - shipped: `households`, `household_members`, `profiles` tables (migration `016_add_household_profile_foundation`), a `profile_id` FK on all 9 user-owned data tables (backfilled), and the idempotent `lib/models/profileHousehold.js` helpers (`ensureDefaultHouseholdForUser`, `ensurePrimaryProfileForUser`)
   - not built: nothing in `app/` calls these helpers, there are no profile/household API routes, no profile switching, and data is still scoped by `user_id` — the `profile_id` columns are currently dead weight
+- deeper athlete fueling logic, Lean Recomp day-based macro target adaptation, and full family profile application flows are still ahead
 
 **Recommended next slice**
 - `V2.2 Family Profiles — application layer` (see the phased plan under the V2.2 rollout section below)
@@ -1418,6 +1419,228 @@ Day type should adjust:
 - recovery messaging
 - Daily Wins prompts
 - athlete-specific check-ins
+
+### Lean Recomp Day Types & Dynamic Macro Targets
+
+**Goal:** Evolve the existing `Lean Recomp` goal strategy so daily macro targets can adapt intelligently based on training activity without introducing a separate nutrition mode.
+
+This should be treated as the first concrete macro-target implementation of the broader day-type system, not a one-off exception.
+
+#### Product constraints
+
+- keep the existing profile goal structure
+- do **not** introduce a separate `Lean Recomp Mode`
+- the primary profile strategy remains `Lean Recomp`
+- day type should influence daily targets, not replace the user’s underlying strategy
+
+#### Problem
+
+Current Lean Recomp uses one macro target set every day.
+
+That is too static for users who are lifting regularly and want:
+
+- higher fuel on resistance-training days
+- enough support for recovery days
+- lower-carb / lower-calorie targets on true rest days
+
+#### Daily types for Lean Recomp
+
+Introduce a reusable per-day concept:
+
+```ts
+type DayType = "training" | "recovery" | "rest";
+```
+
+Definitions:
+
+- `training`
+  - resistance training performed
+  - heavy lifting
+  - strength training
+  - progressive overload work
+- `recovery`
+  - mobility
+  - walking
+  - light cardio
+  - active recovery
+- `rest`
+  - no meaningful training
+
+This should layer cleanly on top of the broader 2.0 day-type architecture, which may later include athlete-specific types like `practice`, `game`, or `competition`.
+
+#### UX direction
+
+Add a lightweight `Daily Context` card.
+
+Example:
+
+- `Today's Day Type`
+  - `Training Day`
+  - `Recovery Day`
+  - `Rest Day`
+
+Behavior:
+
+- default to `Rest Day`
+- remember the most recent user selection for convenience
+- allow fast user override
+- keep friction low
+- show the current choice anywhere macros are explained
+- future enhancement:
+  - allow users to optionally set a weekly default cadence while still permitting same-day override
+
+#### Daily Wins integration
+
+If the user completes habits such as:
+
+- `Workout`
+- `Strength Training`
+- `Heavy Lifting`
+
+the app should suggest an upgrade toward `Training Day` targets.
+
+V1 recommendation:
+
+- show a confirmation suggestion such as:
+  - `You logged a strength-focused workout. Switch today to Training Day targets?`
+- allow one-tap confirmation
+
+Possible later enhancement:
+
+- support a more aggressive auto-trigger path for clearly strength-focused workout signals, but still give the user a visible chance to confirm or override
+
+Important:
+
+- generic movement such as walking or mobility should **not** trigger `Training Day`
+- low-intensity activity should more naturally suggest `Recovery Day`
+- do **not** automatically switch day type without confirmation in the first implementation
+- suggestion should be assistive, not surprising
+
+#### Lean Recomp macro logic
+
+`Rest Day` should be treated as the default daily assumption for Lean Recomp unless the user selects or confirms a more active day type.
+
+The current Lean Recomp calculation should be evolved into a profile-aware baseline where:
+
+- `Rest Day` becomes the default low-fuel posture
+- `Recovery Day` provides the middle path
+- `Training Day` adds targeted support for lifting performance and recovery
+
+##### Recovery day
+
+Purpose:
+
+- continue fat loss
+- support recovery
+- maintain protein
+
+Targets:
+
+- protein unchanged
+- carbs low / moderate
+- calories above rest day but below training day
+
+##### Training day
+
+Purpose:
+
+- maximize lifting quality
+- improve recovery
+- preserve or build muscle
+
+Adjustments:
+
+- protein remains high
+- carbs increase
+- calories increase modestly
+- most added calories come from carbohydrates
+
+Suggested starting adjustment:
+
+- `+200 to +400` calories above rest / recovery baseline
+- `+50g to +100g` carbs above rest / recovery baseline
+- protein unchanged
+- fat unchanged or slightly lower as a percentage of calories
+
+##### Rest day
+
+Purpose:
+
+- maintain deficit
+- maximize fat loss
+
+Adjustments:
+
+- protein remains high
+- carbs lowest
+- calories lowest
+
+#### Dashboard / messaging
+
+Dashboard and macro surfaces should clearly identify both strategy and active day type:
+
+- `Lean Recomp — Training Day`
+- `Lean Recomp — Recovery Day`
+- `Lean Recomp — Rest Day`
+
+Example support copy:
+
+- `Training Day`:
+  - `Additional carbohydrates are included today to support lifting performance, recovery, and muscle retention.`
+- `Recovery Day`:
+  - `Recovery-focused targets help support adaptation while maintaining body composition goals.`
+- `Rest Day`:
+  - `Lower-carb targets emphasize fat loss while maintaining protein intake.`
+
+#### Architecture guidance
+
+This should be built as reusable target-calculation infrastructure because future strategies may use the same concept.
+
+Examples:
+
+- `Lean Mass Gain`
+  - training day
+  - recovery day
+- `Football Athlete`
+  - lift day
+  - practice day
+  - game day
+  - recovery day
+- `Track Athlete`
+  - workout day
+  - competition day
+  - recovery day
+
+Recommended calculation seam:
+
+```ts
+calculateMacroTargets(goalStrategy, dayType, profileContext)
+```
+
+Where:
+
+- `goalStrategy` remains the primary plan
+- `dayType` adjusts the active day’s targets
+- `profileContext` can later include age group, activity focus, and coaching mode
+
+#### Data model direction
+
+- store `dayType` per day, not in profile defaults alone
+- macro-target calculations should consume:
+  - profile goal strategy
+  - active day type
+- keep the day-type system extensible rather than hard-coding it only for Lean Recomp
+
+#### Acceptance criteria
+
+- existing Lean Recomp users continue working without disruption
+- user can select `Training`, `Recovery`, or `Rest`
+- macro targets update immediately
+- dashboard displays active day type
+- Daily Wins can suggest a better day type when relevant
+- architecture supports future athlete-focused strategies
+- Weight Loss, Maintenance, and Lean Mass Gain continue functioning without regression
+- tests cover macro-calculation scenarios across day types
 
 ### Youth Safety Guardrails
 
