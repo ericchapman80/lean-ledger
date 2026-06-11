@@ -29,6 +29,7 @@ import { getTodayDate } from '@/lib/utils/dateUtils';
 import { cmToFeetInches, feetInchesToCm, kgToLbs, lbsToKg, formatHeight, formatWeight, getWeightUnit } from '@/lib/utils/unitUtils';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const LEAN_RECOMP_HELPER_TEXT = 'Lean Recomp prioritizes fat loss while preserving or building muscle. Focus on strength performance, waist trend, and weekly average weight instead of day-to-day scale swings.';
 const LEAN_RECOMP_PROTEIN_HELPER = 'If you are around 231 lb and strength training, a typical Lean Recomp protein target lands around 180–220g per day.';
@@ -1083,6 +1084,18 @@ export default function Profile() {
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: '32px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <div>
+            <h2 style={{ margin: 0 }}>Appearance</h2>
+            <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0', fontSize: '14px' }}>
+              Color theme
+            </p>
+          </div>
+          <ThemeToggle />
         </div>
       </div>
 
