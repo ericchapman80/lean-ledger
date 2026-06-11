@@ -1,6 +1,34 @@
 import { describe, it, expect } from 'vitest';
 import { enrichProfile, hasCompletedProfile, validateProfilePayload } from '@/lib/profile.js';
 
+// V2.2 Phase 4.5: enrichProfile must produce correct, age-safe coaching for the
+// active subject — whether that's the account holder (users row) or a dependent
+// (profiles row). A switched-to child must NOT inherit an adult's aggressive
+// targets.
+describe('enrichProfile on a dependent (profile) subject', () => {
+  const adult = {
+    dateOfBirth: '1990-01-01', height: 180, weight: 90, gender: 'male',
+    activityLevel: 'moderate', goal: 'lose', goalStrategy: 'fat_loss',
+    activityFocus: [], dietStyle: 'balanced', units: 'metric',
+    dailyWinsActiveKeys: [], customMacros: null,
+  };
+  const child = { ...adult, dateOfBirth: '2014-01-01', height: 140, weight: 35 };
+
+  it('derives the child age group and applies youth-safety guardrails', () => {
+    const enriched = enrichProfile(child);
+    expect(enriched.ageGroup).toBe('child');
+    expect(enriched.youthSafetyMessage).toBeTruthy();
+    // a child must not be coached on an adult fat-loss deficit
+    expect(enriched.recommendedMacros.deficit == null || enriched.recommendedMacros.deficit === 0).toBe(true);
+  });
+
+  it('computes different (age-appropriate) targets than the adult for the same goal input', () => {
+    const adultMacros = enrichProfile(adult).activeMacros;
+    const childMacros = enrichProfile(child).activeMacros;
+    expect(childMacros.calories).not.toBe(adultMacros.calories);
+  });
+});
+
 describe('validateProfilePayload', () => {
   const valid = {
     dateOfBirth: '1996-06-07',

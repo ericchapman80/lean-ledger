@@ -1,23 +1,21 @@
 import { NextResponse } from 'next/server';
-import { getCurrentUserId } from '@/lib/auth';
-import { getActiveProfileId } from '@/lib/activeProfile';
+import { getActiveProfileId, resolveActiveCoachingSubject } from '@/lib/activeProfile';
 import { apiRouteErrorResponse } from '@/lib/apiRouteError';
-import * as User from '@/lib/models/user';
 import * as Meal from '@/lib/models/meal';
 import * as Beverage from '@/lib/models/beverageEntry';
 import * as Weight from '@/lib/models/weight';
-import { enrichProfile } from '@/lib/profile';
+import { enrichProfile, hasCompletedProfile } from '@/lib/profile';
 import { calculateWeeklyNutritionSummary } from '@/lib/weeklyStats';
 import { getDateDaysBefore, getEndOfWeek, getRequestLocalDate, getStartOfWeek } from '@/lib/utils/dateUtils';
 
 export async function GET(request) {
   try {
-    const userId = await getCurrentUserId(request);
     const profileId = await getActiveProfileId(request);
-    const user = await User.findById(userId);
-    if (!user) {
+    const { subject } = await resolveActiveCoachingSubject(request);
+    if (!subject || !hasCompletedProfile(subject)) {
       return NextResponse.json({ error: 'Profile not found. Please complete setup.' }, { status: 404 });
     }
+    const user = subject;
 
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date') || getRequestLocalDate(request);

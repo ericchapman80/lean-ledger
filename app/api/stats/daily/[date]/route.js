@@ -1,23 +1,21 @@
 import { NextResponse } from 'next/server';
-import { getCurrentUserId } from '@/lib/auth';
-import { getActiveProfileId } from '@/lib/activeProfile';
+import { getActiveProfileId, resolveActiveCoachingSubject } from '@/lib/activeProfile';
 import { apiRouteErrorResponse } from '@/lib/apiRouteError';
-import * as User from '@/lib/models/user';
 import * as Meal from '@/lib/models/meal';
 import * as Beverage from '@/lib/models/beverageEntry';
 import { buildCarbTrackingSummary, calculateNutritionTotals } from '@/lib/carbUtils';
-import { enrichProfile } from '@/lib/profile';
+import { enrichProfile, hasCompletedProfile } from '@/lib/profile';
 import { calculateBeverageNutritionTotals } from '@/lib/beverages';
 import { summarizeMealLog } from '@/lib/mealTemplates';
 
 export async function GET(request, { params }) {
   try {
-    const userId = await getCurrentUserId(request);
     const profileId = await getActiveProfileId(request);
-    const user = await User.findById(userId);
-    if (!user) {
+    const { subject } = await resolveActiveCoachingSubject(request);
+    if (!subject || !hasCompletedProfile(subject)) {
       return NextResponse.json({ error: 'Profile not found. Please complete setup.' }, { status: 404 });
     }
+    const user = subject;
 
     const { date } = await params;
     const meals = await Meal.findByProfileAndDate(profileId, date);

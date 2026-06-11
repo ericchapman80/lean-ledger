@@ -16,9 +16,12 @@ beforeEach(() => {
 });
 
 describe('findById', () => {
-  it('returns the row when found and null otherwise', async () => {
-    sqlMock.mockResolvedValueOnce([{ id: 5, name: 'Kid' }]);
-    expect(await findById(5)).toEqual({ id: 5, name: 'Kid' });
+  it('returns a formatted profile when found and null otherwise', async () => {
+    sqlMock.mockResolvedValueOnce([{ id: 5, name: 'Kid', source_user_id: null, is_dependent: true }]);
+    const found = await findById(5);
+    expect(found.id).toBe(5);
+    expect(found.name).toBe('Kid');
+    expect(found.isPrimary).toBe(false);
 
     sqlMock.mockResolvedValueOnce([]);
     expect(await findById(99)).toBeNull();
