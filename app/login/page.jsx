@@ -33,8 +33,8 @@ export default async function LoginPage({ searchParams }) {
               marginBottom: '16px',
               padding: '12px 14px',
               borderRadius: '12px',
-              border: '1px solid rgba(241, 196, 15, 0.28)',
-              background: 'rgba(241, 196, 15, 0.12)',
+              border: '1px solid var(--warning-color)',
+              background: 'var(--warning-surface)',
               color: 'var(--text-primary)',
             }}
           >
@@ -47,8 +47,8 @@ export default async function LoginPage({ searchParams }) {
               marginBottom: '16px',
               padding: '12px 14px',
               borderRadius: '12px',
-              border: '1px solid rgba(231, 76, 60, 0.22)',
-              background: 'rgba(231, 76, 60, 0.1)',
+              border: '1px solid var(--danger-color)',
+              background: 'var(--danger-surface)',
               color: 'var(--text-primary)',
             }}
           >

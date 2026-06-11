@@ -190,15 +190,15 @@ function DailyWinToggle({ active, children, onClick }) {
 function getMealFeedbackStyles(tone) {
   if (tone === 'positive') {
     return {
-      background: 'rgba(46, 125, 50, 0.08)',
-      border: '1px solid rgba(46, 125, 50, 0.2)',
+      background: 'var(--feedback-positive-surface)',
+      border: '1px solid var(--feedback-positive-border)',
       labelColor: 'var(--success-color)',
     };
   }
 
   return {
-    background: 'rgba(2, 119, 189, 0.08)',
-    border: '1px solid rgba(2, 119, 189, 0.18)',
+    background: 'var(--feedback-info-surface)',
+    border: '1px solid var(--feedback-info-border)',
     labelColor: 'var(--primary-color)',
   };
 }
@@ -1474,8 +1474,8 @@ export default function Meals() {
                       marginBottom: '16px',
                       padding: '12px 14px',
                       borderRadius: '12px',
-                      background: 'rgba(46, 125, 50, 0.08)',
-                      border: '1px solid rgba(46, 125, 50, 0.2)',
+                      background: 'var(--feedback-positive-surface)',
+                      border: '1px solid var(--feedback-positive-border)',
                       display: 'flex',
                       justifyContent: 'space-between',
                       gap: '12px',

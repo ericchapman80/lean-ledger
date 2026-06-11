@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import ProfileSwitcher from '@/components/ProfileSwitcher';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function Header() {
   const pathname = usePathname();
@@ -20,6 +21,7 @@ export default function Header() {
             <h2 style={{ margin: 0, color: 'var(--primary-color)' }}>📒 Lean Ledger</h2>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ThemeToggle />
               <ProfileSwitcher />
 
               <button

@@ -486,7 +486,7 @@ export default function Dashboard() {
                 fontWeight: 'bold',
                 padding: '6px 10px',
                 borderRadius: '999px',
-                background: 'rgba(52, 152, 219, 0.08)',
+                background: 'var(--feedback-info-surface)',
                 color: 'var(--primary-color)',
               }}>
                 {weeklyStats.elapsedDays}/7 days

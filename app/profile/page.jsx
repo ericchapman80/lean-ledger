@@ -98,8 +98,8 @@ function MacroSummaryCard({
             fontSize: '12px',
             fontWeight: 600,
             color: 'var(--primary-color)',
-            background: 'rgba(52, 152, 219, 0.08)',
-            border: '1px solid rgba(52, 152, 219, 0.18)',
+            background: 'var(--feedback-info-surface)',
+            border: '1px solid var(--feedback-info-border)',
             borderRadius: '999px',
             padding: '6px 10px',
             whiteSpace: 'nowrap',
@@ -420,8 +420,8 @@ export default function Profile() {
                   marginBottom: '24px',
                   padding: '16px 18px',
                   borderRadius: '12px',
-                  background: 'rgba(52, 152, 219, 0.08)',
-                  border: '1px solid rgba(52, 152, 219, 0.18)',
+                  background: 'var(--feedback-info-surface)',
+                  border: '1px solid var(--feedback-info-border)',
                 }}
               >
                 <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Quick onboarding interview</p>
@@ -491,8 +491,8 @@ export default function Profile() {
                   marginTop: '12px',
                   padding: '14px 16px',
                   borderRadius: '12px',
-                  background: 'rgba(39, 174, 96, 0.08)',
-                  border: '1px solid rgba(39, 174, 96, 0.18)',
+                  background: 'var(--feedback-positive-surface)',
+                  border: '1px solid var(--feedback-positive-border)',
                 }}>
                   <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-secondary)' }}>
                     {youthSafetyMessage}
@@ -504,8 +504,8 @@ export default function Profile() {
                   marginTop: '12px',
                   padding: '14px 16px',
                   borderRadius: '12px',
-                  background: 'rgba(52, 152, 219, 0.08)',
-                  border: '1px solid rgba(52, 152, 219, 0.18)',
+                  background: 'var(--feedback-info-surface)',
+                  border: '1px solid var(--feedback-info-border)',
                 }}>
                   <p style={{ margin: '0 0 6px', fontSize: '14px', color: 'var(--text-primary)' }}>
                     {LEAN_RECOMP_HELPER_TEXT}
@@ -522,8 +522,8 @@ export default function Profile() {
                   marginTop: '16px',
                   padding: '14px 16px',
                   borderRadius: '12px',
-                  background: 'rgba(241, 196, 15, 0.10)',
-                  border: '1px solid rgba(241, 196, 15, 0.22)',
+                  background: 'var(--warning-surface)',
+                  border: '1px solid var(--warning-color)',
                 }}
               >
                 <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
@@ -560,8 +560,8 @@ export default function Profile() {
                 marginTop: '18px',
                 padding: '14px 16px',
                 borderRadius: '12px',
-                background: 'rgba(39, 174, 96, 0.08)',
-                border: '1px solid rgba(39, 174, 96, 0.18)',
+                background: 'var(--feedback-positive-surface)',
+                border: '1px solid var(--feedback-positive-border)',
               }}
             >
               <p style={{ margin: '0 0 6px', fontWeight: 600 }}>Derived coaching preview</p>
@@ -644,7 +644,7 @@ export default function Profile() {
             </div>
 
             <h2 style={{ marginTop: '32px', marginBottom: '24px' }}>Daily Wins</h2>
-            <div className="card" style={{ padding: '18px', marginBottom: '24px', background: 'rgba(52, 152, 219, 0.04)' }}>
+            <div className="card" style={{ padding: '18px', marginBottom: '24px', background: 'var(--feedback-info-surface)' }}>
               <p style={{ margin: '0 0 16px', color: 'var(--text-secondary)', fontSize: '14px' }}>
                 Keep Intake focused. Choose the suggested daily wins you actually want to see there, then order them for tap-first logging.
               </p>
@@ -724,8 +724,8 @@ export default function Profile() {
                         style={{
                           padding: '12px 14px',
                           borderRadius: '12px',
-                          border: '1px solid rgba(52, 152, 219, 0.18)',
-                          background: 'rgba(52, 152, 219, 0.08)',
+                          border: '1px solid var(--feedback-info-border)',
+                          background: 'var(--feedback-info-surface)',
                         }}
                       >
                         <p style={{ margin: '0 0 6px', fontWeight: 600 }}>
@@ -832,7 +832,7 @@ export default function Profile() {
               </div>
             </div>
 
-            <div className="card" style={{ padding: '18px', marginBottom: '24px', background: 'rgba(39, 174, 96, 0.04)' }}>
+            <div className="card" style={{ padding: '18px', marginBottom: '24px', background: 'var(--feedback-positive-surface)' }}>
               <h3 style={{ margin: '0 0 10px' }}>Custom Daily Wins</h3>
               <p style={{ margin: '0 0 16px', color: 'var(--text-secondary)', fontSize: '14px' }}>
                 Add up to 10 boolean habits like Reading 10 Pages, Prayer, Mobility, or No Alcohol. These show up after your suggested Daily Wins on Intake.
@@ -1071,8 +1071,8 @@ export default function Profile() {
               <div style={{
                 padding: '14px 16px',
                 borderRadius: '12px',
-                background: 'rgba(52, 152, 219, 0.08)',
-                border: '1px solid rgba(52, 152, 219, 0.18)',
+                background: 'var(--feedback-info-surface)',
+                border: '1px solid var(--feedback-info-border)',
               }}>
                 <p style={{ margin: '0 0 6px', fontSize: '14px', color: 'var(--text-primary)' }}>
                   {LEAN_RECOMP_HELPER_TEXT}
@@ -1227,8 +1227,8 @@ export default function Profile() {
               marginBottom: '16px',
               padding: '12px 14px',
               borderRadius: '12px',
-              border: '1px solid rgba(52, 152, 219, 0.18)',
-              background: 'rgba(52, 152, 219, 0.08)',
+              border: '1px solid var(--feedback-info-border)',
+              background: 'var(--feedback-info-surface)',
             }}
           >
             <p style={{ margin: '0 0 6px', fontWeight: 600 }}>
@@ -1246,8 +1246,8 @@ export default function Profile() {
                 key={definition.key}
                 style={{
                   borderRadius: '999px',
-                  border: '1px solid rgba(52, 152, 219, 0.18)',
-                  background: 'rgba(52, 152, 219, 0.08)',
+                  border: '1px solid var(--feedback-info-border)',
+                  background: 'var(--feedback-info-surface)',
                   color: 'var(--primary-color)',
                   padding: '8px 12px',
                   fontSize: '13px',
@@ -1274,9 +1274,9 @@ export default function Profile() {
                   key={habit.id}
                   style={{
                     borderRadius: '999px',
-                    border: '1px solid rgba(39, 174, 96, 0.18)',
-                    background: habit.isActive !== false ? 'rgba(39, 174, 96, 0.08)' : 'rgba(127, 140, 141, 0.08)',
-                    color: habit.isActive !== false ? '#1f7a48' : 'var(--text-secondary)',
+                    border: `1px solid ${habit.isActive !== false ? 'var(--feedback-positive-border)' : 'var(--border-color)'}`,
+                    background: habit.isActive !== false ? 'var(--feedback-positive-surface)' : 'var(--surface-muted)',
+                    color: habit.isActive !== false ? 'var(--primary-color)' : 'var(--text-secondary)',
                     padding: '8px 12px',
                     fontSize: '13px',
                     fontWeight: 600,

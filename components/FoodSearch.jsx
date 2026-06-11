@@ -106,7 +106,7 @@ export default function FoodSearch({ onSelectFood, onClose }) {
       {error && (
         <div style={{
           padding: '12px',
-          backgroundColor: '#ffebee',
+          backgroundColor: 'var(--danger-surface)',
           borderLeft: '4px solid var(--danger-color)',
           borderRadius: '4px',
           marginBottom: '16px',
@@ -143,10 +143,10 @@ export default function FoodSearch({ onSelectFood, onClose }) {
                   borderBottom: index < searchResults.length - 1 ? '1px solid var(--border-color)' : 'none',
                   cursor: 'pointer',
                   transition: 'background-color 0.2s',
-                  backgroundColor: 'white'
+                  backgroundColor: 'var(--card-background)'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--surface-muted)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--card-background)'; }}
               >
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                   {food.imageUrl && (
@@ -213,7 +213,7 @@ export default function FoodSearch({ onSelectFood, onClose }) {
                     {food.source && (
                       <div style={{ 
                         fontSize: '10px', 
-                        color: '#999',
+                        color: 'var(--text-secondary)',
                         marginTop: '4px',
                         fontStyle: 'italic'
                       }}>
@@ -247,7 +247,7 @@ export default function FoodSearch({ onSelectFood, onClose }) {
       <div style={{
         marginTop: '16px',
         padding: '12px',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: 'var(--surface-muted)',
         borderRadius: '6px',
         fontSize: '12px',
         color: 'var(--text-secondary)'
