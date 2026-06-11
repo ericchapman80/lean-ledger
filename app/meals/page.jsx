@@ -76,6 +76,8 @@ function getEmptyFormData(mealType = 'breakfast') {
     fiber: '',
     sugarAlcohols: '',
     calories: '',
+    externalFoodId: null,
+    externalFoodSource: null,
   };
 }
 
@@ -630,7 +632,7 @@ export default function Meals() {
 
   const handleAddScannedMeal = async (mealData) => {
     try {
-      await mealsApi.createMeal({
+      const result = await mealsApi.createMeal({
         date: selectedDate,
         mealType: selectedMealType,
         mealName: mealData.mealName,
@@ -643,9 +645,33 @@ export default function Meals() {
         fiber: mealData.fiber,
         sugarAlcohols: mealData.sugarAlcohols,
         calories: mealData.calories,
+        externalFoodId: mealData.externalFoodId ?? null,
+        externalFoodSource: mealData.externalFoodSource ?? null,
       });
       setScannedProduct(null);
       fetchMeals();
+      if (result?.suggestFavorite) {
+        toast(`You've used ${mealData.mealName} twice — save as a favorite?`, {
+          duration: 8000,
+          action: {
+            label: 'Save',
+            onClick: () => favoriteFoodsApi.createFavoriteFood({
+              name: mealData.mealName,
+              defaultMealType: selectedMealType,
+              portionAmount: mealData.portionAmount,
+              portionUnit: mealData.portionUnit,
+              portionGrams: mealData.portionGrams,
+              protein: mealData.protein,
+              fat: mealData.fat,
+              carbs: mealData.carbs,
+              fiber: mealData.fiber,
+              sugarAlcohols: mealData.sugarAlcohols,
+              calories: mealData.calories,
+            }).then(() => toast.success(`${mealData.mealName} saved to favorites`))
+              .catch((err) => toast.error(err.message || 'Failed to save favorite')),
+          },
+        });
+      }
     } catch (err) {
       toast.error(err.message);
     }

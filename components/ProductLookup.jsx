@@ -82,6 +82,8 @@ export default function ProductLookup({ product, onAddToMeal, onBack }) {
       sugarAlcohols: macros.sugarAlcohols,
       fat: macros.fat,
       calories: macros.calories,
+      externalFoodId: product.externalFoodId ?? null,
+      externalFoodSource: product.externalFoodSource ?? null,
     });
   };
 
