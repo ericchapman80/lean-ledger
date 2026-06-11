@@ -18,7 +18,25 @@ env:
   NODE_VERSION: '20'
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            code:
+              - '**'
+              - '!**.md'
+              - '!docs/**'
+              - '!ROADMAP.md'
+
   validate:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -63,7 +81,8 @@ jobs:
           retention-days: 14
 
   local-functional:
-    needs: validate
+    needs: [changes, validate]
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -131,8 +150,8 @@ jobs:
           retention-days: 7
 
   deploy-preview:
-    if: github.event_name == 'pull_request' && !github.event.pull_request.draft
-    needs: [validate, local-functional]
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft && needs.changes.outputs.code == 'true'
+    needs: [changes, validate, local-functional]
     runs-on: ubuntu-latest
     env:
       NODE_OPTIONS: --dns-result-order=ipv4first
@@ -253,8 +272,8 @@ jobs:
           retention-days: 7
 
   deploy-production:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [validate, local-functional]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.code == 'true'
+    needs: [changes, validate, local-functional]
     runs-on: ubuntu-latest
     environment: production
     outputs:
