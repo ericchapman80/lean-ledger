@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const getCurrentUserId = vi.fn();
+const getActiveProfileId = vi.fn();
 const favoriteFoodFindExactMatch = vi.fn();
 const favoriteFoodCreate = vi.fn();
 const favoriteBeverageFindExactMatch = vi.fn();
@@ -8,6 +9,10 @@ const favoriteBeverageCreate = vi.fn();
 
 vi.mock('@/lib/auth', () => ({
   getCurrentUserId,
+}));
+
+vi.mock('@/lib/activeProfile', () => ({
+  getActiveProfileId,
 }));
 
 vi.mock('@/lib/models/favoriteFood', () => ({
@@ -24,6 +29,7 @@ describe('favorite duplicate prevention routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getCurrentUserId.mockResolvedValue(7);
+    getActiveProfileId.mockResolvedValue(7);
   });
 
   it('returns the existing favorite food instead of creating a duplicate', async () => {

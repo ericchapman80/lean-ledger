@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
+import { getActiveProfileId } from '@/lib/activeProfile';
 import * as FavoriteBeverage from '@/lib/models/favoriteBeverage';
 import { normalizeCountsTowardHydration } from '@/lib/beverages';
 
@@ -11,13 +12,13 @@ function isMissingFavoriteBeveragesTable(error) {
 
 function isDuplicateFavoriteBeverageError(error) {
   return error?.code === '23505'
-    && error?.constraint === 'idx_favorite_beverages_user_exact_signature';
+    && error?.constraint === 'idx_favorite_beverages_profile_exact_signature';
 }
 
 export async function GET(request) {
   try {
-    const userId = await getCurrentUserId(request);
-    const favoriteBeverages = await FavoriteBeverage.findByUser(userId);
+    const profileId = await getActiveProfileId(request);
+    const favoriteBeverages = await FavoriteBeverage.findByProfile(profileId);
     return NextResponse.json(favoriteBeverages);
   } catch (error) {
     if (isMissingFavoriteBeveragesTable(error)) {
@@ -32,6 +33,7 @@ export async function POST(request) {
 
   try {
     const userId = await getCurrentUserId(request);
+    const profileId = await getActiveProfileId(request);
     const {
       name,
       beverageType = 'water',
@@ -55,6 +57,7 @@ export async function POST(request) {
 
     favoriteBeveragePayload = {
       userId,
+      profileId,
       name,
       beverageType,
       displayName: safeDisplayName,

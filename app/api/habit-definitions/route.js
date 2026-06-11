@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
+import { getActiveProfileId } from '@/lib/activeProfile';
+import { apiRouteErrorResponse } from '@/lib/apiRouteError';
 import * as HabitDefinition from '@/lib/models/habitDefinition';
 
 function validateHabitDefinitionPayload(body) {
@@ -10,13 +12,18 @@ function validateHabitDefinitionPayload(body) {
 }
 
 export async function GET(request) {
-  const userId = await getCurrentUserId(request);
-  const habits = await HabitDefinition.findByUser(userId);
-  return NextResponse.json(habits);
+  try {
+    const profileId = await getActiveProfileId(request);
+    const habits = await HabitDefinition.findByProfile(profileId);
+    return NextResponse.json(habits);
+  } catch (error) {
+    return apiRouteErrorResponse(error, 'Failed to fetch habit definitions');
+  }
 }
 
 export async function POST(request) {
   const userId = await getCurrentUserId(request);
+  const profileId = await getActiveProfileId(request);
   const body = await request.json();
 
   const error = validateHabitDefinitionPayload(body);
@@ -25,12 +32,12 @@ export async function POST(request) {
   }
 
   try {
-    const habit = await HabitDefinition.create(userId, {
+    const habit = await HabitDefinition.create(profileId, {
       name: body.name.trim(),
       inputType: 'boolean',
       category: 'custom',
       isActive: body.isActive ?? true,
-    });
+    }, userId);
     return NextResponse.json(habit, { status: 201 });
   } catch (err) {
     return NextResponse.json({ error: err.message || 'Failed to create habit' }, { status: 400 });
