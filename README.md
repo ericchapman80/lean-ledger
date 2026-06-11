@@ -264,6 +264,14 @@ ROADMAP.md                 Future work — auth/multi-tenancy plan
 
 See `lib/macroCalculator.js`. Pure JS, no DB — fully covered by unit tests.
 
+## Family profiles
+
+Multiple people can share one account as a **household** — each profile keeps
+its own meals, weight, habits, and age-appropriate coaching. Switch profiles
+from the header; manage them at `/household`. See
+[`docs/family-profiles.md`](docs/family-profiles.md) for the model, API, and the
+per-profile isolation / youth-safety guarantees.
+
 ## Testing
 
 ```bash

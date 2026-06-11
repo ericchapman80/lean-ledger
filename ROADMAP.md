@@ -6,7 +6,7 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 
 ## What's next (prioritized — updated 2026-06-09)
 
-1. **V2.2 Family Profiles — application layer** 🧭 — the schema + model foundation shipped (PR #42) but nothing in `app/` uses it; the `profile_id` columns are dead weight until wired up. Highest leverage: finishing this unlocks the family/household use case and makes the just-landed migration pay off. Phased plan under the **V2.2 Family Profiles** rollout section.
+1. ✅ **V2.2 Family Profiles — shipped end to end** (foundation + Phases 1–5, PRs #42, #48–#56). Households, dependent profiles, switching, per-profile data isolation, and youth-safe per-profile coaching are live. See [`docs/family-profiles.md`](docs/family-profiles.md). — **next real priority is Food database integration (below).**
 2. **Application UX / quality-of-life cleanup** — act on the full per-page UX review in [`docs/ux-review.md`](docs/ux-review.md). P0s: replace `alert()`/`confirm()` with inline errors + undo, resolve the duplicate Dashboard/Intake check-in, Modal focus-trap a11y. See the **Application UX & Theming** section.
 3. **Theming (light / dark / system)** — match the device theme via `prefers-color-scheme` plus a user-selectable System / Always Light / Always Dark preference. Tracked as its **own phase** (a color-token refactor with a clean definition of done) after the inline-style→class cleanup. See the **Application UX & Theming** section.
 4. **Food database integration** — `FoodSearch.jsx` / `ProductLookup.jsx` are partially wired; target OpenFoodFacts (no key) or USDA FoodData Central. High daily-logging value.
@@ -53,8 +53,8 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 - ✅ Multi-tenant auth and invite-only member access foundation are shipped on `main`
 - ✅ Lean Ledger 2.0 guided onboarding foundation is shipped on `main`
 - ✅ V2.1 youth safety guardrails + athlete day-type context are shipped on `main` (PR #41)
-- 🚧 V2.2 Family Profiles: household/profile schema + model foundation shipped (PR #42); the application layer is not built yet
-- 🧭 Next product slice: **V2.2 Family Profiles — application layer** (wire the foundation into API, profile-scoped data, and switcher/management UI)
+- ✅ V2.2 Family Profiles shipped end to end (foundation + Phases 1–5, PRs #42, #48–#56): households, dependent profiles, switching, per-profile data isolation, and youth-safe per-profile coaching — see [`docs/family-profiles.md`](docs/family-profiles.md)
+- 🧭 Next product slice: **Food database integration** (OpenFoodFacts / USDA)
 
 ## Meal Intelligence & Behavioral Insights
 
@@ -1789,21 +1789,21 @@ This avoids forcing “one auth user = one coaching profile” forever.
 - add athlete-focused recovery/hydration/sleep logic
 - adjust dashboard and Daily Wins prompts by coaching mode
 
-#### V2.2 Family Profiles 🚧
+#### V2.2 Family Profiles ✅ (shipped)
 
 **Data foundation ✅ (PR #42)** — `households`, `household_members`, `profiles` tables; `profile_id` FK on all 9 user-owned data tables (backfilled); idempotent `ensureDefaultHouseholdForUser` / `ensurePrimaryProfileForUser` helpers.
 
-**Application layer 🧭 (next up)** — wire the foundation into the running app. The core architectural change is moving the per-request data boundary from "current user" to "current *active profile*", scoped to a household the user belongs to. Phased so the risky data-scoping change lands behind tests, one concern per PR.
+**Application layer ✅ (PRs #48, #49, #50, #52, #53, #54, #55, #56, + Phase 5)** — wired into the running app. The per-request data boundary moved from "current user" to "current *active profile*", scoped to a household the user belongs to. Landed behind tests, one concern per PR. See [`docs/family-profiles.md`](docs/family-profiles.md).
 
 Goal: support multiple profiles per household, let a parent/admin create and manage child/teen profiles, and switch profiles explicitly and safely.
 
-##### Phase 1 — Wire in the foundation + active-profile seam (no behavior change)
+##### Phase 1 — Wire in the foundation + active-profile seam (no behavior change) ✅ (PR #48)
 - Call `ensurePrimaryProfileForUser` on sign-in (Auth.js `signIn` event) and during owner bootstrap so every existing/new user has a household + primary profile.
 - Add `lib/models/profile.js` read helpers (`findById`, `findByHousehold`, `findManagedBy`, `findActiveForUser`).
 - Add a `getActiveProfileId(request)` seam in `lib/auth.js` that resolves the active profile from a signed/validated cookie (`ll_active_profile`), falling back to the user's primary profile (`profiles.source_user_id = userId`). The cookie value is re-validated against household membership on every request — never trusted from the client.
 - No data route changes yet → zero behavior change. Pure plumbing + unit tests.
 
-##### Phase 2 — Profile-scoped data access (the risky core)
+##### Phase 2 — Profile-scoped data access (the risky core) ✅ (PRs #49 meals, #50 weight/beverages/health, #52 favorites/habits, #53 stats + retire user-scoped reads)
 - Switch data routes/models to scope reads and writes by `profile_id` (derived from `getActiveProfileId`) instead of `user_id`. Keep `user_id` on rows for ownership; add `profile_id` to all new INSERTs.
 - Authorization: the active profile must belong to a household the current user is a member of; dependent (child/teen) profiles must be `managed_by_user_id = currentUser` or owner/admin of the household.
 - Do this table-by-table (`meals`, `weight_logs`, `water_entries`, `health_metrics`, `favorite_*`, `habit_definitions`, `daily_habit_logs`) with **profile-isolation tests** mirroring the existing multi-tenant user-isolation tests: Profile A cannot read/write Profile B's rows.
@@ -1817,7 +1817,7 @@ Goal: support multiple profiles per household, let a parent/admin create and man
 
 **Reward vs. risk.** The schema/backfill cost (the expensive, hard-to-reverse part) is already merged and is otherwise dead weight; finishing realizes that investment and unlocks the family/household use case central to the 2.0 vision. The key product question that should gate Phase 2+: *how common is the multi-profile/family case?* If families are core (the stated 2.0 direction), the reward clearly justifies the contained, mitigatable risk. If one-human-one-profile dominates in practice, Phase 1 can land (harmless) and Phase 2+ can be deferred, leaving the columns dormant rather than removing them.
 
-##### Phase 3 — Profile management API (admin/owner gated)
+##### Phase 3 — Profile management API (admin/owner gated) ✅ (PR #54)
 - `GET /api/profiles` — list profiles in the caller's household.
 - `POST /api/profiles` — create a dependent (child/teen) profile; owner/admin only; reuse `validateProfilePayload` + youth-safety derivation from DOB.
 - `PUT /api/profiles/:id` — edit a profile the caller manages.
@@ -1825,15 +1825,16 @@ Goal: support multiple profiles per household, let a parent/admin create and man
 - `POST /api/profiles/:id/activate` — set the active profile (writes the validated cookie).
 - Rules: never trust `profileId`/role/email from the client; every handler derives the actor from the session.
 
-##### Phase 4 — Switcher + management UI
-- Profile switcher in the header (current profile name/avatar → household profile list → switch).
-- `Profile > Account & Access > Household` section: list profiles, add child/teen (reuse the guided-interview "Who is this profile for?" flow), edit, remove.
-- Youth-safety guardrails (already in `lib/coachingProfile.js`) apply per profile automatically from each profile's DOB.
+##### Phase 4 — Switcher + management UI ✅ (PR #55)
+- Header profile switcher (active profile → household list → switch).
+- `/household` management page: list profiles, add child/teen, edit, remove.
 
-##### Phase 5 — Isolation E2E, polish, docs
-- E2E: create a child profile → switch → confirm data isolation between profiles → switch back.
-- Update auth-aware smoke/e2e checks if the active-profile cookie affects unauthenticated paths.
-- Document the household/profile model and switching in `README.md` / `docs/`.
+##### Phase 4.5 — Per-profile coaching state ✅ (PR #56)
+- Targets/macros/diet style/daily wins + youth-safety guardrails derive from the **active** profile (`resolveActiveCoachingSubject`), so a switched-to child sees its own age-safe numbers instead of the account holder's. `/api/profile` and stats are active-aware; the primary still uses the authoritative `users` row.
+
+##### Phase 5 — Isolation E2E, polish, docs ✅
+- Browser E2E (`tests/e2e/householdProfiles.spec.js`): create a child → switch → confirm per-profile data isolation + youth-safe coaching → switch back.
+- Household/profile model documented in [`docs/family-profiles.md`](docs/family-profiles.md) (+ README pointer).
 
 **Guardrails (carry over):** household membership must be intentional (not generic multi-tenancy); profile switching must be explicit and safe; keep `user_id` as the ownership/auth anchor and `profile_id` as the data-scope key; do not expose other households' data; preserve low-friction logging.
 
