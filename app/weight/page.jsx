@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { weightApi, profileApi } from '@/lib/api';
+import { toast } from '@/lib/toast';
 import { getTodayDate, formatDisplayDate } from '@/lib/utils/dateUtils';
 import {
   formatDisplayWeightValue,
@@ -52,7 +53,7 @@ export default function Weight() {
       setFormData({ date: getTodayDate(), weight: '' });
       fetchData();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 

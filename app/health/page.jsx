@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { healthMetricsApi, profileApi } from '@/lib/api';
+import { toast } from '@/lib/toast';
 import {
   CSV_IMPORT_FIELDS,
   HEALTH_METRIC_FIELDS,
@@ -93,7 +94,7 @@ export default function HealthPage() {
       setFormData(getEmptyFormData());
       await fetchData();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setSubmitting(false);
     }
@@ -116,7 +117,7 @@ export default function HealthPage() {
       setMapping({});
       await fetchData();
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setImporting(false);
     }

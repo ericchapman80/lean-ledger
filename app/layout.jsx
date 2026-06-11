@@ -1,6 +1,7 @@
 import './globals.css';
 import Header from '@/components/Header';
 import { isAuthEnabled } from '@/lib/authConfig';
+import { Toaster } from 'sonner';
 
 export const metadata = {
   title: 'Lean Ledger',
@@ -17,6 +18,7 @@ export default function RootLayout({ children }) {
           <Header authEnabled={authEnabled} />
           <main>{children}</main>
         </div>
+        <Toaster richColors position="top-right" />
       </body>
     </html>
   );

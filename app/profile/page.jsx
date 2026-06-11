@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { accessApi, authApi, habitDefinitionsApi, profileApi } from '@/lib/api';
+import { toast } from '@/lib/toast';
 import {
   ACTIVITY_FOCUS_OPTIONS,
   calculateAgeFromDateOfBirth,
@@ -237,7 +238,7 @@ export default function Profile() {
       setInviteRole('member');
       setInviteNote('');
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -248,7 +249,7 @@ export default function Profile() {
         member.id === memberId ? updated : member
       )));
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -259,7 +260,7 @@ export default function Profile() {
         member.id === memberId ? updated : member
       )));
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -352,7 +353,7 @@ export default function Profile() {
       setEditing(false);
       if (wasFirstSetup) router.push('/');
     } catch (err) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
