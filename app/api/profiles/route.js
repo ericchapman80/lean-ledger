@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
+import { getActiveProfileId } from '@/lib/activeProfile';
 import { apiRouteErrorResponse } from '@/lib/apiRouteError';
 import * as Profile from '@/lib/models/profile';
 import { findMembershipForUser, isHouseholdManager } from '@/lib/models/profileHousehold';
@@ -10,8 +11,12 @@ export async function GET(request) {
     const userId = await getCurrentUserId(request);
     const membership = await findMembershipForUser(userId);
     if (!membership) return NextResponse.json([]);
-    const profiles = await Profile.listByHousehold(membership.householdId);
-    return NextResponse.json(profiles);
+    const [profiles, activeProfileId] = await Promise.all([
+      Profile.listByHousehold(membership.householdId),
+      getActiveProfileId(request),
+    ]);
+    const withActive = profiles.map((p) => ({ ...p, isActive: p.id === activeProfileId }));
+    return NextResponse.json(withActive);
   } catch (error) {
     return apiRouteErrorResponse(error, 'Failed to fetch profiles');
   }
