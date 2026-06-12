@@ -9,7 +9,7 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 1. ✅ **V2.2 Family Profiles — shipped end to end** (foundation + Phases 1–5, PRs #42, #48–#56). Households, dependent profiles, switching, per-profile data isolation, and youth-safe per-profile coaching are live. See [`docs/family-profiles.md`](docs/family-profiles.md).
 2. ✅ **Application UX / quality-of-life cleanup** — replaced all `alert()`/`confirm()` with toast + optimistic-undo, Modal focus-trap a11y, Dashboard check-in moved to Intake deep-link (PR #59).
 3. ✅ **Theming (light / dark / system)** — CSS token system + `next-themes`, System / Light / Dark toggle in Profile > Appearance (PR #59).
-4. ✅ **Food database integration** — `GET /api/food-search` (OpenFoodFacts primary → USDA fallback), server-side only, `use_count` auto-favorite suggestion at count=2 (PR #64).
+4. ✅ **Food database integration** — `GET /api/food-search` with merged OpenFoodFacts + USDA search, server-side only, `use_count` auto-favorite suggestion at count=2 (PR #64, follow-up search ranking patch on trunk).
 5. ✅ **CI/CD pipeline review** — docs path filter (PR #60), Next.js + Playwright caching, parallel `validate`/`local-functional`, `security-audit` job, `quality-gate` join (PR #62), CodeQL SAST + branch protection (PR #63).
 6. ✅ **Google Auth** — multi-tenant auth, invite-only member access, and Google OAuth are live in production.
 7. 🚧 **Mobile responsiveness pass** — in progress. PR #65 shipped: bottom-sheet modal (slides up from bottom, `slideUpSheet` animation), landscape revert to centered dialog, `.btn-group .btn` full-width scoping, `.table-scroll` / `.inline-actions` utilities, 48 px touch targets, meals action-row wrapping. A full per-page breakpoint audit is still needed.
@@ -57,7 +57,7 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 - ✅ V2.1 youth safety guardrails + athlete day-type context are shipped on `main` (PR #41)
 - ✅ V2.2 Family Profiles shipped end to end (foundation + Phases 1–5, PRs #42, #48–#56): households, dependent profiles, switching, per-profile data isolation, and youth-safe per-profile coaching — see [`docs/family-profiles.md`](docs/family-profiles.md)
 - ✅ UX/QoL Phase A+B: toast/undo, a11y modal, light/dark/system theming (PR #59)
-- ✅ Food database integration: OpenFoodFacts primary + USDA fallback, use_count auto-favorite (PR #64)
+- ✅ Food database integration: merged OpenFoodFacts + USDA search, use_count auto-favorite (PR #64 + follow-up ranking patch)
 - ✅ CI/CD: docs path filter, caching, parallelism, security-audit, quality-gate, CodeQL SAST (PRs #60, #62, #63)
 - 🚧 Mobile responsiveness pass — PR #65 shipped bottom-sheet modals, button/touch fixes, padding fixes; full breakpoint audit still in progress
 
@@ -2214,9 +2214,11 @@ Replace hardcoded colors in these specific files:
 
 ### API strategy
 
-**Primary: OpenFoodFacts** (`https://world.openfoodfacts.org/cgi/search.pl`) — free, no API key, broad coverage, community-driven. Use for all searches first.
+**OpenFoodFacts** (`https://world.openfoodfacts.org/cgi/search.pl`) — free, no API key, broad coverage, community-driven. Best for many branded / packaged foods.
 
-**Fallback: USDA FoodData Central** (`https://api.nal.usda.gov/fdc/v1/foods/search`) — requires a free API key (`USDA_FOOD_API_KEY` env var). Triggered when OpenFoodFacts returns zero results. Store the key in Vercel env vars + `.env.local`.
+**USDA FoodData Central** (`https://api.nal.usda.gov/fdc/v1/foods/search`) — requires a free API key (`USDA_FOOD_API_KEY` env var). Best for ingredient-style and whole-food lookups. Store the key in Vercel env vars + `.env.local`.
+
+**Current shipped behavior:** search both sources server-side, normalize into one shape, merge + rank results, and return the best combined list. USDA is no longer just a zero-result fallback.
 
 Never expose API keys client-side. All food lookups go through a server-side route handler.
 
@@ -2232,7 +2234,7 @@ Never expose API keys client-side. All food lookups go through a server-side rou
 
 **`GET /api/food-search?q={query}&source={auto|openfoodfacts|usda}`**
 - Server-side only (API key safety)
-- Calls OpenFoodFacts first; if 0 results, falls back to USDA
+- Calls OpenFoodFacts and USDA server-side, then merges + ranks the normalized results
 - Returns a normalized array (max 10 results):
   ```json
   [
@@ -2251,7 +2253,13 @@ Never expose API keys client-side. All food lookups go through a server-side rou
   ]
   ```
 - Response cached for 1 hour via `Cache-Control: public, max-age=3600` (food data doesn't change often)
-- Returns `{ source: "openfoodfacts"|"usda"|"none", results: [] }` so the UI can display "Results from USDA FoodData Central" when the fallback fires
+- Returns `{ source: "openfoodfacts"|"usda"|"combined"|"none", results: [] }`
+- Current ranking behavior:
+  - exact name matches rank highest
+  - starts-with and contains matches are boosted
+  - token overlap is rewarded
+  - USDA gets a slight tie-break preference for ingredient-style results
+  - dedupe by normalized `name + brand`
 
 ### Auto-save to favorites
 
@@ -2273,7 +2281,7 @@ ALTER TABLE favorite_foods
 ### `FoodSearch.jsx` changes
 
 - Wire the existing component to `GET /api/food-search?q=…` (currently stubbed or hitting a different source).
-- Show a "Results from USDA FoodData Central" subtitle when source is `usda`.
+- Show a source subtitle when source is `usda`, `openfoodfacts`, or `combined`.
 - Show a "No results found" empty state (already exists) when source is `none`.
 - Convert result rows from `<div>` to `<button>` (also a Phase A P1 task — do here if Phase A hasn't shipped yet).
 - Add a skeleton loader (3 shimmer rows) while the request is in flight.
@@ -2293,8 +2301,9 @@ No key needed for OpenFoodFacts primary path.
 
 ### Acceptance criteria
 
-- Searching "chicken breast" returns ≥1 result from OpenFoodFacts with correct macros
-- Searching a niche item with 0 OFF results falls back to USDA and shows "Results from USDA FoodData Central"
+- Searching "chicken breast" returns ≥1 relevant result with correct macros
+- Searching a USDA-style whole-food item like rotisserie chicken can surface USDA results even when OpenFoodFacts also has generic hits
+- Combined-source searches can label results as blended when both sources contribute
 - Selecting a result auto-fills all macro fields in the Add Meal form; user can still edit them
 - Logging the same food twice triggers the "Save as favorite?" toast
 - Accepting the toast saves the food to `favorite_foods` and it appears in the Favorites list
@@ -2307,10 +2316,40 @@ No key needed for OpenFoodFacts primary path.
 
 - Unit: `lib/foodSearch.js` — OpenFoodFacts response normalizer maps fields correctly
 - Unit: `lib/foodSearch.js` — USDA response normalizer maps fields correctly
-- Unit: `lib/foodSearch.js` — fallback triggers when OFF returns empty array
+- Unit: `lib/foodSearch.js` — merged ranking returns both sources when available
+- Unit: `lib/foodSearch.js` — exact USDA ingredient match can outrank generic packaged-food OFF hits
 - Integration: `GET /api/food-search?q=banana` returns normalized shape (mocked HTTP)
 - Integration: `use_count` increments on meal log with `externalFoodId`; `suggestFavorite: true` fires at count=2
 - E2E: search → select → log flow (mock the external API with Playwright `page.route`)
+
+### Future enhancements
+
+The current merged search is a good baseline, but it is not yet a fully intent-aware search system. Strong follow-up improvements:
+
+1. **Intent-aware ranking**
+   - boost USDA for ingredient / whole-food queries
+   - boost OpenFoodFacts for branded / packaged-food queries
+
+2. **Favorites and history boosting**
+   - rank previously selected foods and favorites higher for that user/profile
+
+3. **Fuzzy matching**
+   - tolerate misspellings and partial terms like `rotiserie chicken`
+
+4. **Query rewrites and synonyms**
+   - `bbq` ↔ `barbecue`
+   - `chicken breast` ↔ `breast, meat only`
+   - `ground beef` ↔ `beef, ground`
+
+5. **Source-aware presentation**
+   - optional grouped sections such as:
+     - `Best matches`
+     - `Whole foods (USDA)`
+     - `Packaged foods (Open Food Facts)`
+
+6. **Local caching / curated ingredient index**
+   - cache high-frequency USDA queries
+   - optionally maintain a small local curated ingredient dataset for the most common whole-food lookups
 
 ---
 
@@ -2318,7 +2357,7 @@ No key needed for OpenFoodFacts primary path.
 
 (Stub — add to as we go.)
 
-- **Food database integration** — ✅ shipped (PR #64). `GET /api/food-search`, OpenFoodFacts primary + USDA fallback, `use_count` auto-favorite suggestion. See spec above and [`docs/FOOD_SEARCH.md`](docs/FOOD_SEARCH.md).
+- **Food database integration** — ✅ shipped (PR #64 + follow-up ranking patch). `GET /api/food-search`, merged OpenFoodFacts + USDA ranking, `use_count` auto-favorite suggestion. See spec above and [`docs/FOOD_SEARCH.md`](docs/FOOD_SEARCH.md).
 - **Barcode scanning** — `BarcodeScanner.jsx` and `lib/barcodeScanner.js` exist with ZXing continuous stream fallback. Native `BarcodeDetector` path still uses polling. Next priority: unify on pure ZXing continuous path. See [`docs/BARCODE_SCANNING.md`](docs/BARCODE_SCANNING.md).
 - **Mobile responsiveness pass** — 🚧 in progress. PR #65 shipped bottom-sheet modals, touch targets, and action-row wrapping. Full per-page breakpoint audit is the remaining work.
 - **Recipe management** — log a saved recipe as one entry instead of re-entering ingredients.
