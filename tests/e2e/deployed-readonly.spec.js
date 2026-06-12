@@ -29,7 +29,11 @@ test.describe('deployed read-only checks', () => {
     if (authMode === 'enabled') {
       await expect(loginHeading(page)).toBeVisible();
     } else {
-      await expect(page.getByText(/Daily Dashboard|Complete Your Profile|Profile not found/i)).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: 'Daily Dashboard' })
+          .or(page.getByRole('heading', { name: /Edit Profile|Let’s build your coaching profile|Let's build your coaching profile/i }))
+          .or(page.getByText(/Complete Your Profile|Profile not found/i)),
+      ).toBeVisible();
     }
   });
 
@@ -55,7 +59,7 @@ test.describe('deployed read-only checks', () => {
     } else {
       await expect(
         page.getByRole('heading', {
-          name: /Your Profile|Edit Profile|Let’s build your coaching profile/i,
+          name: /Your Profile|Edit Profile|Let’s build your coaching profile|Let's build your coaching profile/i,
         }),
       ).toBeVisible();
     }

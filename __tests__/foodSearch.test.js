@@ -118,9 +118,10 @@ describe('normalizeUSDA', () => {
 describe('searchFoodDatabase', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    delete process.env.USDA_FOOD_API_KEY;
   });
 
-  it('returns OpenFoodFacts results when OFF has hits', async () => {
+  it('returns OpenFoodFacts results when OFF has hits and USDA is unavailable', async () => {
     global.fetch = vi.fn().mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -142,7 +143,7 @@ describe('searchFoodDatabase', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back to USDA when OFF returns empty', async () => {
+  it('returns USDA results when OFF is empty', async () => {
     process.env.USDA_FOOD_API_KEY = 'test-key';
     global.fetch = vi.fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ products: [] }) })
@@ -169,7 +170,6 @@ describe('searchFoodDatabase', () => {
     expect(result.results).toHaveLength(1);
     expect(result.results[0].name).toBe('Obscure Root Vegetable');
     expect(fetch).toHaveBeenCalledTimes(2);
-    delete process.env.USDA_FOOD_API_KEY;
   });
 
   it('returns source:none when both sources are empty', async () => {
@@ -182,11 +182,9 @@ describe('searchFoodDatabase', () => {
 
     expect(result.source).toBe('none');
     expect(result.results).toHaveLength(0);
-    delete process.env.USDA_FOOD_API_KEY;
   });
 
-  it('skips USDA fallback when USDA_FOOD_API_KEY is not set', async () => {
-    delete process.env.USDA_FOOD_API_KEY;
+  it('skips USDA lookup when USDA_FOOD_API_KEY is not set', async () => {
     global.fetch = vi.fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ products: [] }) });
 
@@ -194,5 +192,87 @@ describe('searchFoodDatabase', () => {
 
     expect(result.source).toBe('none');
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('merges USDA and OpenFoodFacts results when both sources have hits', async () => {
+    process.env.USDA_FOOD_API_KEY = 'test-key';
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          products: [{
+            code: 'off-rotisserie',
+            product_name: 'Rotisserie Chicken',
+            brands: 'Store Brand',
+            serving_quantity: 85,
+            serving_quantity_unit: 'g',
+            nutriments: { 'proteins_100g': 27, 'carbohydrates_100g': 2, 'fat_100g': 8, 'energy-kcal_100g': 190 },
+          }],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          foods: [{
+            fdcId: 777,
+            description: 'Chicken, broiler, rotisserie, BBQ, breast, meat only',
+            foodNutrients: [
+              { nutrientId: 1003, value: 29 },
+              { nutrientId: 1005, value: 0.1 },
+              { nutrientId: 1079, value: 0 },
+              { nutrientId: 1004, value: 7.1 },
+              { nutrientId: 1008, value: 183 },
+            ],
+          }],
+        }),
+      });
+
+    const result = await searchFoodDatabase('chicken rotisserie bbq breast');
+
+    expect(result.source).toBe('combined');
+    expect(result.results).toHaveLength(2);
+    expect(result.results.map((food) => food.name)).toContain('Rotisserie Chicken');
+    expect(result.results.map((food) => food.name)).toContain('Chicken, broiler, rotisserie, BBQ, breast, meat only');
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('ranks exact USDA-style ingredient matches above generic OpenFoodFacts hits', async () => {
+    process.env.USDA_FOOD_API_KEY = 'test-key';
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          products: [{
+            code: 'off-chicken',
+            product_name: 'Chicken Bites',
+            brands: 'Snack Co',
+            serving_quantity: 28,
+            serving_quantity_unit: 'g',
+            nutriments: { 'proteins_100g': 18, 'carbohydrates_100g': 16, 'fat_100g': 14, 'energy-kcal_100g': 250 },
+          }],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          foods: [{
+            fdcId: 778,
+            description: 'Chicken, broiler, rotisserie, BBQ, breast, meat only',
+            foodNutrients: [
+              { nutrientId: 1003, value: 29 },
+              { nutrientId: 1005, value: 0.1 },
+              { nutrientId: 1079, value: 0 },
+              { nutrientId: 1004, value: 7.1 },
+              { nutrientId: 1008, value: 183 },
+            ],
+          }],
+        }),
+      });
+
+    const result = await searchFoodDatabase('Chicken, broiler, rotisserie, BBQ, breast, meat only');
+
+    expect(result.source).toBe('combined');
+    expect(result.results[0].source).toBe('usda');
+    expect(result.results[0].name).toBe('Chicken, broiler, rotisserie, BBQ, breast, meat only');
   });
 });

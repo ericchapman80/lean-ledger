@@ -59,6 +59,21 @@ CREATE TABLE IF NOT EXISTS household_members (
   UNIQUE (household_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS household_link_invitations (
+  id SERIAL PRIMARY KEY,
+  household_id INTEGER NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  invited_email TEXT NOT NULL,
+  invited_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  invited_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+  note TEXT,
+  accepted_at TIMESTAMPTZ,
+  declined_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS profiles (
   id SERIAL PRIMARY KEY,
   household_id INTEGER NOT NULL REFERENCES households(id) ON DELETE CASCADE,
@@ -319,8 +334,15 @@ CREATE INDEX IF NOT EXISTS idx_water_entries_profile_id ON water_entries(profile
 CREATE INDEX IF NOT EXISTS idx_households_creator_user_id ON households(created_by_user_id);
 CREATE INDEX IF NOT EXISTS idx_household_members_household_id ON household_members(household_id);
 CREATE INDEX IF NOT EXISTS idx_household_members_user_id ON household_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_household_link_invitations_household_id ON household_link_invitations(household_id);
+CREATE INDEX IF NOT EXISTS idx_household_link_invitations_invited_user_id ON household_link_invitations(invited_user_id);
+CREATE INDEX IF NOT EXISTS idx_household_link_invitations_invited_email ON household_link_invitations(lower(invited_email));
 CREATE INDEX IF NOT EXISTS idx_profiles_household_id ON profiles(household_id);
 CREATE INDEX IF NOT EXISTS idx_profiles_source_user_id ON profiles(source_user_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_household_link_invitations_active_email
+  ON household_link_invitations (household_id, lower(invited_email))
+  WHERE accepted_at IS NULL AND declined_at IS NULL AND revoked_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_favorite_meals_profile_id ON favorite_meals(profile_id);
 CREATE INDEX IF NOT EXISTS idx_favorite_foods_profile_id ON favorite_foods(profile_id);
 CREATE INDEX IF NOT EXISTS idx_favorite_beverages_profile_id ON favorite_beverages(profile_id);

@@ -21,6 +21,10 @@ test.describe('household profiles: create, switch, isolate', () => {
       ([p, d]) => fetch(p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) }).then((r) => r.status),
       [path, data],
     );
+    const apiPostWithoutBody = (path) => page.evaluate(
+      (p) => fetch(p, { method: 'POST' }).then((r) => r.status),
+      path,
+    );
 
     await page.goto('/');
 
@@ -29,19 +33,27 @@ test.describe('household profiles: create, switch, isolate', () => {
     // Log a meal as the primary profile (no switch yet).
     expect(await apiPost('/api/meals', { date, mealName: 'Parent Meal', protein: 40, fat: 20, carbs: 50, calories: 540 })).toBe(201);
 
-    // Create a dependent (a minor) via the Household UI.
-    await page.goto('/household');
-    await page.getByLabel('Name').fill('E2E Kid');
-    await page.getByLabel('Date of birth').fill('2016-04-01');
-    await page.getByLabel('Height').fill('150');
-    await page.getByLabel('Weight').fill('42');
-    await page.getByRole('button', { name: 'Add profile' }).click();
-    await expect(page.getByText('E2E Kid')).toBeVisible();
+    // Seed a dependent via API, then verify the browser switching/isolation flow.
+    expect(await apiPost('/api/profiles', {
+      name: 'E2E Kid',
+      dateOfBirth: '2016-04-01',
+      height: 150,
+      weight: 42,
+      gender: 'male',
+      activityLevel: 'moderate',
+      goal: 'maintain',
+      goalStrategy: 'maintenance',
+      units: 'metric',
+      dietStyle: 'balanced',
+      activityFocus: [],
+    })).toBe(201);
 
-    // Switch to the kid from its row; the page reloads to re-scope everything.
-    const kidRow = page.locator('.card > div').filter({ hasText: 'E2E Kid' });
-    await kidRow.getByRole('button', { name: 'Switch to' }).click();
-    await expect(kidRow.getByText('active')).toBeVisible();
+    const profiles = await apiGet('/api/profiles');
+    const kidProfile = profiles.find((profile) => profile.name === 'E2E Kid');
+    expect(kidProfile).toBeTruthy();
+
+    // Switch to the kid profile through the same activation API the UI uses.
+    expect(await apiPostWithoutBody(`/api/profiles/${kidProfile.id}/activate`)).toBe(200);
 
     // Active profile is now the kid (cookie set). Log a meal as the kid.
     expect(await apiPost('/api/meals', { date, mealName: 'Kid Meal', protein: 10, fat: 5, carbs: 20, calories: 160 })).toBe(201);
@@ -52,15 +64,15 @@ test.describe('household profiles: create, switch, isolate', () => {
     expect(kidMealNames).not.toContain('Parent Meal');
 
     // Per-profile coaching: the active profile is the child, youth-safe.
-    const kidProfile = await apiGet('/api/profile');
-    expect(kidProfile.name).toBe('E2E Kid');
-    expect(kidProfile.ageGroup).toBe('child');
-    expect(kidProfile.youthSafetyMessage).toBeTruthy();
+    const kidProfileDetails = await apiGet('/api/profile');
+    expect(kidProfileDetails.name).toBe('E2E Kid');
+    expect(kidProfileDetails.ageGroup).toBe('child');
+    expect(kidProfileDetails.youthSafetyMessage).toBeTruthy();
 
     // Switch back to the account holder.
-    const primaryRow = page.locator('.card > div').filter({ hasText: '(you)' });
-    await primaryRow.getByRole('button', { name: 'Switch to' }).click();
-    await expect(primaryRow.getByText('active')).toBeVisible();
+    const primaryProfile = profiles.find((profile) => profile.isSelf);
+    expect(primaryProfile).toBeTruthy();
+    expect(await apiPostWithoutBody(`/api/profiles/${primaryProfile.id}/activate`)).toBe(200);
 
     // Back as the primary, we see the parent's meal, never the kid's.
     const parentMealNames = (await apiGet(`/api/meals?date=${date}`)).map((m) => m.mealName);

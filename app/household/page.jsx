@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { profilesApi } from '@/lib/api';
+import { householdLinksApi, profilesApi } from '@/lib/api';
+import { toast } from '@/lib/toast';
 import { lbsToKg, kgToLbs, inchesToCm, cmToInches } from '@/lib/utils/unitUtils';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
@@ -47,14 +48,27 @@ export default function HouseholdPage() {
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState(null);
   const [confirmRemoveId, setConfirmRemoveId] = useState(null);
+  const [linkEmail, setLinkEmail] = useState('');
+  const [linkRole, setLinkRole] = useState('member');
+  const [linkLookup, setLinkLookup] = useState(null);
+  const [linkLookupLoading, setLinkLookupLoading] = useState(false);
+  const [sentInvitations, setSentInvitations] = useState([]);
+  const [canManageLinks, setCanManageLinks] = useState(false);
 
   async function load() {
     try {
-      const rows = await profilesApi.getProfiles();
+      const [rows, invitationData] = await Promise.all([
+        profilesApi.getProfiles(),
+        householdLinksApi.getInvitations(),
+      ]);
       setProfiles(Array.isArray(rows) ? rows : []);
+      setSentInvitations(invitationData?.sent || []);
+      setCanManageLinks(!!invitationData?.canManage);
     } catch (err) {
       setError(err.message || 'Failed to load profiles');
       setProfiles([]);
+      setSentInvitations([]);
+      setCanManageLinks(false);
     }
   }
 
@@ -132,6 +146,61 @@ export default function HouseholdPage() {
     }
   }
 
+  async function handleLookupExistingAccount(e) {
+    e.preventDefault();
+    setLinkLookupLoading(true);
+    setError(null);
+    try {
+      const result = await householdLinksApi.lookupExistingAccount(linkEmail);
+      setLinkLookup(result);
+    } catch (err) {
+      setLinkLookup(null);
+      setError(err.message || 'Failed to look up account');
+    } finally {
+      setLinkLookupLoading(false);
+    }
+  }
+
+  async function handleInviteExistingAccount() {
+    try {
+      const invitation = await householdLinksApi.inviteExistingAccount({
+        email: linkEmail,
+        role: linkRole,
+      });
+      setSentInvitations((current) => [invitation, ...current.filter((item) => item.id !== invitation.id)]);
+      setLinkLookup((current) => current ? { ...current, pendingInvite: invitation, canInvite: false } : current);
+      toast.success(`Invitation sent to ${invitation.invitedEmail}`);
+    } catch (err) {
+      setError(err.message || 'Failed to send invitation');
+    }
+  }
+
+  async function handleRevokeInvitation(id) {
+    try {
+      const revoked = await householdLinksApi.revokeInvitation(id);
+      setSentInvitations((current) => current.map((item) => item.id === id ? revoked : item));
+      if (linkLookup?.pendingInvite?.id === id) {
+        setLinkLookup((current) => current ? { ...current, pendingInvite: revoked, canInvite: true } : current);
+      }
+      toast.success('Invitation revoked');
+    } catch (err) {
+      setError(err.message || 'Failed to revoke invitation');
+    }
+  }
+
+  async function handleUnlinkExistingAccount(profile) {
+    setBusyId(profile.id);
+    try {
+      await profilesApi.unlinkProfile(profile.id);
+      await load();
+      toast.success(`${profile.name} was removed from this household`);
+    } catch (err) {
+      setError(err.message || 'Failed to unlink account');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   if (profiles === null) return <Loading />;
 
   return (
@@ -158,10 +227,11 @@ export default function HouseholdPage() {
           >
             <div>
               <strong>{p.name}</strong>{' '}
-              {p.isPrimary && <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>(you)</span>}
+              {p.isSelf && <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>(you)</span>}
+              {!p.isSelf && p.isPrimary && <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>(linked account)</span>}
               {p.isActive && <span style={{ fontSize: '12px', color: 'var(--primary-color)' }}> • active</span>}
               <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                {p.isDependent ? 'Dependent profile' : 'Account holder'}
+                {p.isDependent ? 'Dependent profile' : p.isSelf ? 'Account holder' : 'Existing account'}
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
@@ -188,10 +258,125 @@ export default function HouseholdPage() {
                   )}
                 </>
               )}
+              {!p.isDependent && !p.isSelf && (
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  disabled={busyId === p.id}
+                  onClick={() => handleUnlinkExistingAccount(p)}
+                >
+                  {busyId === p.id ? '…' : 'Unlink'}
+                </button>
+              )}
             </div>
           </div>
         ))}
       </div>
+
+      {canManageLinks && (
+      <div className="card" style={{ marginBottom: '20px' }}>
+        <h2 style={{ marginTop: 0 }}>Link existing account</h2>
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: 0 }}>
+          Invite someone who already has a Lean Ledger account. Their existing data stays on their account and profile.
+        </p>
+        <form onSubmit={handleLookupExistingAccount} style={{ display: 'grid', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <label style={{ flex: 2, minWidth: '220px' }}>
+              Email
+              <input
+                type="email"
+                value={linkEmail}
+                onChange={(e) => setLinkEmail(e.target.value)}
+                required
+                placeholder="konnor@example.com"
+              />
+            </label>
+            <label style={{ flex: 1, minWidth: '140px' }}>
+              Role
+              <select value={linkRole} onChange={(e) => setLinkRole(e.target.value)}>
+                <option value="member">Member</option>
+                <option value="admin">Admin</option>
+              </select>
+            </label>
+          </div>
+          <div>
+            <button type="submit" className="btn btn-secondary" disabled={linkLookupLoading}>
+              {linkLookupLoading ? 'Looking up…' : 'Look up existing account'}
+            </button>
+          </div>
+        </form>
+
+        {linkLookup && (
+          <div style={{ marginTop: '16px', padding: '14px 16px', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+            {!linkLookup.exists ? (
+              <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                No existing Lean Ledger account was found for {linkLookup.email}.
+              </p>
+            ) : (
+              <>
+                <p style={{ margin: '0 0 6px', fontWeight: 600 }}>{linkLookup.user?.name || linkLookup.email}</p>
+                <p style={{ margin: '0 0 10px', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                  {linkLookup.user?.email}
+                </p>
+                {linkLookup.alreadyInHousehold ? (
+                  <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                    This account is already part of your household.
+                  </p>
+                ) : linkLookup.pendingInvite ? (
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                      Invitation pending.
+                    </p>
+                    <button type="button" className="btn btn-outline" onClick={() => handleRevokeInvitation(linkLookup.pendingInvite.id)}>
+                      Revoke invite
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" className="btn btn-primary" onClick={handleInviteExistingAccount}>
+                    Send household invitation
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+      )}
+
+      {canManageLinks && (
+      <div className="card" style={{ marginBottom: '20px' }}>
+        <h2 style={{ marginTop: 0 }}>Pending / past link invitations</h2>
+        {sentInvitations.length === 0 ? (
+          <p style={{ margin: 0, color: 'var(--text-secondary)' }}>No household account invitations yet.</p>
+        ) : (
+          <div style={{ display: 'grid', gap: '12px' }}>
+            {sentInvitations.map((invitation) => (
+              <div key={invitation.id} style={{ padding: '12px 0', borderBottom: '1px solid var(--border-color)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div>
+                    <p style={{ margin: '0 0 4px', fontWeight: 600 }}>{invitation.invitedEmail}</p>
+                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
+                      {invitation.status === 'pending'
+                        ? 'Pending acceptance'
+                        : invitation.status === 'accepted'
+                          ? 'Accepted'
+                          : invitation.status === 'declined'
+                            ? 'Declined'
+                            : 'Revoked'}
+                    </p>
+                  </div>
+                  {invitation.status === 'pending' ? (
+                    <button type="button" className="btn btn-outline" onClick={() => handleRevokeInvitation(invitation.id)}>
+                      Revoke
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      )}
 
       <div className="card">
         <h2 style={{ marginTop: 0 }}>{editingId ? 'Edit profile' : 'Add a profile'}</h2>
