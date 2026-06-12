@@ -198,7 +198,7 @@ export default function HouseholdPage() {
   if (profiles === null) return <Loading />;
 
   return (
-    <div className="container" style={{ padding: '40px 20px', maxWidth: '720px' }}>
+    <div className="container" style={{ paddingTop: '24px', paddingBottom: '40px', maxWidth: '720px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h1 style={{ margin: 0 }}>Household profiles</h1>
         <Link href="/profile" style={{ fontSize: '14px' }}>← Back to profile</Link>

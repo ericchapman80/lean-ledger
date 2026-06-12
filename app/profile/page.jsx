@@ -432,7 +432,7 @@ export default function Profile() {
 
   if (editing || !profile) {
     return (
-      <div className="container" style={{ padding: '40px 20px', maxWidth: '800px' }}>
+      <div className="container" style={{ paddingTop: '24px', paddingBottom: '40px', maxWidth: '800px' }}>
         <h1 style={{ marginBottom: '32px' }}>
           {profile ? 'Edit Profile' : 'Let’s build your coaching profile'}
         </h1>
@@ -1013,7 +1013,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="container" style={{ padding: '40px 20px', maxWidth: '800px' }}>
+    <div className="container" style={{ paddingTop: '24px', paddingBottom: '40px', maxWidth: '800px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
         <h1 style={{ margin: 0 }}>Your Profile</h1>
         <button onClick={() => setEditing(true)} className="btn btn-primary">Edit Profile</button>

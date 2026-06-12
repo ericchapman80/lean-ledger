@@ -1386,11 +1386,11 @@ export default function Meals() {
                     </p>
                   ) : null}
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '12px' }}>
                     {entry.recordedAt.slice(11, 16)}
                   </p>
-                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '6px' }}>
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap', marginTop: '6px' }}>
                     <InlineActionButton onClick={() => handleEditBeverage(entry)}>Edit</InlineActionButton>
                     <InlineActionButton onClick={() => handleFavoriteBeverage(entry)}>Favorite</InlineActionButton>
                     <InlineActionButton onClick={() => handleDuplicateBeverage(entry)}>Duplicate</InlineActionButton>
@@ -1610,7 +1610,7 @@ export default function Meals() {
                         ) : null}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                       <InlineActionButton onClick={() => handleEdit(meal)}>Edit food</InlineActionButton>
                       {selectedDate === getTodayDate() ? (
                         <InlineActionButton onClick={() => handleDuplicateMeal(meal)}>Duplicate</InlineActionButton>
