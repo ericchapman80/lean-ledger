@@ -1,16 +1,18 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
-import { getActiveProfileId } from '@/lib/activeProfile';
+import { getActiveProfileId, resolveActiveCoachingSubject } from '@/lib/activeProfile';
 import { apiRouteErrorResponse } from '@/lib/apiRouteError';
 import * as HealthMetric from '@/lib/models/healthMetric';
 import * as User from '@/lib/models/user';
 import * as Weight from '@/lib/models/weight';
 import { validateHealthMetricEntry } from '@/lib/healthMetrics';
 
-async function syncWeight(userId, profileId, user, entry) {
+async function syncWeight(userId, profileId, user, entry, isPrimary) {
   if (entry.weight == null || !entry.date) return;
   await Weight.upsert({ userId, profileId, date: entry.date, weight: entry.weight });
-  await User.update(userId, { ...user, weight: entry.weight });
+  if (isPrimary) {
+    await User.update(userId, { ...user, weight: entry.weight });
+  }
 }
 
 export async function GET(request) {
@@ -50,7 +52,8 @@ export async function POST(request) {
     }
 
     const saved = await HealthMetric.upsert({ userId, profileId, ...normalized });
-    await syncWeight(userId, profileId, user, normalized);
+    const { isPrimary } = await resolveActiveCoachingSubject(request);
+    await syncWeight(userId, profileId, user, normalized, isPrimary);
 
     return NextResponse.json(saved, { status: 201 });
   } catch (error) {

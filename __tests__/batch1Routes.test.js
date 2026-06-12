@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/auth', () => ({ getCurrentUserId: vi.fn() }));
-vi.mock('@/lib/activeProfile', () => ({ getActiveProfileId: vi.fn() }));
+vi.mock('@/lib/activeProfile', () => ({ getActiveProfileId: vi.fn(), resolveActiveCoachingSubject: vi.fn() }));
 vi.mock('@/lib/models/user', () => ({ findById: vi.fn(), update: vi.fn() }));
 vi.mock('@/lib/models/weight', () => ({
   upsert: vi.fn(),
@@ -16,7 +16,7 @@ vi.mock('@/lib/models/beverageEntry', () => ({
 vi.mock('@/lib/beverages', () => ({ normalizeBeverageEntryInput: (x) => x }));
 
 import { getCurrentUserId } from '@/lib/auth';
-import { getActiveProfileId } from '@/lib/activeProfile';
+import { getActiveProfileId, resolveActiveCoachingSubject } from '@/lib/activeProfile';
 import * as User from '@/lib/models/user';
 import * as Weight from '@/lib/models/weight';
 import * as BeverageEntry from '@/lib/models/beverageEntry';
@@ -36,6 +36,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   getCurrentUserId.mockResolvedValue(USER_ID);
   getActiveProfileId.mockResolvedValue(PROFILE_ID);
+  resolveActiveCoachingSubject.mockResolvedValue({ isPrimary: true });
 });
 
 describe('POST /api/weight', () => {
@@ -48,6 +49,18 @@ describe('POST /api/weight', () => {
 
     expect(res.status).toBe(201);
     expect(Weight.upsert).toHaveBeenCalledWith(expect.objectContaining({ userId: USER_ID, profileId: PROFILE_ID, weight: 81 }));
+  });
+
+  it('does not overwrite the signed-in user weight when logging for a dependent profile', async () => {
+    User.findById.mockResolvedValue({ id: USER_ID, weight: 70 });
+    Weight.upsert.mockResolvedValue({ id: 1 });
+    resolveActiveCoachingSubject.mockResolvedValue({ isPrimary: false });
+    const { POST } = await import('@/app/api/weight/route.js');
+
+    const res = await POST(req({ body: { date: '2030-01-02', weight: 42 } }));
+
+    expect(res.status).toBe(201);
+    expect(User.update).not.toHaveBeenCalled();
   });
 });
 

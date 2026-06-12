@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
-import { getActiveProfileId } from '@/lib/activeProfile';
+import { getActiveProfileId, resolveActiveCoachingSubject } from '@/lib/activeProfile';
 import * as HealthMetric from '@/lib/models/healthMetric';
 import * as User from '@/lib/models/user';
 import * as Weight from '@/lib/models/weight';
@@ -18,6 +18,7 @@ export async function POST(request) {
   if (!Array.isArray(rows) || rows.length === 0) {
     return NextResponse.json({ error: 'Rows are required' }, { status: 400 });
   }
+  const { isPrimary } = await resolveActiveCoachingSubject(request);
 
   const results = [];
   let latestWeightedEntry = null;
@@ -39,7 +40,9 @@ export async function POST(request) {
   }
 
   if (latestWeightedEntry?.weight != null) {
-    await User.update(userId, { ...user, weight: latestWeightedEntry.weight });
+    if (isPrimary) {
+      await User.update(userId, { ...user, weight: latestWeightedEntry.weight });
+    }
   }
 
   return NextResponse.json({

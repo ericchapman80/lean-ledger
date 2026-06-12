@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUserId } from '@/lib/auth';
-import { getActiveProfileId } from '@/lib/activeProfile';
+import { getActiveProfileId, resolveActiveCoachingSubject } from '@/lib/activeProfile';
 import { apiRouteErrorResponse } from '@/lib/apiRouteError';
 import * as Weight from '@/lib/models/weight';
 import * as User from '@/lib/models/user';
@@ -41,10 +41,13 @@ export async function POST(request) {
     }
 
     const weightLog = await Weight.upsert({ userId, profileId, date: targetDate, weight: Number(weight) });
-    // Logging weight updates the user's current weight so TDEE recalculates on next macro fetch.
-    // Per-profile coaching state (using profiles.weight) lands when profiles become the coaching
-    // source in a later phase; until then dependent profiles aren't creatable so this stays correct.
-    await User.update(userId, { ...user, weight: Number(weight) });
+    const { isPrimary } = await resolveActiveCoachingSubject(request);
+    // Only sync the signed-in account row when logging weight for the account
+    // holder's own primary profile. Otherwise a child/dependent check-in can
+    // overwrite the adult's current weight.
+    if (isPrimary) {
+      await User.update(userId, { ...user, weight: Number(weight) });
+    }
 
     return NextResponse.json(weightLog, { status: 201 });
   } catch (error) {
