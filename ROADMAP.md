@@ -4,16 +4,16 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 
 ---
 
-## What's next (prioritized — updated 2026-06-09)
+## What's next (prioritized — updated 2026-06-11)
 
-1. ✅ **V2.2 Family Profiles — shipped end to end** (foundation + Phases 1–5, PRs #42, #48–#56). Households, dependent profiles, switching, per-profile data isolation, and youth-safe per-profile coaching are live. See [`docs/family-profiles.md`](docs/family-profiles.md). — **next real priority is Food database integration (below).**
-2. **Application UX / quality-of-life cleanup** — act on the full per-page UX review in [`docs/ux-review.md`](docs/ux-review.md). P0s: replace `alert()`/`confirm()` with inline errors + undo, resolve the duplicate Dashboard/Intake check-in, Modal focus-trap a11y. See the **Application UX & Theming** section.
-3. **Theming (light / dark / system)** — match the device theme via `prefers-color-scheme` plus a user-selectable System / Always Light / Always Dark preference. Tracked as its **own phase** (a color-token refactor with a clean definition of done) after the inline-style→class cleanup. See the **Application UX & Theming** section.
-4. **Food database integration** — `FoodSearch.jsx` / `ProductLookup.jsx` are partially wired; target OpenFoodFacts (no key) or USDA FoodData Central. High daily-logging value.
-5. **Continuous barcode scanning** — move `BarcodeScanner.jsx` from single-frame capture to a continuous scanner (ZXing or equivalent).
-6. **Mobile responsiveness pass** — current CSS is desktop-first; needs a real breakpoint audit (overlaps with the UX cleanup).
-7. **CI/CD pipeline review** — speed the pipeline up via parallelism/caching **without dropping any quality gate** (quality > speed). Quick win: a path filter so docs-only changes skip the heavy pipeline. Full scope under the **CI/CD Pipeline Review** section.
-8. **Multi-user isolation E2E hardening** — extend Profile A vs Profile B / User A vs User B isolation coverage across more end-to-end flows (pairs naturally with V2.2 Phase 2).
+1. **Application UX / quality-of-life cleanup** 🚧 — the first major batch is already shipped (`sonner` toasts, no `alert()`/`confirm()`, dashboard/intake check-in de-duplication, modal focus-trap, core a11y fixes), but the broader per-page cleanup in [`docs/ux-review.md`](docs/ux-review.md) still needs follow-through.
+2. **Continuous barcode scanning** 🧭 — `BarcodeScanner.jsx` is good, but it is still a single-frame capture flow. Next meaningful upgrade is a continuous scanner loop with ZXing or equivalent.
+3. **Mobile responsiveness pass** 🧭 — current CSS and inline layout choices are still desktop-first. Needs a real breakpoint audit after the larger UX cleanup.
+4. **Lean Recomp day-based macro targeting** 🧭 — the roadmap spec for `training` / `recovery` / `rest` day types is in place, but the macro engine still does not adapt targets by day type.
+5. **Behavioral coaching layer expansion** 🚧 — recovery, hydration, and day-type guidance exist, but there is still no unified cross-surface coaching layer.
+6. **Meal categories & context** 🕒 — pre-workout / post-workout / recovery meal context still has not shipped.
+7. **CI/CD pipeline review** 🚧 — Steps 1–4 are now shipped (docs path filter, caching, parallel quality gate, split audit). Remaining work is measurement and optional sharding if wall-clock is still too high.
+8. **Multi-user isolation E2E hardening** 🕒 — strong integration and profile-isolation suites exist, but broader browser-level multi-user coverage is still worth adding.
 9. **V2.3 Performance Extensions** 🕒 — event/lift metrics and readiness interpretation; explicitly after the family-profile layer.
 
 ---
@@ -46,7 +46,7 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 - 🧭 next up
 - 🕒 later / future iteration
 
-**Current status snapshot** (updated 2026-06-09)
+**Current status snapshot** (updated 2026-06-11)
 - ✅ Meal intelligence foundation is shipped on `main`
 - ✅ Hydration and beverage intelligence foundation is shipped on `main`
 - ✅ Daily Wins foundation, configurability, templates, and challenge progress are shipped on `main`
@@ -54,7 +54,11 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 - ✅ Lean Ledger 2.0 guided onboarding foundation is shipped on `main`
 - ✅ V2.1 youth safety guardrails + athlete day-type context are shipped on `main` (PR #41)
 - ✅ V2.2 Family Profiles shipped end to end (foundation + Phases 1–5, PRs #42, #48–#56): households, dependent profiles, switching, per-profile data isolation, and youth-safe per-profile coaching — see [`docs/family-profiles.md`](docs/family-profiles.md)
-- 🧭 Next product slice: **Food database integration** (OpenFoodFacts / USDA)
+- ✅ Food database integration is shipped on `main` (OpenFoodFacts primary + USDA fallback, meal autofill, favorite suggestion loop)
+- ✅ Core theming is shipped on `main` (system / light / dark plus profile Appearance control)
+- 🚧 Application UX cleanup is partially shipped; broader page-level polish remains
+- 🚧 Behavioral coaching is partially shipped; deeper dynamic macro/day-type logic remains
+- 🧭 Next product slice: **Lean Recomp day-based macro targeting** or **continuous barcode scanning**
 
 ## Meal Intelligence & Behavioral Insights
 
@@ -639,7 +643,7 @@ Hydration intelligence should be treated as a **high-priority Phase 2 direction*
 - stronger multi-user isolation coverage across more end-to-end flows
 - request-access / approval queue as an alternative to pure pre-invite
 - account deletion / export flows
-- family profile / household layer on top of member access — 🚧 data foundation shipped (PR #42); application layer tracked under **V2.2 Family Profiles**
+- family profile / household layer on top of member access — ✅ shipped end to end under **V2.2 Family Profiles**
 
 **Goal:** Let multiple users sign in with Google and have their own private macro data.
 
@@ -1256,13 +1260,16 @@ Vercel: set these in Project Settings → Environment Variables. Pull locally wi
   - youth safety guardrails in `lib/coachingProfile.js` (under-13 and under-18 messaging/guardrails)
   - `day_type` context (migration `015_add_day_type_to_health_metrics`) surfaced on dashboard, intake, and profile
   - athlete day-type recovery/hydration/sleep framing
-- `V2.2 Family Profiles` **data foundation** is shipped on `main` (PR #42), but the **application layer is not built yet**
-  - shipped: `households`, `household_members`, `profiles` tables (migration `016_add_household_profile_foundation`), a `profile_id` FK on all 9 user-owned data tables (backfilled), and the idempotent `lib/models/profileHousehold.js` helpers (`ensureDefaultHouseholdForUser`, `ensurePrimaryProfileForUser`)
-  - not built: nothing in `app/` calls these helpers, there are no profile/household API routes, no profile switching, and data is still scoped by `user_id` — the `profile_id` columns are currently dead weight
-- deeper athlete fueling logic, Lean Recomp day-based macro target adaptation, and full family profile application flows are still ahead
+- `V2.2 Family Profiles` is shipped on `main` end to end
+  - `households`, `household_members`, `profiles` tables (migration `016_add_household_profile_foundation`)
+  - `profile_id` FK on all 9 user-owned data tables with backfill
+  - active-profile cookie seam and profile-scoped APIs
+  - profile switcher, household management UI, and per-profile coaching state
+  - profile-isolation integration tests and browser E2E coverage
+- deeper athlete fueling logic, Lean Recomp day-based macro target adaptation, and future performance extensions are still ahead
 
 **Recommended next slice**
-- `V2.2 Family Profiles — application layer` (see the phased plan under the V2.2 rollout section below)
+- `Lean Recomp Day Types & Dynamic Macro Targets` or `V2.3 Performance Extensions`
 
 **Vision**
 
@@ -1921,7 +1928,10 @@ jobs:
 
 ---
 
-### Step 2 — Aggressive caching 🧭
+### Step 2 — Aggressive caching ✅
+
+- shipped on `main`
+- Next.js cache and Playwright browser cache are both wired into the pipeline
 
 Three high-value caches, each a small `actions/cache` block:
 
@@ -1954,7 +1964,10 @@ Three high-value caches, each a small `actions/cache` block:
 
 ---
 
-### Step 3 — Parallelize validate + local-functional 🧭
+### Step 3 — Parallelize validate + local-functional ✅
+
+- shipped on `main`
+- `validate`, `local-functional`, and `security-audit` now fan out in parallel and reconverge at `quality-gate`
 
 Currently `local-functional` waits for `validate` to finish before starting. These are independent quality gates — parallelizing trades the "fail fast on unit tests before spending time on E2E" fast-fail for wall-clock time.
 
@@ -1989,7 +2002,10 @@ deploy-production:
 
 ---
 
-### Step 4 — Split `npm audit` into a parallel job 🧭
+### Step 4 — Split `npm audit` into a parallel job ✅
+
+- shipped on `main`
+- `security-audit` is its own required job in the pipeline
 
 Currently `npm audit` runs inside `validate`, serialized behind `npm run build`. A security finding blocks the build step from reporting.
 
@@ -2047,7 +2063,15 @@ Before starting Step 2: record current wall-clock for a typical PR run (validate
 
 A full per-page UX/UI review was done before making changes — see [`docs/ux-review.md`](docs/ux-review.md) for per-page findings, a prioritized QoL recommendation list, quick wins, and the theming analysis. This is intentionally **review-first**: no UX changes ship until the recommendations are triaged.
 
-### Phase A — UX / quality-of-life cleanup 🧭
+### Phase A — UX / quality-of-life cleanup 🚧
+
+**Current status**
+- `sonner` is shipped and wired globally
+- `alert()` / `confirm()` have been removed from application code
+- Dashboard duplicate check-in editing has been removed; Intake is the primary editor
+- `Modal` focus trap / close labeling / dialog semantics are shipped
+- several token/a11y quick wins are already landed
+- the broader per-page UX cleanup list in [`docs/ux-review.md`](docs/ux-review.md) is still open
 
 **Stack addition:** `sonner` — the current Next.js standard for toast notifications (~3 kb, Radix-based, accessible). Add `<Toaster />` once in `app/layout.jsx`.
 
@@ -2127,7 +2151,15 @@ A full per-page UX/UI review was done before making changes — see [`docs/ux-re
 
 ---
 
-### Phase B — Theming (light / dark / system) 🧭 (separate phase)
+### Phase B — Theming (light / dark / system) ✅ (core shipped, polish may continue)
+
+**Current status**
+- `next-themes` is installed and wired
+- `ThemeProvider` wraps the app
+- users can choose `System`, `Light`, or `Dark`
+- the appearance control lives in Profile
+- dark-theme tokens exist in `globals.css`
+- remaining work is mostly token cleanup / component polish, not foundational theming
 
 **Stack addition:** `next-themes` — SSR-safe, FOUC-free, ~2 kb. The current Next.js standard for theme switching.
 
@@ -2198,7 +2230,15 @@ Replace hardcoded colors in these specific files:
 - User preference persists across reloads (localStorage via next-themes, no FOUC)
 - All existing tests pass
 
-## Food Database Integration 🧭
+## Food Database Integration ✅
+
+**Current status**
+- shipped on `main`
+- OpenFoodFacts is the primary search path
+- USDA FoodData Central is the fallback when a key is configured and OFF returns no results
+- search results autofill the Add Meal flow
+- repeated externally sourced foods increment `use_count` and can trigger a favorite suggestion toast
+- test coverage exists in `__tests__/foodSearch.test.js`
 
 **Goal:** let users search a real food/nutrition database to auto-fill the Add Meal form, eliminating manual macro entry for common foods. Auto-save as a favorite food after two uses.
 
