@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { accessApi, authApi, habitDefinitionsApi, profileApi } from '@/lib/api';
+import { accessApi, authApi, habitDefinitionsApi, householdLinksApi, profileApi } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import {
   ACTIVITY_FOCUS_OPTIONS,
@@ -141,6 +141,7 @@ export default function Profile() {
   const [profile, setProfile] = useState(null);
   const [authStatus, setAuthStatus] = useState({ mode: 'disabled', user: null });
   const [allowedMembers, setAllowedMembers] = useState([]);
+  const [receivedHouseholdInvitations, setReceivedHouseholdInvitations] = useState([]);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('member');
   const [inviteNote, setInviteNote] = useState('');
@@ -172,10 +173,11 @@ export default function Profile() {
     try {
       setLoading(true);
       setError(null);
-      const [data, habitData, authStatusData] = await Promise.all([
+      const [data, habitData, authStatusData, householdLinkData] = await Promise.all([
         profileApi.getProfile(),
         habitDefinitionsApi.getHabitDefinitions(),
         authApi.getStatus(),
+        householdLinksApi.getInvitations(),
       ]);
       const memberData = authStatusData?.user?.role === 'admin'
         ? await accessApi.getMembers()
@@ -183,6 +185,7 @@ export default function Profile() {
       setProfile(data);
       setAuthStatus(authStatusData);
       setAllowedMembers(memberData);
+      setReceivedHouseholdInvitations((householdLinkData?.received || []).filter((invitation) => invitation.status === 'pending'));
       setSavedCustomHabits(habitData);
       setCustomHabits(habitData);
       setSelectedTemplateKey(data?.dailyWinsTemplateKey || '');
@@ -260,6 +263,27 @@ export default function Profile() {
       setAllowedMembers((current) => current.map((member) => (
         member.id === memberId ? updated : member
       )));
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleAcceptHouseholdInvitation = async (invitationId) => {
+    try {
+      await householdLinksApi.acceptInvitation(invitationId);
+      toast.success('Household invitation accepted');
+      await fetchProfile();
+      router.refresh();
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleDeclineHouseholdInvitation = async (invitationId) => {
+    try {
+      await householdLinksApi.declineInvitation(invitationId);
+      setReceivedHouseholdInvitations((current) => current.filter((invitation) => invitation.id !== invitationId));
+      toast.success('Household invitation declined');
     } catch (err) {
       toast.error(err.message);
     }
@@ -1115,6 +1139,49 @@ export default function Profile() {
           </Link>
         </div>
       </div>
+
+      {receivedHouseholdInvitations.length > 0 && (
+        <div className="card" style={{ marginBottom: '32px' }}>
+          <h2 style={{ marginBottom: '12px' }}>Household invitations</h2>
+          <p style={{ color: 'var(--text-secondary)', margin: '0 0 16px' }}>
+            Link this existing account into another household without creating a duplicate profile.
+          </p>
+          <div style={{ display: 'grid', gap: '12px' }}>
+            {receivedHouseholdInvitations.map((invitation) => (
+              <div
+                key={invitation.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: '16px',
+                  padding: '14px 16px',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '12px',
+                }}
+              >
+                <div>
+                  <p style={{ margin: '0 0 6px', fontWeight: 600 }}>{invitation.householdName || 'Household invitation'}</p>
+                  <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                    Invited by {invitation.inviterName || 'an admin'} • role {invitation.role}
+                  </p>
+                  <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
+                    Your existing data stays on your account and becomes available through the shared household switcher.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button type="button" className="btn btn-primary" onClick={() => handleAcceptHouseholdInvitation(invitation.id)}>
+                    Accept
+                  </button>
+                  <button type="button" className="btn btn-outline" onClick={() => handleDeclineHouseholdInvitation(invitation.id)}>
+                    Decline
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {isAdmin && (
         <div className="card" style={{ marginBottom: '32px' }}>
