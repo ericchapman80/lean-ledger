@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { profilesApi } from '@/lib/api';
+import { lbsToKg, kgToLbs, inchesToCm, cmToInches } from '@/lib/utils/unitUtils';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 
@@ -23,11 +24,14 @@ const EMPTY_FORM = {
 };
 
 function toPayload(form) {
+  const isImperial = form.units === 'imperial';
+  const rawHeight = form.height === '' ? null : Number(form.height);
+  const rawWeight = form.weight === '' ? null : Number(form.weight);
   return {
     name: form.name.trim(),
     dateOfBirth: form.dateOfBirth,
-    height: form.height === '' ? null : Number(form.height),
-    weight: form.weight === '' ? null : Number(form.weight),
+    height: rawHeight == null ? null : (isImperial ? inchesToCm(rawHeight) : rawHeight),
+    weight: rawWeight == null ? null : (isImperial ? lbsToKg(rawWeight) : rawWeight),
     gender: form.gender,
     activityLevel: form.activityLevel,
     goal: form.goal,
@@ -66,15 +70,17 @@ export default function HouseholdPage() {
 
   function startEdit(profile) {
     setEditingId(profile.id);
+    const units = profile.units || 'metric';
+    const isImperial = units === 'imperial';
     setForm({
       name: profile.name || '',
       dateOfBirth: profile.dateOfBirth || '',
-      height: profile.height ?? '',
-      weight: profile.weight ?? '',
+      height: profile.height != null ? (isImperial ? cmToInches(profile.height).toString() : profile.height.toString()) : '',
+      weight: profile.weight != null ? (isImperial ? kgToLbs(profile.weight).toString() : profile.weight.toString()) : '',
       gender: profile.gender || 'male',
       activityLevel: profile.activityLevel || 'moderate',
       goal: profile.goal || 'maintain',
-      units: profile.units || 'metric',
+      units,
     });
     setError(null);
   }
@@ -200,11 +206,13 @@ export default function HouseholdPage() {
             <input type="date" value={form.dateOfBirth} onChange={setField('dateOfBirth')} required />
           </label>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <label style={{ flex: 1, minWidth: '120px' }}>Height
-              <input type="number" step="any" value={form.height} onChange={setField('height')} required />
+            <label style={{ flex: 1, minWidth: '120px' }}>{form.units === 'imperial' ? 'Height (in)' : 'Height (cm)'}
+              <input type="number" step="any" value={form.height} onChange={setField('height')} required
+                placeholder={form.units === 'imperial' ? 'e.g. 64' : 'e.g. 163'} />
             </label>
-            <label style={{ flex: 1, minWidth: '120px' }}>Weight
-              <input type="number" step="any" value={form.weight} onChange={setField('weight')} required />
+            <label style={{ flex: 1, minWidth: '120px' }}>{form.units === 'imperial' ? 'Weight (lb)' : 'Weight (kg)'}
+              <input type="number" step="any" value={form.weight} onChange={setField('weight')} required
+                placeholder={form.units === 'imperial' ? 'e.g. 130' : 'e.g. 59'} />
             </label>
             <label style={{ flex: 1, minWidth: '120px' }}>Units
               <select value={form.units} onChange={setField('units')}>
