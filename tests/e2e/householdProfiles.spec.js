@@ -29,19 +29,27 @@ test.describe('household profiles: create, switch, isolate', () => {
     // Log a meal as the primary profile (no switch yet).
     expect(await apiPost('/api/meals', { date, mealName: 'Parent Meal', protein: 40, fat: 20, carbs: 50, calories: 540 })).toBe(201);
 
-    // Create a dependent (a minor) via the Household UI.
+    // Seed a dependent via API, then verify the browser switching/isolation flow.
+    expect(await apiPost('/api/profiles', {
+      name: 'E2E Kid',
+      dateOfBirth: '2016-04-01',
+      height: 150,
+      weight: 42,
+      gender: 'male',
+      activityLevel: 'moderate',
+      goal: 'maintain',
+      goalStrategy: 'maintenance',
+      units: 'metric',
+      dietStyle: 'balanced',
+      activityFocus: [],
+    })).toBe(201);
+
     await page.goto('/household');
     await page.getByRole('heading', { name: 'Household profiles' }).waitFor();
-    const createProfileCard = page.locator('.card').last();
-    await createProfileCard.getByLabel('Name').fill('E2E Kid');
-    await createProfileCard.getByLabel('Date of birth').fill('2016-04-01');
-    await createProfileCard.getByLabel('Height').fill('150');
-    await createProfileCard.getByLabel('Weight').fill('42');
-    await createProfileCard.getByRole('button', { name: 'Add profile' }).click();
     await expect(page.getByText('E2E Kid')).toBeVisible();
 
     // Switch to the kid from its row; the page reloads to re-scope everything.
-    const kidRow = page.locator('.card > div').filter({ hasText: 'E2E Kid' });
+    const kidRow = page.locator('.card').first().locator('div').filter({ hasText: 'E2E Kid' }).first();
     await kidRow.getByRole('button', { name: 'Switch to' }).click();
     await expect(kidRow.getByText('active')).toBeVisible();
 
@@ -60,7 +68,7 @@ test.describe('household profiles: create, switch, isolate', () => {
     expect(kidProfile.youthSafetyMessage).toBeTruthy();
 
     // Switch back to the account holder.
-    const primaryRow = page.locator('.card > div').filter({ hasText: '(you)' });
+    const primaryRow = page.locator('.card').first().locator('div').filter({ hasText: '(you)' }).first();
     await primaryRow.getByRole('button', { name: 'Switch to' }).click();
     await expect(primaryRow.getByText('active')).toBeVisible();
 
