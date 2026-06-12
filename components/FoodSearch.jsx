@@ -84,6 +84,8 @@ export default function FoodSearch({ onSelectFood, onClose }) {
 
   const sourceLabel = resultSource === 'usda'
     ? 'Results from USDA FoodData Central'
+    : resultSource === 'combined'
+    ? 'Results blended from USDA FoodData Central and Open Food Facts'
     : resultSource === 'openfoodfacts'
     ? 'Results from Open Food Facts'
     : resultSource === 'common'
@@ -137,6 +139,11 @@ export default function FoodSearch({ onSelectFood, onClose }) {
               {resultSource === 'usda' && (
                 <span style={{ background: 'var(--feedback-info-surface)', border: '1px solid var(--feedback-info-border)', borderRadius: '4px', padding: '1px 6px', fontSize: '11px', fontWeight: '600', color: 'var(--primary-color)' }}>
                   USDA
+                </span>
+              )}
+              {resultSource === 'combined' && (
+                <span style={{ background: 'var(--feedback-info-surface)', border: '1px solid var(--feedback-info-border)', borderRadius: '4px', padding: '1px 6px', fontSize: '11px', fontWeight: '600', color: 'var(--primary-color)' }}>
+                  USDA + OFF
                 </span>
               )}
               {sourceLabel}
