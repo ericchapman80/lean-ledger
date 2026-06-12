@@ -31,11 +31,13 @@ test.describe('household profiles: create, switch, isolate', () => {
 
     // Create a dependent (a minor) via the Household UI.
     await page.goto('/household');
-    await page.getByLabel('Name').fill('E2E Kid');
-    await page.getByLabel('Date of birth').fill('2016-04-01');
-    await page.getByLabel('Height').fill('150');
-    await page.getByLabel('Weight').fill('42');
-    await page.getByRole('button', { name: 'Add profile' }).click();
+    await page.getByRole('heading', { name: 'Household profiles' }).waitFor();
+    const createProfileCard = page.locator('.card').last();
+    await createProfileCard.getByLabel('Name').fill('E2E Kid');
+    await createProfileCard.getByLabel('Date of birth').fill('2016-04-01');
+    await createProfileCard.getByLabel('Height').fill('150');
+    await createProfileCard.getByLabel('Weight').fill('42');
+    await createProfileCard.getByRole('button', { name: 'Add profile' }).click();
     await expect(page.getByText('E2E Kid')).toBeVisible();
 
     // Switch to the kid from its row; the page reloads to re-scope everything.

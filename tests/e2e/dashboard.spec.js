@@ -80,7 +80,8 @@ test.describe('dashboard and meals flows', () => {
     });
 
     await page.goto('/');
-    await page.locator('input[type="date"]').fill(testDate);
+    await page.getByRole('heading', { name: 'Daily Dashboard' }).waitFor();
+    await page.locator('input[type="date"]').first().fill(testDate);
 
     await expect(page.getByRole('heading', { name: 'Daily Dashboard' })).toBeVisible();
     const quickStatsCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: 'Quick Stats' }) });
@@ -108,7 +109,8 @@ test.describe('dashboard and meals flows', () => {
     });
 
     await page.goto('/meals');
-    await page.locator('input[type="date"]').fill(testDate);
+    await page.getByRole('heading', { name: 'Intake', exact: true }).waitFor();
+    await page.locator('input[type="date"]').first().fill(testDate);
 
     await expect(page.getByRole('heading', { name: 'Dinner' })).toBeVisible();
     await expect(page.getByText('Salmon')).toBeVisible();
@@ -146,7 +148,8 @@ test.describe('dashboard and meals flows', () => {
     expect(templateProfileResponse.ok()).toBeTruthy();
 
     await page.goto('/meals');
-    await page.locator('input[type="date"]').fill(testDate);
+    await page.getByRole('heading', { name: 'Intake', exact: true }).waitFor();
+    await page.locator('input[type="date"]').first().fill(testDate);
 
     const todaysWinsCard = page.locator('.card').filter({ has: page.getByRole('heading', { name: /Today.?s Wins/i }) }).first();
     await expect(todaysWinsCard.getByText('Workout', { exact: true })).toBeVisible();
@@ -157,7 +160,8 @@ test.describe('dashboard and meals flows', () => {
     await expect(todaysWinsCard.getByText('Mobility', { exact: true })).toBeVisible();
 
     await page.goto('/');
-    await page.locator('input[type="date"]').fill(testDate);
+    await page.getByRole('heading', { name: 'Daily Dashboard' }).waitFor();
+    await page.locator('input[type="date"]').first().fill(testDate);
     await expect(page.getByRole('heading', { name: 'Daily Wins' })).toBeVisible();
   });
 });
