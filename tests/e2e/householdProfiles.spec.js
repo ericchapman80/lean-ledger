@@ -11,7 +11,10 @@ import { expect, test } from '@playwright/test';
 test.describe.configure({ mode: 'serial', retries: 0 });
 
 test.describe('household profiles: create, switch, isolate', () => {
-  test.skip(process.env.PLAYWRIGHT_ALLOW_MUTATION !== 'true', 'This suite seeds test data and is only for local/CI databases.');
+  test.skip(
+    process.env.PLAYWRIGHT_ALLOW_MUTATION !== 'true' || Boolean(process.env.PLAYWRIGHT_BASE_URL),
+    'This suite seeds test data and is only for local/CI databases.',
+  );
 
   test('create a dependent, switch to it, and isolate data per profile', async ({ page, request }) => {
     const date = '2031-02-02';

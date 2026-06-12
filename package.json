@@ -15,6 +15,7 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:readonly": "playwright test tests/e2e/deployed-readonly.spec.js",
     "init-db": "node scripts/init-db.mjs",
     "init-db:local": "dotenv -o -e .env.local -- node scripts/init-db.mjs",
     "init-db:preview": "dotenv -o -e .env.preview.local -- node scripts/init-db.mjs",

@@ -306,7 +306,7 @@ jobs:
         run: npm run smoke -- "${PLAYWRIGHT_BASE_URL}" --read-only
 
       - if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
-        run: npm run test:e2e
+        run: npm run test:e2e:readonly
 
       - uses: actions/upload-artifact@v7
         if: failure()
@@ -445,7 +445,7 @@ jobs:
         run: npm run smoke -- "${PLAYWRIGHT_BASE_URL}" --read-only
 
       - if: env.VERCEL_AUTOMATION_BYPASS_SECRET != ''
-        run: npm run test:e2e
+        run: npm run test:e2e:readonly
 
       - uses: actions/upload-artifact@v7
         if: failure()
