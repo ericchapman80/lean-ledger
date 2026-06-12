@@ -4,17 +4,19 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 
 ---
 
-## What's next (prioritized — updated 2026-06-09)
+## What's next (prioritized — updated 2026-06-11)
 
-1. ✅ **V2.2 Family Profiles — shipped end to end** (foundation + Phases 1–5, PRs #42, #48–#56). Households, dependent profiles, switching, per-profile data isolation, and youth-safe per-profile coaching are live. See [`docs/family-profiles.md`](docs/family-profiles.md). — **next real priority is Food database integration (below).**
-2. **Application UX / quality-of-life cleanup** — act on the full per-page UX review in [`docs/ux-review.md`](docs/ux-review.md). P0s: replace `alert()`/`confirm()` with inline errors + undo, resolve the duplicate Dashboard/Intake check-in, Modal focus-trap a11y. See the **Application UX & Theming** section.
-3. **Theming (light / dark / system)** — match the device theme via `prefers-color-scheme` plus a user-selectable System / Always Light / Always Dark preference. Tracked as its **own phase** (a color-token refactor with a clean definition of done) after the inline-style→class cleanup. See the **Application UX & Theming** section.
-4. **Food database integration** — `FoodSearch.jsx` / `ProductLookup.jsx` are partially wired; target OpenFoodFacts (no key) or USDA FoodData Central. High daily-logging value.
-5. **Continuous barcode scanning** — move `BarcodeScanner.jsx` from single-frame capture to a continuous scanner (ZXing or equivalent).
-6. **Mobile responsiveness pass** — current CSS is desktop-first; needs a real breakpoint audit (overlaps with the UX cleanup).
-7. **CI/CD pipeline review** — speed the pipeline up via parallelism/caching **without dropping any quality gate** (quality > speed). Quick win: a path filter so docs-only changes skip the heavy pipeline. Full scope under the **CI/CD Pipeline Review** section.
-8. **Multi-user isolation E2E hardening** — extend Profile A vs Profile B / User A vs User B isolation coverage across more end-to-end flows (pairs naturally with V2.2 Phase 2).
-9. **V2.3 Performance Extensions** 🕒 — event/lift metrics and readiness interpretation; explicitly after the family-profile layer.
+1. ✅ **V2.2 Family Profiles — shipped end to end** (foundation + Phases 1–5, PRs #42, #48–#56). Households, dependent profiles, switching, per-profile data isolation, and youth-safe per-profile coaching are live. See [`docs/family-profiles.md`](docs/family-profiles.md).
+2. ✅ **Application UX / quality-of-life cleanup** — replaced all `alert()`/`confirm()` with toast + optimistic-undo, Modal focus-trap a11y, Dashboard check-in moved to Intake deep-link (PR #59).
+3. ✅ **Theming (light / dark / system)** — CSS token system + `next-themes`, System / Light / Dark toggle in Profile > Appearance (PR #59).
+4. ✅ **Food database integration** — `GET /api/food-search` (OpenFoodFacts primary → USDA fallback), server-side only, `use_count` auto-favorite suggestion at count=2 (PR #64).
+5. ✅ **CI/CD pipeline review** — docs path filter (PR #60), Next.js + Playwright caching, parallel `validate`/`local-functional`, `security-audit` job, `quality-gate` join (PR #62), CodeQL SAST + branch protection (PR #63).
+6. ✅ **Google Auth** — multi-tenant auth, invite-only member access, and Google OAuth are live in production.
+7. 🚧 **Mobile responsiveness pass** — in progress. Desktop-first CSS needs a full breakpoint audit. See the **Mobile Responsiveness** section.
+8. **Multi-user isolation E2E hardening** — extend Profile A vs Profile B isolation E2E coverage to weight, favorites, habits, and beverages (meals already covered).
+9. **Continuous barcode scanning** — move `BarcodeScanner.jsx` from single-frame capture to a continuous scanner (ZXing or equivalent).
+10. **CI/CD Step 5 — sharding** — shard vitest/Playwright if pipeline wall-clock is still >10 min after warm-cache data is available.
+11. **V2.3 Performance Extensions** 🕒 — event/lift metrics and readiness interpretation; explicitly after the family-profile layer.
 
 ---
 
@@ -46,15 +48,18 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 - 🧭 next up
 - 🕒 later / future iteration
 
-**Current status snapshot** (updated 2026-06-09)
+**Current status snapshot** (updated 2026-06-11)
 - ✅ Meal intelligence foundation is shipped on `main`
 - ✅ Hydration and beverage intelligence foundation is shipped on `main`
 - ✅ Daily Wins foundation, configurability, templates, and challenge progress are shipped on `main`
-- ✅ Multi-tenant auth and invite-only member access foundation are shipped on `main`
+- ✅ Multi-tenant auth, Google OAuth, and invite-only member access are live in production
 - ✅ Lean Ledger 2.0 guided onboarding foundation is shipped on `main`
 - ✅ V2.1 youth safety guardrails + athlete day-type context are shipped on `main` (PR #41)
 - ✅ V2.2 Family Profiles shipped end to end (foundation + Phases 1–5, PRs #42, #48–#56): households, dependent profiles, switching, per-profile data isolation, and youth-safe per-profile coaching — see [`docs/family-profiles.md`](docs/family-profiles.md)
-- 🧭 Next product slice: **Food database integration** (OpenFoodFacts / USDA)
+- ✅ V2.3 UX/QoL Phase A+B: toast/undo, a11y modal, light/dark/system theming (PR #59)
+- ✅ Food database integration: OpenFoodFacts primary + USDA fallback, use_count auto-favorite (PR #64)
+- ✅ CI/CD: docs path filter, caching, parallelism, security-audit, quality-gate, CodeQL SAST (PRs #60, #62, #63)
+- 🚧 Mobile responsiveness pass — in progress
 
 ## Meal Intelligence & Behavioral Insights
 
