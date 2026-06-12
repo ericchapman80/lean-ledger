@@ -409,15 +409,36 @@ header nav h2 {
   }
 
   .modal {
-    width: 95%;
-    padding: 20px;
-    max-height: 85vh;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    border-radius: 16px 16px 0 0;
+    padding: 20px 16px;
+    max-height: 92vh;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    animation: slideUpSheet 0.25s ease;
+  }
+
+  @keyframes slideUpSheet {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+
+  .modal-overlay {
+    align-items: flex-end;
+  }
+
+  /* Buttons: only force full-width inside .btn-group, not globally */
+  .btn-group .btn {
+    width: 100%;
   }
 
   .btn {
     padding: 10px 16px;
     font-size: 14px;
-    width: 100%;
   }
 
   /* Stack buttons vertically on mobile */
@@ -446,13 +467,25 @@ header nav h2 {
   }
 
   /* Make tables scrollable on mobile */
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   table {
     font-size: 14px;
+    min-width: 480px;
   }
 
   table th,
   table td {
     padding: 8px !important;
+  }
+
+  /* Meal / beverage row actions — smaller tap targets are ok inline */
+  .inline-actions {
+    flex-wrap: wrap;
+    gap: 4px;
   }
 }
 
@@ -500,6 +533,12 @@ header nav h2 {
   .progress-bar-fill {
     font-size: 10px;
   }
+
+  /* Modal full-screen on very small phones */
+  .modal {
+    max-height: 96vh;
+    padding: 16px 12px;
+  }
 }
 
 /* Tablet devices */
@@ -520,7 +559,16 @@ header nav h2 {
   }
 
   .modal {
-    max-height: 80vh;
+    max-height: 85vh;
+    border-radius: 12px;
+    position: relative;
+    bottom: auto;
+    width: 90%;
+    margin: auto;
+  }
+
+  .modal-overlay {
+    align-items: center;
   }
 }
 
