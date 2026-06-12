@@ -15,7 +15,11 @@ export async function GET(request) {
       Profile.listByHousehold(membership.householdId),
       getActiveProfileId(request),
     ]);
-    const withActive = profiles.map((p) => ({ ...p, isActive: p.id === activeProfileId }));
+    const withActive = profiles.map((p) => ({
+      ...p,
+      isActive: p.id === activeProfileId,
+      isSelf: p.sourceUserId === userId,
+    }));
     return NextResponse.json(withActive);
   } catch (error) {
     return apiRouteErrorResponse(error, 'Failed to fetch profiles');
