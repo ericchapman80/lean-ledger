@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { accessApi, authApi, habitDefinitionsApi, householdLinksApi, profileApi } from '@/lib/api';
+import { accessApi, authApi, habitDefinitionsApi, householdLinksApi, profileApi, profilesApi } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import {
   ACTIVITY_FOCUS_OPTIONS,
@@ -140,6 +140,7 @@ export default function Profile() {
   const [editing, setEditing] = useState(false);
   const [profile, setProfile] = useState(null);
   const [authStatus, setAuthStatus] = useState({ mode: 'disabled', user: null });
+  const [activeContext, setActiveContext] = useState({ activeName: null, selfName: null, isViewingSelf: true });
   const [allowedMembers, setAllowedMembers] = useState([]);
   const [receivedHouseholdInvitations, setReceivedHouseholdInvitations] = useState([]);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -179,6 +180,7 @@ export default function Profile() {
         authApi.getStatus(),
         householdLinksApi.getInvitations(),
       ]);
+      const profileRows = authStatusData?.user ? await profilesApi.getProfiles().catch(() => []) : [];
       const memberData = authStatusData?.user?.role === 'admin'
         ? await accessApi.getMembers()
         : [];
@@ -186,6 +188,13 @@ export default function Profile() {
       setAuthStatus(authStatusData);
       setAllowedMembers(memberData);
       setReceivedHouseholdInvitations((householdLinkData?.received || []).filter((invitation) => invitation.status === 'pending'));
+      const activeProfile = profileRows.find((row) => row.isActive) || profileRows.find((row) => row.isPrimary) || null;
+      const selfProfile = profileRows.find((row) => row.isSelf) || profileRows.find((row) => row.isPrimary) || null;
+      setActiveContext({
+        activeName: activeProfile?.name || null,
+        selfName: selfProfile?.name || authStatusData?.user?.name || null,
+        isViewingSelf: !activeProfile || activeProfile.isSelf || activeProfile.isPrimary,
+      });
       setSavedCustomHabits(habitData);
       setCustomHabits(habitData);
       setSelectedTemplateKey(data?.dailyWinsTemplateKey || '');
@@ -413,6 +422,7 @@ export default function Profile() {
     coachingMode: derivedCoachingMode,
   });
   const isAuthLive = authStatus.mode === 'enabled';
+  const isViewingOtherProfile = !activeContext.isViewingSelf && !!activeContext.activeName;
   const accountSummary = authStatus.user?.email
     ? `Signed in as ${authStatus.user.email}.`
     : isAuthLive
@@ -433,6 +443,24 @@ export default function Profile() {
   if (editing || !profile) {
     return (
       <div className="container" style={{ paddingTop: '24px', paddingBottom: '40px', maxWidth: '800px' }}>
+        {isViewingOtherProfile ? (
+          <div
+            style={{
+              marginBottom: '24px',
+              padding: '14px 16px',
+              borderRadius: '12px',
+              background: 'var(--warning-surface)',
+              border: '1px solid var(--warning-color)',
+            }}
+          >
+            <p style={{ margin: '0 0 6px', fontWeight: 600 }}>
+              Household view is currently set to {activeContext.activeName}
+            </p>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+              Profile settings always edit your own account ({activeContext.selfName || 'you'}). Use the profile switcher or <Link href="/household">Household Profiles</Link> to change who Dashboard, Intake, and Trends are showing.
+            </p>
+          </div>
+        ) : null}
         <h1 style={{ marginBottom: '32px' }}>
           {profile ? 'Edit Profile' : 'Let’s build your coaching profile'}
         </h1>
@@ -1014,6 +1042,24 @@ export default function Profile() {
 
   return (
     <div className="container" style={{ paddingTop: '24px', paddingBottom: '40px', maxWidth: '800px' }}>
+      {isViewingOtherProfile ? (
+        <div
+          style={{
+            marginBottom: '24px',
+            padding: '14px 16px',
+            borderRadius: '12px',
+            background: 'var(--warning-surface)',
+            border: '1px solid var(--warning-color)',
+          }}
+        >
+          <p style={{ margin: '0 0 6px', fontWeight: 600 }}>
+            Household view is currently set to {activeContext.activeName}
+          </p>
+          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+            This page always shows your own account settings ({activeContext.selfName || 'you'}). Use the profile switcher or <Link href="/household">Household Profiles</Link> to change who Dashboard, Intake, and Trends are showing.
+          </p>
+        </div>
+      ) : null}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
         <h1 style={{ margin: 0 }}>Your Profile</h1>
         <button onClick={() => setEditing(true)} className="btn btn-primary">Edit Profile</button>
