@@ -37,7 +37,10 @@ async function createMeal(request, meal) {
 }
 
 test.describe('dashboard and meals flows', () => {
-  test.skip(process.env.PLAYWRIGHT_ALLOW_MUTATION !== 'true', 'This suite seeds test data and is only for local/CI databases.');
+  test.skip(
+    process.env.PLAYWRIGHT_ALLOW_MUTATION !== 'true' || Boolean(process.env.PLAYWRIGHT_BASE_URL),
+    'This suite seeds test data and is only for local/CI databases.',
+  );
 
   test('shows grouped meals separately from food entries on the dashboard', async ({ page, request }) => {
     const testDate = getIsolatedDate();
