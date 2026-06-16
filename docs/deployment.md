@@ -3,7 +3,7 @@
 This repo now supports:
 
 - versioned DB migrations via `npm run migrate-db`
-- CI gating for unit tests, coverage, build, audit, API smoke, and Playwright
+- CI gating for unit tests, coverage, build, dependency audit, workflow linting, API smoke, and Playwright
 - Vercel preview deploys for PRs and production deploys for `main`
 - post-deploy smoke and browser checks
 - daily logical backups for the production database
@@ -17,6 +17,7 @@ In practice that means:
 - feature work is not considered done without the right test coverage
 - logic-heavy changes should add or update unit tests
 - multi-page or user-flow changes should add or update functional/E2E coverage when practical
+- GitHub Actions workflow changes should pass actionlint before deployment
 - schema changes should ship with safe migrations, rollout order, and verification steps
 - preview and production checks should stay part of the standard path to `main`
 
@@ -174,6 +175,15 @@ GitHub Actions handles this differently from local verification:
 That fallback is intentional for CI only. It prevents production migrations from failing when Vercel runtime secrets exist but `vercel pull --environment=production` exports empty DB values.
 
 If you move deployment ownership to GitHub Actions, disable Vercel's automatic Git-based production deployment to avoid duplicate deploys.
+
+### Required CI checks
+
+Branch protection should require:
+
+- `changes` — always runs, including docs-only PRs
+- `quality-gate` — joins the blocking code quality jobs
+
+For code changes, `quality-gate` requires `validate`, `local-functional`, `security-audit`, and `workflow-lint` to finish successfully. For docs-only changes, it reports success after `changes` confirms the heavy jobs were intentionally skipped.
 
 ## 3. One-Time Local Postgres -> Neon Production Migration
 

@@ -31,6 +31,7 @@ That means:
 - ship logic changes with unit coverage
 - ship cross-page or user-flow changes with functional/E2E coverage when practical
 - ship DB changes with safe additive migrations and rollout notes
+- ship GitHub Actions workflow changes with actionlint validation
 - keep CI as a real release gate, not an optional afterthought
 - prefer fixing root causes over retrying broken behavior manually
 
@@ -296,7 +297,14 @@ npm run smoke -- http://localhost:3000   # end-to-end against running server
 npm run smoke -- https://your.vercel.app # end-to-end against production
 ```
 
-Pre-deploy: run unit tests, coverage, build, smoke, and Playwright.
+GitHub Actions workflows are checked in CI with `actionlint`.
+To run the same workflow lint locally with Docker:
+
+```bash
+docker run --rm -v "$(pwd):/repo" --workdir /repo rhysd/actionlint:1.7.12 -color
+```
+
+Pre-deploy: run unit tests, coverage, build, smoke, Playwright, and workflow linting when CI files change.
 Post-deploy: run read-only smoke and Playwright against the live URL.
 
 ## Deploy to Vercel
