@@ -101,6 +101,18 @@ jobs:
 
       - run: npm audit --audit-level=high
 
+  workflow-lint:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check GitHub Actions workflows
+        uses: docker://rhysd/actionlint:1.7.12
+        with:
+          args: -color
+
   local-functional:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -168,6 +180,7 @@ jobs:
             if curl -fsS http://127.0.0.1:3000/api/health >/dev/null; then
               exit 0
             fi
+            echo "App not ready yet (attempt $attempt/30)"
             sleep 2
           done
           echo "App failed to start"
@@ -189,11 +202,44 @@ jobs:
           retention-days: 7
 
   quality-gate:
-    needs: [validate, local-functional, security-audit]
-    if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    needs: [changes, validate, local-functional, security-audit, workflow-lint]
+    if: always()
     runs-on: ubuntu-latest
     steps:
-      - run: echo "All quality gates passed"
+      - name: Verify quality gates
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          CODE_CHANGED: ${{ needs.changes.outputs.code }}
+          VALIDATE_RESULT: ${{ needs.validate.result }}
+          LOCAL_FUNCTIONAL_RESULT: ${{ needs['local-functional'].result }}
+          SECURITY_AUDIT_RESULT: ${{ needs['security-audit'].result }}
+          WORKFLOW_LINT_RESULT: ${{ needs['workflow-lint'].result }}
+        run: |
+          echo "changes: $CHANGES_RESULT (code=$CODE_CHANGED)"
+          echo "validate: $VALIDATE_RESULT"
+          echo "local-functional: $LOCAL_FUNCTIONAL_RESULT"
+          echo "security-audit: $SECURITY_AUDIT_RESULT"
+          echo "workflow-lint: $WORKFLOW_LINT_RESULT"
+
+          if [ "$CHANGES_RESULT" != "success" ]; then
+            echo "The changes filter did not complete successfully."
+            exit 1
+          fi
+
+          if [ "$CODE_CHANGED" != "true" ]; then
+            echo "Docs-only change; heavy quality gates intentionally skipped."
+            exit 0
+          fi
+
+          if [ "$VALIDATE_RESULT" != "success" ] \
+            || [ "$LOCAL_FUNCTIONAL_RESULT" != "success" ] \
+            || [ "$SECURITY_AUDIT_RESULT" != "success" ] \
+            || [ "$WORKFLOW_LINT_RESULT" != "success" ]; then
+            echo "One or more required quality gates failed, were cancelled, or were skipped."
+            exit 1
+          fi
+
+          echo "All quality gates passed"
 
   deploy-preview:
     if: github.event_name == 'pull_request' && !github.event.pull_request.draft && needs.changes.outputs.code == 'true'
@@ -297,6 +343,7 @@ jobs:
               "${PLAYWRIGHT_BASE_URL}/api/health" >/dev/null; then
               exit 0
             fi
+            echo "Preview deployment not reachable yet (attempt $attempt/24)"
             sleep 5
           done
           echo "Preview deployment did not become reachable in time."
@@ -436,6 +483,7 @@ jobs:
               "${PLAYWRIGHT_BASE_URL}/api/health" >/dev/null; then
               exit 0
             fi
+            echo "Production deployment not reachable yet (attempt $attempt/24)"
             sleep 5
           done
           echo "Production deployment did not become reachable in time."

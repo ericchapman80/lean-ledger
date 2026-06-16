@@ -10,7 +10,7 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 2. ✅ **Application UX / quality-of-life cleanup** — replaced all `alert()`/`confirm()` with toast + optimistic-undo, Modal focus-trap a11y, Dashboard check-in moved to Intake deep-link (PR #59).
 3. ✅ **Theming (light / dark / system)** — CSS token system + `next-themes`, System / Light / Dark toggle in Profile > Appearance (PR #59).
 4. ✅ **Food database integration** — `GET /api/food-search` with merged OpenFoodFacts + USDA search, server-side only, `use_count` auto-favorite suggestion at count=2 (PR #64, follow-up search ranking patch on trunk).
-5. ✅ **CI/CD pipeline review** — docs path filter (PR #60), Next.js + Playwright caching, parallel `validate`/`local-functional`, `security-audit` job, `quality-gate` join (PR #62), CodeQL SAST + branch protection (PR #63).
+5. ✅ **CI/CD pipeline review** — docs path filter (PR #60), Next.js + Playwright caching, parallel `validate`/`local-functional`, `security-audit`, `workflow-lint` with actionlint, `quality-gate` join (PR #62), CodeQL SAST + branch protection (PR #63).
 6. ✅ **Google Auth** — multi-tenant auth, invite-only member access, and Google OAuth are live in production.
 7. 🚧 **Mobile responsiveness pass** — in progress. PR #65 shipped: bottom-sheet modal (slides up from bottom, `slideUpSheet` animation), landscape revert to centered dialog, `.btn-group .btn` full-width scoping, `.table-scroll` / `.inline-actions` utilities, 48 px touch targets, meals action-row wrapping. A full per-page breakpoint audit is still needed.
 8. **Multi-user isolation E2E hardening** — extend Profile A vs Profile B isolation E2E coverage to weight, favorites, habits, and beverages (meals already covered).
@@ -58,7 +58,7 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 - ✅ V2.2 Family Profiles shipped end to end (foundation + Phases 1–5, PRs #42, #48–#56): households, dependent profiles, switching, per-profile data isolation, and youth-safe per-profile coaching — see [`docs/family-profiles.md`](docs/family-profiles.md)
 - ✅ UX/QoL Phase A+B: toast/undo, a11y modal, light/dark/system theming (PR #59)
 - ✅ Food database integration: merged OpenFoodFacts + USDA search, use_count auto-favorite (PR #64 + follow-up ranking patch)
-- ✅ CI/CD: docs path filter, caching, parallelism, security-audit, quality-gate, CodeQL SAST (PRs #60, #62, #63)
+- ✅ CI/CD: docs path filter, caching, parallelism, security-audit, actionlint workflow validation, quality-gate, CodeQL SAST (PRs #60, #62, #63)
 - 🚧 Mobile responsiveness pass — PR #65 shipped bottom-sheet modals, button/touch fixes, padding fixes; full breakpoint audit still in progress
 
 ## Meal Intelligence & Behavioral Insights
@@ -1870,10 +1870,12 @@ without turning into a generic calorie tracker or a generic habit app.
 
 **Goal:** make the pipeline faster to iterate on **without weakening any quality gate**. Quality is the priority; speed is the optimization. No gate (tests, coverage, build, audit, smoke, e2e, deployed checks) may be removed or downgraded — only re-orchestrated, parallelized, or cached.
 
-**Current shape**
-- PR path: `validate` → `local-functional` → `deploy-preview` → `preview-post-deploy`
-- main path: `validate` → `local-functional` → `deploy-production` → `production-post-deploy`
-- Both `validate` and `local-functional` run `npm ci` + spin up Postgres + `npm run build`. Deploy jobs run `vercel build` (a third/fourth build). Meaningful duplicated work.
+**Implemented shape**
+- `changes` always runs first and skips the heavy pipeline for docs-only changes.
+- Code changes fan out into parallel `validate`, `local-functional`, `security-audit`, and `workflow-lint` jobs.
+- `quality-gate` always runs and explicitly fails unless every required code gate succeeds.
+- PR deploys wait on `quality-gate` before `deploy-preview` and `preview-post-deploy`.
+- Main deploys wait on `quality-gate` before `deploy-production` and `production-post-deploy`.
 
 **Guardrails (carry through every step)**
 - Every existing gate stays required and blocking — no gate removed, demoted, or stubbed.
@@ -1897,7 +1899,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             code:
@@ -1911,11 +1913,12 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     # ... rest unchanged
 
-  # All other jobs keep their existing `needs:` — they already gate on validate/local-functional
-  # so they implicitly skip when validate is skipped.
+  # Heavy jobs use:
+  # needs: changes
+  # if: needs.changes.outputs.code == 'true'
 ```
 
-**Required PR status checks** in GitHub branch protection: change from `validate` to `changes` + `validate` so docs-only PRs pass on `changes` alone.
+**Required PR status checks** in GitHub branch protection: require `changes` and `quality-gate`. Docs-only PRs pass after the filter confirms no code changed; code PRs must pass every joined gate.
 
 **Acceptance criteria:**
 - A PR that touches only `.md` / `docs/` files completes in < 30 s (only `changes` runs)
@@ -1923,7 +1926,7 @@ jobs:
 
 ---
 
-### Step 2 — Aggressive caching 🧭
+### Step 2 — Aggressive caching ✅
 
 Three high-value caches, each a small `actions/cache` block:
 
@@ -1956,7 +1959,7 @@ Three high-value caches, each a small `actions/cache` block:
 
 ---
 
-### Step 3 — Parallelize validate + local-functional 🧭
+### Step 3 — Parallelize validate + local-functional ✅
 
 Currently `local-functional` waits for `validate` to finish before starting. These are independent quality gates — parallelizing trades the "fail fast on unit tests before spending time on E2E" fast-fail for wall-clock time.
 
@@ -1972,11 +1975,14 @@ local-functional:
 Add a gate job so `deploy-preview` and `deploy-production` still wait for both:
 ```yaml
 quality-gate:
-  needs: [validate, local-functional]
-  if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+  needs: [changes, validate, local-functional, security-audit, workflow-lint]
+  if: always()
   runs-on: ubuntu-latest
   steps:
-    - run: echo "All quality gates passed"
+    - run: |
+        # For code changes, explicitly require every joined gate to report success.
+        # For docs-only changes, pass after changes confirms the heavy jobs were skipped.
+        echo "All quality gates passed"
 
 deploy-preview:
   needs: [changes, quality-gate]   # was: needs: [validate, local-functional]
@@ -1991,7 +1997,7 @@ deploy-production:
 
 ---
 
-### Step 4 — Split `npm audit` into a parallel job 🧭
+### Step 4 — Split `npm audit` into a parallel job ✅
 
 Currently `npm audit` runs inside `validate`, serialized behind `npm run build`. A security finding blocks the build step from reporting.
 
@@ -2010,6 +2016,25 @@ security-audit:
 ```
 
 Remove `npm audit` from `validate`. Add `security-audit` to the `quality-gate` needs list.
+
+### Step 4b — Add actionlint workflow validation ✅
+
+GitHub Actions workflow changes now run through actionlint before deployment:
+
+```yaml
+workflow-lint:
+  needs: changes
+  if: needs.changes.outputs.code == 'true'
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v6
+    - name: Check GitHub Actions workflows
+      uses: docker://rhysd/actionlint:1.7.12
+      with:
+        args: -color
+```
+
+`workflow-lint` is included in `quality-gate`, so bad workflow syntax, invalid expressions, bad `needs:` references, or unsafe workflow patterns block preview/production deployment.
 
 ---
 
