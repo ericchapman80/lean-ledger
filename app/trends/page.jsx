@@ -178,7 +178,7 @@ export default function Trends() {
   );
 
   return (
-    <div className="container" style={{ padding: '40px 20px' }}>
+    <div className="container" style={{ paddingTop: '24px', paddingBottom: '40px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', gap: '16px', flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ margin: 0, marginBottom: '6px' }}>Lean Recomp Trends</h1>
@@ -275,13 +275,13 @@ export default function Trends() {
             </BarChart>
           </ResponsiveContainer>
           <div style={{ display: 'grid', gap: '10px', marginTop: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Weekly Calorie Target</span>
-              <strong>{analytics.summary.weeklyCalorieTarget} kcal</strong>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ minWidth: 0 }}>Weekly Calorie Target</span>
+              <strong style={{ flexShrink: 0 }}>{analytics.summary.weeklyCalorieTarget} kcal</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Daily Average Needed to Stay on Target</span>
-              <strong>{analytics.summary.dailyAverageNeeded} kcal</strong>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ minWidth: 0 }}>Daily Average Needed to Stay on Target</span>
+              <strong style={{ flexShrink: 0 }}>{analytics.summary.dailyAverageNeeded} kcal</strong>
             </div>
           </div>
         </div>
@@ -292,36 +292,36 @@ export default function Trends() {
             Track weight trend, protein consistency, calorie alignment, and the core recomposition signals you actually use.
           </p>
           <div style={{ display: 'grid', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Current Weight</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ minWidth: 0 }}>Current Weight</span>
               <strong>{analytics.summary.currentWeight != null ? formatWeight(analytics.summary.currentWeight, profile.units) : 'Add weight logs'}</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
               <span>7-Day Average Weight</span>
               <strong>{analytics.summary.sevenDayAverageWeight != null ? formatWeight(analytics.summary.sevenDayAverageWeight, profile.units) : 'Not enough data'}</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
               <span>Protein Adherence</span>
               <strong>{analytics.summary.proteinAdherencePercentage}%</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
               <span>Weekly Calorie Adherence</span>
               <strong>{analytics.summary.weeklyCalorieAdherencePercentage}%</strong>
             </div>
             {analytics.summary.waistChange != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
                 <span>Waist Change</span>
                 <strong>{analytics.summary.waistChange > 0 ? '+' : ''}{analytics.summary.waistChange} in</strong>
               </div>
             )}
             {analytics.summary.workoutCompletionPercentage != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
                 <span>Workout Completion</span>
                 <strong>{analytics.summary.workoutCompletionPercentage}%</strong>
               </div>
             )}
             {analytics.summary.hydrationAdherencePercentage != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
                 <span>Hydration Adherence</span>
                 <strong>{analytics.summary.hydrationAdherencePercentage}%</strong>
               </div>
@@ -726,19 +726,19 @@ export default function Trends() {
                 Compare whether workout days are getting the protein and hydration support they need.
               </p>
               <div style={{ display: 'grid', gap: '14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
                   <span>Protein on Workout Days</span>
                   <strong>{recoveryBehavior.proteinWorkoutAverage != null ? `${recoveryBehavior.proteinWorkoutAverage} g` : 'No workout logs'}</strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
                   <span>Protein on Rest Days</span>
                   <strong>{recoveryBehavior.proteinRestAverage != null ? `${recoveryBehavior.proteinRestAverage} g` : 'No rest-day logs'}</strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
                   <span>Hydration Hit Rate on Workout Days</span>
                   <strong>{recoveryBehavior.hydrationWorkoutHitRate != null ? `${recoveryBehavior.hydrationWorkoutHitRate}%` : 'No workout hydration logs'}</strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
                   <span>Hydration Hit Rate on Rest Days</span>
                   <strong>{recoveryBehavior.hydrationRestHitRate != null ? `${recoveryBehavior.hydrationRestHitRate}%` : 'No rest-day hydration logs'}</strong>
                 </div>
@@ -751,19 +751,19 @@ export default function Trends() {
                 Keep this directional: low sleep, energy, and soreness are most useful when they repeat.
               </p>
               <div style={{ display: 'grid', gap: '14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
                   <span>Low-Sleep Days</span>
                   <strong>{recoveryBehavior.lowSleepDays || 0}</strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
                   <span>Energy on Low-Sleep Days</span>
                   <strong>{recoveryBehavior.lowSleepEnergyAverage != null ? `${recoveryBehavior.lowSleepEnergyAverage} / 5` : 'Not enough data'}</strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
                   <span>Energy with 6.5h+ Sleep</span>
                   <strong>{recoveryBehavior.adequateSleepEnergyAverage != null ? `${recoveryBehavior.adequateSleepEnergyAverage} / 5` : 'Not enough data'}</strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
                   <span>Workout Day Sleep</span>
                   <strong>{recoveryBehavior.workoutSleepAverage != null ? `${recoveryBehavior.workoutSleepAverage} hr` : 'Not enough data'}</strong>
                 </div>

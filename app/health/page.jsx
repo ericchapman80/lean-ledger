@@ -131,7 +131,7 @@ export default function HealthPage() {
   const muscleMassMeta = getHealthMetricFieldMeta('muscleMass', displayUnits);
 
   return (
-    <div className="container" style={{ padding: '40px 20px' }}>
+    <div className="container" style={{ paddingTop: '24px', paddingBottom: '40px' }}>
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <div>
           <h1 style={{ marginBottom: '8px' }}>Advanced Health Metrics</h1>
@@ -279,7 +279,7 @@ export default function HealthPage() {
                     {` • ${validPreviewRows.length} valid, ${csvPreview.length - validPreviewRows.length} with errors`}
                   </span>
                 </summary>
-                <div style={{ overflowX: 'auto', marginTop: '12px' }}>
+                <div className="table-scroll" style={{ marginTop: '12px' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ borderBottom: '2px solid var(--border-color)' }}>
@@ -353,7 +353,7 @@ export default function HealthPage() {
               No advanced health metrics yet. Core Lean Recomp tracking still works without them.
             </p>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
+            <div className="table-scroll">
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid var(--border-color)' }}>

@@ -221,8 +221,8 @@ export default function HouseholdPage() {
           <div
             key={p.id}
             style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
-              padding: '12px 0', borderBottom: '1px solid var(--border-color)',
+              display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px',
+              flexWrap: 'wrap', padding: '12px 0', borderBottom: '1px solid var(--border-color)',
             }}
           >
             <div>
@@ -234,7 +234,7 @@ export default function HouseholdPage() {
                 {p.isDependent ? 'Dependent profile' : p.isSelf ? 'Account holder' : 'Existing account'}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}>
               {!p.isActive && (
                 <button type="button" className="btn btn-secondary" disabled={busyId === p.id} onClick={() => handleSwitch(p.id)}>
                   {busyId === p.id ? '…' : 'Switch to'}

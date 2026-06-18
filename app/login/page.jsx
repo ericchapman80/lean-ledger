@@ -24,7 +24,7 @@ export default async function LoginPage({ searchParams }) {
   const reason = searchParams?.reason;
 
   return (
-    <div className="container" style={{ padding: '48px 20px', maxWidth: '640px' }}>
+    <div className="container" style={{ paddingTop: '32px', paddingBottom: '48px', maxWidth: '640px' }}>
       <div className="card">
         <h1 style={{ marginBottom: '12px' }}>Account & Access</h1>
         {reason === 'session-expired' && (

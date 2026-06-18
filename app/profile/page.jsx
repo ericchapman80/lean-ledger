@@ -1060,7 +1060,7 @@ export default function Profile() {
           </p>
         </div>
       ) : null}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', gap: '12px', flexWrap: 'wrap' }}>
         <h1 style={{ margin: 0 }}>Your Profile</h1>
         <button onClick={() => setEditing(true)} className="btn btn-primary">Edit Profile</button>
       </div>

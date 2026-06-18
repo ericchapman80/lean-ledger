@@ -12,8 +12,8 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 4. ✅ **Food database integration** — `GET /api/food-search` with merged OpenFoodFacts + USDA search, server-side only, `use_count` auto-favorite suggestion at count=2 (PR #64, follow-up search ranking patch on trunk).
 5. ✅ **CI/CD pipeline review** — docs path filter (PR #60), Next.js + Playwright caching, parallel `validate`/`local-functional`, `security-audit`, `workflow-lint` with actionlint, `quality-gate` join (PR #62), CodeQL SAST + branch protection (PR #63).
 6. ✅ **Google Auth** — multi-tenant auth, invite-only member access, and Google OAuth are live in production.
-7. 🚧 **Mobile responsiveness pass** — in progress. PR #65 shipped: bottom-sheet modal (slides up from bottom, `slideUpSheet` animation), landscape revert to centered dialog, `.btn-group .btn` full-width scoping, `.table-scroll` / `.inline-actions` utilities, 48 px touch targets, meals action-row wrapping. A full per-page breakpoint audit is still needed.
-8. **Multi-user isolation E2E hardening** — extend Profile A vs Profile B isolation E2E coverage to weight, favorites, habits, and beverages (meals already covered).
+7. **Mobile responsiveness pass** — PR #65 shipped: bottom-sheet modal, landscape revert to centered dialog, `.btn-group .btn` full-width scoping, `.table-scroll` / `.inline-actions` utilities, 48 px touch targets, meals action-row wrapping. A full per-page breakpoint audit is still needed before this can be marked complete.
+8. ✅ **Multi-user isolation E2E hardening** — profile/weight cross-profile corruption prevention and owner-profile isolation E2E shipped (PRs #69, #71). Closed production bug #70 (wrong DOB/height/weight/units showing for account owner).
 9. **Continuous barcode scanning** — move `BarcodeScanner.jsx` from single-frame capture to a continuous scanner (ZXing or equivalent).
 10. **CI/CD Step 5 — sharding** — shard vitest/Playwright if pipeline wall-clock is still >10 min after warm-cache data is available.
 11. **V2.3 Performance Extensions** 🕒 — event/lift metrics and readiness interpretation; explicitly after the family-profile layer.
@@ -59,7 +59,7 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 - ✅ UX/QoL Phase A+B: toast/undo, a11y modal, light/dark/system theming (PR #59)
 - ✅ Food database integration: merged OpenFoodFacts + USDA search, use_count auto-favorite (PR #64 + follow-up ranking patch)
 - ✅ CI/CD: docs path filter, caching, parallelism, security-audit, actionlint workflow validation, quality-gate, CodeQL SAST (PRs #60, #62, #63)
-- 🚧 Mobile responsiveness pass — PR #65 shipped bottom-sheet modals, button/touch fixes, padding fixes; full breakpoint audit still in progress
+- **Mobile responsiveness pass** — PR #65 shipped bottom-sheet modals, button/touch fixes, padding fixes; full per-page breakpoint audit still needed
 
 ## Meal Intelligence & Behavioral Insights
 

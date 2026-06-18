@@ -61,7 +61,7 @@ export default function ProfileSwitcher() {
           role="menu"
           style={{
             position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 50,
-            minWidth: '220px', background: 'var(--card-background)',
+            minWidth: '220px', maxWidth: 'calc(100vw - 16px)', background: 'var(--card-background)',
             border: '1px solid var(--border-color)', borderRadius: '12px',
             boxShadow: 'var(--shadow)', overflow: 'hidden',
           }}

@@ -401,10 +401,14 @@ header nav h2 {
     font-size: 14px;
   }
 
-  .grid-2,
+  .grid-2 {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
   .grid-3,
   .grid-4 {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: 16px;
   }
 
@@ -518,6 +522,11 @@ header nav h2 {
 
   h2 {
     font-size: 1.1rem;
+  }
+
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: 1fr;
   }
 
   /* Hide some text on very small screens */
