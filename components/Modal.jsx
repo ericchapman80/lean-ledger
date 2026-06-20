@@ -81,7 +81,9 @@ export default function Modal({ isOpen, onClose, title, children }) {
               border: 'none',
               fontSize: '24px',
               cursor: 'pointer',
-              padding: '4px 8px'
+              padding: '4px 8px',
+              minHeight: '44px',
+              minWidth: '44px',
             }}
           >
             ×

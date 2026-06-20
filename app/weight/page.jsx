@@ -72,7 +72,7 @@ export default function Weight() {
   const weightLabel = getWeightUnit(units);
 
   return (
-    <div className="container" style={{ padding: '40px 20px' }}>
+    <div className="container" style={{ paddingTop: '24px', paddingBottom: '40px' }}>
       <h1 style={{ marginBottom: '32px' }}>Weight Tracking</h1>
 
       <div className="grid grid-2" style={{ marginBottom: '32px' }}>
@@ -102,7 +102,7 @@ export default function Weight() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div>
                 <p style={{ color: 'var(--text-secondary)', marginBottom: '8px' }}>Current Weight</p>
-                <p style={{ fontSize: '48px', fontWeight: 'bold', margin: 0, color: 'var(--primary-color)' }}>
+                <p style={{ fontSize: 'clamp(2rem, 10vw, 3rem)', fontWeight: 'bold', margin: 0, color: 'var(--primary-color)' }}>
                   {formatWeight(profile.weight, units)}
                 </p>
               </div>
@@ -110,7 +110,7 @@ export default function Weight() {
                 <div>
                   <p style={{ color: 'var(--text-secondary)', marginBottom: '8px' }}>Change (30 days)</p>
                   <p style={{
-                    fontSize: '32px', fontWeight: 'bold', margin: 0,
+                    fontSize: 'clamp(1.5rem, 7vw, 2rem)', fontWeight: 'bold', margin: 0,
                     color: weightChange < 0 ? 'var(--success-color)'
                          : weightChange > 0 ? 'var(--danger-color)'
                          : 'var(--text-primary)',
@@ -136,7 +136,7 @@ export default function Weight() {
           <ResponsiveContainer width="100%" height={400}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
+              <XAxis dataKey="date" minTickGap={24} />
               <YAxis
                 domain={['dataMin - 2', 'dataMax + 2']}
                 tickFormatter={(value) => formatDisplayWeightValue(value, units)}
@@ -153,7 +153,7 @@ export default function Weight() {
       {weights.length > 0 && (
         <div className="card" style={{ marginTop: '32px' }}>
           <h2 style={{ marginBottom: '24px' }}>Weight History</h2>
-          <div style={{ overflowX: 'auto' }}>
+          <div className="table-scroll">
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border-color)' }}>
