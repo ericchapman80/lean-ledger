@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { beverageApi, dailyHabitsApi, habitDefinitionsApi, healthMetricsApi, statsApi, profileApi } from '@/lib/api';
+import { beverageApi, bodyCompositionGoalsApi, dailyHabitsApi, habitDefinitionsApi, healthMetricsApi, statsApi, profileApi } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { getHealthMetricDisplayValue } from '@/lib/healthMetrics';
 import { getTodayDate, formatDisplayDate } from '@/lib/utils/dateUtils';
 import { getProgressSemantics, getWaterProgressSemantics } from '@/lib/dashboardProgress';
 import { getGoalDescription } from '@/lib/utils/macroUtils';
 import { formatWeight } from '@/lib/utils/unitUtils';
+import { formatBodyFatTarget, formatGoalDate, formatGoalMass, formatGoalPercent, getBodyCompositionStatusMeta } from '@/lib/bodyCompositionGoalDisplay';
 import { getDailyWinsSummary, getDailyWinsValues, mergeDailyWinDefinitions } from '@/lib/dailyWins';
 import {
   formatBeverageFromFlOz,
@@ -67,12 +68,13 @@ export default function Dashboard() {
   const [checkIn, setCheckIn] = useState(getEmptyCheckIn(initialDate));
   const [customHabits, setCustomHabits] = useState([]);
   const [beverageEntries, setBeverageEntries] = useState([]);
+  const [bodyCompositionGoal, setBodyCompositionGoal] = useState(null);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const [statsData, profileData, weeklyStatsData, healthMetricData, beverageData, customHabitData, dailyHabitLogData] = await Promise.all([
+      const [statsData, profileData, weeklyStatsData, healthMetricData, beverageData, customHabitData, dailyHabitLogData, goalData] = await Promise.all([
         statsApi.getDailyStats(selectedDate),
         profileApi.getProfile(),
         statsApi.getWeeklyStats(selectedDate),
@@ -80,6 +82,7 @@ export default function Dashboard() {
         beverageApi.getBeverages({ date: selectedDate }),
         habitDefinitionsApi.getHabitDefinitions(),
         dailyHabitsApi.getDailyHabitLogs({ startDate: selectedDate, endDate: selectedDate }),
+        bodyCompositionGoalsApi.getGoals(),
       ]);
       setStats(statsData);
       setProfile(profileData);
@@ -91,6 +94,7 @@ export default function Dashboard() {
         ...getDailyWinsValues(selectedDate, dailyCheckIn, customHabitData, dailyHabitLogData),
       });
       setBeverageEntries(beverageData);
+      setBodyCompositionGoal(goalData?.activeGoal || null);
     } catch (err) {
       setError(err.message || 'Failed to load data');
     } finally {
@@ -185,6 +189,7 @@ export default function Dashboard() {
     referenceDate: selectedDate,
     dailyWinsSummary,
   });
+  const bodyGoalStatus = getBodyCompositionStatusMeta(bodyCompositionGoal?.status?.overall);
   return (
     <div className="container" style={{ padding: '20px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
@@ -230,6 +235,99 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {bodyCompositionGoal ? (
+        <div className="card" style={{ marginBottom: '32px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', marginBottom: '18px' }}>
+            <div>
+              <h2 style={{ margin: '0 0 8px' }}>Body Composition Goal</h2>
+              <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                {bodyCompositionGoal.name} • started {formatGoalDate(bodyCompositionGoal.baseline?.recordedAt?.slice(0, 10))}
+              </p>
+            </div>
+            <div style={{
+              borderRadius: '999px',
+              padding: '6px 10px',
+              border: `1px solid ${bodyGoalStatus.border}`,
+              background: bodyGoalStatus.background,
+              color: bodyGoalStatus.color,
+              fontSize: '12px',
+              fontWeight: 600,
+            }}>
+              {bodyGoalStatus.label}
+            </div>
+          </div>
+
+          <div className="grid grid-4" style={{ marginBottom: '16px' }}>
+            <div style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--surface-muted)' }}>
+              <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '13px' }}>Weight Progress</p>
+              <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
+                {formatGoalMass(bodyCompositionGoal.current?.weight, profile.units)} → {formatGoalMass(bodyCompositionGoal.goalWeight, profile.units)}
+              </p>
+              <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                {bodyCompositionGoal.progress?.remainingWeightToGoal != null
+                  ? `${formatGoalMass(bodyCompositionGoal.progress.remainingWeightToGoal, profile.units)} remaining`
+                  : 'Needs current weight data'}
+              </p>
+            </div>
+            <div style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--surface-muted)' }}>
+              <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '13px' }}>Fat Loss Progress</p>
+              <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
+                {formatGoalPercent(bodyCompositionGoal.current?.bodyFatPercent)} → {formatBodyFatTarget(bodyCompositionGoal)}
+              </p>
+              <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                {bodyCompositionGoal.progress?.remainingFatToLose != null
+                  ? `${formatGoalMass(bodyCompositionGoal.progress.remainingFatToLose, profile.units)} estimated fat remaining`
+                  : 'Needs body fat measurements'}
+              </p>
+            </div>
+            <div style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--surface-muted)' }}>
+              <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '13px' }}>Lean Mass Retention</p>
+              <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
+                Current {formatGoalMass(bodyCompositionGoal.current?.leanMass, profile.units)}
+              </p>
+              <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                Floor {formatGoalMass(bodyCompositionGoal.minimumLeanMass, profile.units)}
+                {bodyCompositionGoal.progress?.leanMassChangeSinceStart != null ? ` • ${bodyCompositionGoal.progress.leanMassChangeSinceStart > 0 ? '+' : ''}${formatGoalMass(bodyCompositionGoal.progress.leanMassChangeSinceStart, profile.units)} since start` : ''}
+              </p>
+            </div>
+            <div style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--surface-muted)' }}>
+              <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '13px' }}>Muscle Mass Retention</p>
+              <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
+                Current {formatGoalMass(bodyCompositionGoal.current?.muscleMass, profile.units)}
+              </p>
+              <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                Floor {formatGoalMass(bodyCompositionGoal.minimumMuscleMass, profile.units)}
+                {bodyCompositionGoal.progress?.muscleMassChangeSinceStart != null ? ` • ${bodyCompositionGoal.progress.muscleMassChangeSinceStart > 0 ? '+' : ''}${formatGoalMass(bodyCompositionGoal.progress.muscleMassChangeSinceStart, profile.units)} since start` : ''}
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <div>
+              <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                Estimated completion: {bodyCompositionGoal.estimatedCompletionDate
+                  ? `${formatGoalDate(bodyCompositionGoal.estimatedCompletionDate)} (${bodyCompositionGoal.estimatedCompletionLabel})`
+                  : 'Not enough trend data yet'}
+              </p>
+              {bodyCompositionGoal.status?.warnings?.length > 0 ? (
+                bodyCompositionGoal.status.warnings.map((warning) => (
+                  <p key={warning} style={{ margin: '0 0 4px', color: 'var(--warning-color)', fontSize: '13px' }}>
+                    {warning}
+                  </p>
+                ))
+              ) : (
+                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  Goal evaluation prioritizes lean mass and muscle preservation over scale weight alone.
+                </p>
+              )}
+            </div>
+            <Link href="/profile" className="btn btn-outline">
+              Manage Goal
+            </Link>
+          </div>
+        </div>
+      ) : null}
 
       <div className="card" style={{ marginBottom: '32px' }}>
         {activeDailyWins.length === 0 ? (
