@@ -14,7 +14,7 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 6. ✅ **Google Auth** — multi-tenant auth, invite-only member access, and Google OAuth are live in production.
 7. **Mobile responsiveness pass** — PR #65 shipped: bottom-sheet modal, landscape revert to centered dialog, `.btn-group .btn` full-width scoping, `.table-scroll` / `.inline-actions` utilities, 48 px touch targets, meals action-row wrapping. A full per-page breakpoint audit is still needed before this can be marked complete.
 8. ✅ **Multi-user isolation E2E hardening** — profile/weight cross-profile corruption prevention and owner-profile isolation E2E shipped (PRs #69, #71). Closed production bug #70 (wrong DOB/height/weight/units showing for account owner).
-9. 🧭 **Body Composition Goals module** — add cut / lean recomp goal targets, progress cards, lean-mass guardrails, and estimated completion tracking on top of the existing advanced-metric system.
+9. 🧭 **Body Composition Goals module** — add cut / lean recomp goal targets, progress cards, lean-mass guardrails, and estimated completion tracking on top of the existing advanced-metric system. See [`docs/body-composition-goals.md`](docs/body-composition-goals.md).
 10. **Continuous barcode scanning** — move `BarcodeScanner.jsx` from single-frame capture to a continuous scanner (ZXing or equivalent).
 11. **CI/CD Step 5 — sharding** — shard vitest/Playwright if pipeline wall-clock is still >10 min after warm-cache data is available.
 12. **V2.3 Performance Extensions** 🕒 — event/lift metrics and readiness interpretation; explicitly after the family-profile layer.
@@ -1705,6 +1705,9 @@ Where:
 - tests cover macro-calculation scenarios across day types
 
 ### Body Composition Goals Module 🧭
+
+Detailed implementation spec:
+- [`docs/body-composition-goals.md`](docs/body-composition-goals.md)
 
 **Goal**
 - Add an explicit goal-setting and progress module for users who track weight plus body-composition signals.
