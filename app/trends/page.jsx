@@ -61,6 +61,11 @@ function formatMinutesFromMidnight(minutes) {
   return `${displayHour}:${String(mins).padStart(2, '0')} ${period}`;
 }
 
+function getAxisIdForAdvancedMetric(group, fieldKey) {
+  if (!group.axisGroups) return 'left';
+  return group.axisGroups.right.includes(fieldKey) ? 'right' : 'left';
+}
+
 export default function Trends() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -933,7 +938,10 @@ export default function Trends() {
                       <LineChart data={group.rows}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="displayDate" minTickGap={24} />
-                        <YAxis />
+                        <YAxis yAxisId="left" />
+                        {group.axisGroups?.right?.length ? (
+                          <YAxis yAxisId="right" orientation="right" />
+                        ) : null}
                         <Tooltip formatter={formatAdvancedMetricTooltip} />
                         <Legend />
                         {group.series.map((series, index) => {
@@ -950,6 +958,7 @@ export default function Trends() {
                               key={fieldKey}
                               type="monotone"
                               dataKey={fieldKey}
+                              yAxisId={getAxisIdForAdvancedMetric(group, fieldKey)}
                               stroke={colors[index % colors.length]}
                               strokeWidth={2}
                               dot={singlePoint ? { r: 4 } : { r: 2 }}

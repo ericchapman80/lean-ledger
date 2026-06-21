@@ -102,6 +102,25 @@ describe('trendDisplay advanced metric normalization', () => {
     expect(metabolism).toBeUndefined();
   });
 
+  it('assigns metabolism metrics to separate axis groups by magnitude', () => {
+    const chartData = buildTrendChartData([
+      {
+        date: '2026-06-20',
+        bmr: '1960',
+        fatFreeBodyWeight: '79.379',
+        proteinPercent: '19.6',
+        metabolicAge: '32',
+      },
+    ], 'imperial');
+
+    const metabolism = buildAdvancedMetricGroups(chartData).find((group) => group.key === 'metabolism');
+    expect(metabolism.fields).toEqual(['bmr', 'proteinPercent', 'fatFreeBodyWeight', 'metabolicAge']);
+    expect(metabolism.axisGroups).toEqual({
+      left: ['bmr', 'fatFreeBodyWeight'],
+      right: ['proteinPercent', 'metabolicAge'],
+    });
+  });
+
   it('retains a single valid point so sparse series can still render visibly', () => {
     const chartData = buildTrendChartData([
       {
