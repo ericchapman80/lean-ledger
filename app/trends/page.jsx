@@ -18,14 +18,13 @@ import {
 import { beverageApi, dailyHabitsApi, habitDefinitionsApi, healthMetricsApi, profileApi, statsApi, weightApi } from '@/lib/api';
 import {
   formatHealthMetricDisplayUnitValue,
-  getAvailableAdvancedMetricGroups,
   getHealthMetricFieldMeta,
   HEALTH_METRIC_FIELDS,
 } from '@/lib/healthMetrics';
 import { mergeDailyWinDefinitions } from '@/lib/dailyWins';
 import { buildTrendAnalytics } from '@/lib/trendAnalytics';
 import { getDateDaysBefore, getTodayDate } from '@/lib/utils/dateUtils';
-import { buildTrendChartData } from '@/lib/trendDisplay';
+import { buildAdvancedMetricGroups, buildTrendChartData } from '@/lib/trendDisplay';
 import { formatDisplayWeightValue, formatWeight, formatWeightChange, getWeightUnit } from '@/lib/utils/unitUtils';
 import { formatWaterFromFlOz, getPreferredWaterUnit } from '@/lib/water';
 import Loading from '@/components/Loading';
@@ -133,7 +132,7 @@ export default function Trends() {
     ...entry,
     weeklyAverageConsistency: analytics.summary.weeklyAverageConsistency,
   }));
-  const advancedMetricGroups = getAvailableAdvancedMetricGroups(chartData);
+  const advancedMetricGroups = buildAdvancedMetricGroups(chartData);
   const preferredWaterUnit = getPreferredWaterUnit(profile.units);
   const weightUnit = getWeightUnit(profile.units);
   const carbLabel = analytics.summary.carbLabel || 'Carbs';
@@ -929,34 +928,44 @@ export default function Trends() {
               {advancedMetricGroups.map((group) => (
                 <div className="card" key={group.key}>
                   <h2 style={{ marginBottom: '16px' }}>{group.title}</h2>
-                  <ResponsiveContainer width="100%" height={260}>
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="displayDate" minTickGap={24} />
-                      <YAxis />
-                      <Tooltip formatter={formatAdvancedMetricTooltip} />
-                      <Legend />
-                      {group.fields.map((fieldKey, index) => {
-                        const field = HEALTH_METRIC_FIELDS.find((metric) => metric.key === fieldKey);
-                        const fieldMeta = getHealthMetricFieldMeta(fieldKey, profile.units);
-                        const displayName = fieldMeta?.unit
-                          ? `${field?.label || fieldKey} (${fieldMeta.unit})`
-                          : field?.label || fieldKey;
-                        const colors = ['#1f6feb', '#e74c3c', '#16a085', '#8e44ad'];
-                        return (
-                          <Line
-                            key={fieldKey}
-                            type="monotone"
-                            dataKey={fieldKey}
-                            stroke={colors[index % colors.length]}
-                            strokeWidth={2}
-                            dot={false}
-                            name={displayName}
-                          />
-                        );
-                      })}
-                    </LineChart>
-                  </ResponsiveContainer>
+                  {group.rows.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <LineChart data={group.rows}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="displayDate" minTickGap={24} />
+                        <YAxis />
+                        <Tooltip formatter={formatAdvancedMetricTooltip} />
+                        <Legend />
+                        {group.series.map((series, index) => {
+                          const fieldKey = series.key;
+                          const field = HEALTH_METRIC_FIELDS.find((metric) => metric.key === fieldKey);
+                          const fieldMeta = getHealthMetricFieldMeta(fieldKey, profile.units);
+                          const displayName = fieldMeta?.unit
+                            ? `${field?.label || fieldKey} (${fieldMeta.unit})`
+                            : field?.label || fieldKey;
+                          const colors = ['#1f6feb', '#e74c3c', '#16a085', '#8e44ad'];
+                          const singlePoint = series.pointCount <= 1;
+                          return (
+                            <Line
+                              key={fieldKey}
+                              type="monotone"
+                              dataKey={fieldKey}
+                              stroke={colors[index % colors.length]}
+                              strokeWidth={2}
+                              dot={singlePoint ? { r: 4 } : { r: 2 }}
+                              activeDot={{ r: 5 }}
+                              connectNulls={false}
+                              name={displayName}
+                            />
+                          );
+                        })}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+                      No valid metrics logged for this chart yet.
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
