@@ -43,6 +43,64 @@ Working expectations:
 - preview and production verification should stay part of the delivery path
 - quality should be part of feature completion, not a follow-up chore
 
+## Product Philosophy
+
+Lean Ledger is not intended to be a simple calorie tracker or generic weight-loss app.
+
+The core objective is to improve body composition while preserving or increasing lean body mass.
+
+Scale weight remains a useful signal, but it is not treated as the sole or highest-value outcome.
+
+Examples:
+
+- Reaching `200 lb` while preserving lean mass is a better outcome than reaching `190 lb` with significant muscle loss.
+- Reducing body fat while maintaining strength and muscle mass is a better outcome than faster scale-weight reduction driven by lean tissue loss.
+- Weight should be interpreted alongside body-fat percentage, lean mass, muscle mass, strength metrics, activity levels, and adherence.
+
+### Core principles
+
+1. Body composition matters more than scale weight alone.
+2. Lean mass preservation is a primary success metric.
+3. Muscle loss should be surfaced and highlighted, not hidden.
+4. Fat-loss efficiency should be favored over rapid weight reduction.
+5. Goal evaluation should consider multiple metrics, not weight alone.
+6. Progress should be measured across weight, body fat, lean mass, muscle mass, activity, and adherence.
+7. When metrics conflict, Lean Ledger should bias toward preserving lean mass and long-term sustainability over aggressive short-term weight loss.
+
+### Success criteria
+
+A goal phase should not be considered an ideal success if:
+
+- target weight is achieved
+- but lean-mass or muscle-mass preservation thresholds are violated
+
+Goal completion should evaluate:
+
+- weight outcomes
+- body-fat outcomes
+- lean-mass retention
+- muscle-mass retention
+- rate of change
+
+### Youth guardrails
+
+This philosophy should be applied conservatively for youth profiles:
+
+- child profiles should not use cut / recomp phases or body-fat targets
+- teen profiles may use goal phases only with age-appropriate messaging and stronger guardrails
+
+### Long-term direction
+
+Lean Ledger should continue evolving toward a body-composition coaching platform that helps users:
+
+- lose fat
+- preserve muscle
+- build strength
+- improve metabolic health
+- make sustainable long-term progress
+
+rather than focusing exclusively on scale-weight reduction.
+
 ## Environment management
 
 Use one env file per database target:
