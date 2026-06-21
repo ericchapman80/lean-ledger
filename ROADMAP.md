@@ -4,7 +4,7 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 
 ---
 
-## What's next (prioritized — updated 2026-06-12)
+## What's next (prioritized — updated 2026-06-21)
 
 1. ✅ **V2.2 Family Profiles — shipped end to end** (foundation + Phases 1–5, PRs #42, #48–#56). Households, dependent profiles, switching, per-profile data isolation, and youth-safe per-profile coaching are live. See [`docs/family-profiles.md`](docs/family-profiles.md).
 2. ✅ **Application UX / quality-of-life cleanup** — replaced all `alert()`/`confirm()` with toast + optimistic-undo, Modal focus-trap a11y, Dashboard check-in moved to Intake deep-link (PR #59).
@@ -14,9 +14,10 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 6. ✅ **Google Auth** — multi-tenant auth, invite-only member access, and Google OAuth are live in production.
 7. **Mobile responsiveness pass** — PR #65 shipped: bottom-sheet modal, landscape revert to centered dialog, `.btn-group .btn` full-width scoping, `.table-scroll` / `.inline-actions` utilities, 48 px touch targets, meals action-row wrapping. A full per-page breakpoint audit is still needed before this can be marked complete.
 8. ✅ **Multi-user isolation E2E hardening** — profile/weight cross-profile corruption prevention and owner-profile isolation E2E shipped (PRs #69, #71). Closed production bug #70 (wrong DOB/height/weight/units showing for account owner).
-9. **Continuous barcode scanning** — move `BarcodeScanner.jsx` from single-frame capture to a continuous scanner (ZXing or equivalent).
-10. **CI/CD Step 5 — sharding** — shard vitest/Playwright if pipeline wall-clock is still >10 min after warm-cache data is available.
-11. **V2.3 Performance Extensions** 🕒 — event/lift metrics and readiness interpretation; explicitly after the family-profile layer.
+9. 🧭 **Body Composition Goals module** — add cut / lean recomp goal targets, progress cards, lean-mass guardrails, and estimated completion tracking on top of the existing advanced-metric system.
+10. **Continuous barcode scanning** — move `BarcodeScanner.jsx` from single-frame capture to a continuous scanner (ZXing or equivalent).
+11. **CI/CD Step 5 — sharding** — shard vitest/Playwright if pipeline wall-clock is still >10 min after warm-cache data is available.
+12. **V2.3 Performance Extensions** 🕒 — event/lift metrics and readiness interpretation; explicitly after the family-profile layer.
 
 ---
 
@@ -48,7 +49,7 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 - 🧭 next up
 - 🕒 later / future iteration
 
-**Current status snapshot** (updated 2026-06-12)
+**Current status snapshot** (updated 2026-06-21)
 - ✅ Meal intelligence foundation is shipped on `main`
 - ✅ Hydration and beverage intelligence foundation is shipped on `main`
 - ✅ Daily Wins foundation, configurability, templates, and challenge progress are shipped on `main`
@@ -60,6 +61,7 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 - ✅ Food database integration: merged OpenFoodFacts + USDA search, use_count auto-favorite (PR #64 + follow-up ranking patch)
 - ✅ CI/CD: docs path filter, caching, parallelism, security-audit, actionlint workflow validation, quality-gate, CodeQL SAST (PRs #60, #62, #63)
 - **Mobile responsiveness pass** — PR #65 shipped bottom-sheet modals, button/touch fixes, padding fixes; full per-page breakpoint audit still needed
+- 🧭 Body Composition Goals module is now a prioritized next slice for users cutting or recompositioning with weight + smart-scale body-composition data
 
 ## Meal Intelligence & Behavioral Insights
 
@@ -1643,6 +1645,94 @@ Where:
 - architecture supports future athlete-focused strategies
 - Weight Loss, Maintenance, and Lean Mass Gain continue functioning without regression
 - tests cover macro-calculation scenarios across day types
+
+### Body Composition Goals Module 🧭
+
+**Goal**
+- Add an explicit goal-setting and progress module for users who track weight plus body-composition signals.
+- Keep this additive to the existing profile, dashboard, and trends model rather than replacing the current macros workflow.
+
+**Current metrics already tracked**
+- Weight
+- Body Fat %
+- Skeletal Muscle %
+- Muscle Mass
+- Fat-Free Body Weight
+- Visceral Fat
+
+**Phase 1 — Cut**
+- Goal Weight
+- Goal Body Fat %
+- Minimum Lean Mass
+- Minimum Muscle Mass
+- Target Date
+
+**Phase 2 — Lean Recomp**
+- Goal Weight
+- Goal Body Fat %
+- Goal Lean Mass
+- Goal Muscle Mass
+- Target Date
+
+**Dashboard cards**
+- Weight Progress
+- Fat Loss Progress
+- Lean Mass Retention
+- Muscle Mass Retention
+- Estimated Completion Date
+
+**Calculated fields**
+- Current Fat Mass = Weight × Body Fat %
+- Current Lean Mass = Weight - Fat Mass
+- Remaining Fat To Lose
+- Lean Mass Change Since Goal Start
+- Muscle Mass Change Since Goal Start
+
+**Status indicators**
+- Green = on track
+- Yellow = watch
+- Red = losing lean mass too quickly
+
+**Example display**
+- `Weight Goal: 215 → 200 (-15 lbs remaining)`
+- `Body Fat Goal: 17.2% → 12% (-5.2% remaining)`
+- `Lean Mass Goal: Maintain ≥176 lbs (Current 178.4 lbs)`
+- `Muscle Mass Goal: Maintain ≥168 lbs (Current 169.4 lbs)`
+
+**Implementation direction**
+- store body-composition goals separately from base profile settings
+- derive progress from existing `weight_logs` and `health_metrics`
+- use the newest valid body-composition entry for current-state cards
+- preserve progress calculations even when only some optional metrics are present
+- estimated completion date should remain heuristic and only appear when enough trend data exists
+
+**Suggested table**
+- `body_composition_goals`
+  - `id`
+  - `profile_id`
+  - `phase_type` (`cut`, `lean_recomp`)
+  - `goal_weight`
+  - `goal_body_fat_percent`
+  - `minimum_lean_mass`
+  - `minimum_muscle_mass`
+  - `goal_lean_mass`
+  - `goal_muscle_mass`
+  - `target_date`
+  - `started_at`
+  - `completed_at`
+  - `archived_at`
+  - `created_at`
+  - `updated_at`
+
+**Guardrails**
+- do not require every body-composition metric before showing useful progress
+- do not punish users who only track weight
+- do not present noisy consumer-scale readings as medical precision
+- highlight possible lean-mass loss risk with supportive language, not alarmist copy
+
+**Future support**
+- allow multiple goal phases so users can move from Fat Loss to Lean Recomp without losing historical progress
+- keep completed phases visible historically while the dashboard focuses on the active phase
 
 ### Youth Safety Guardrails
 
