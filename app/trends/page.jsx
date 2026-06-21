@@ -15,7 +15,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { beverageApi, dailyHabitsApi, habitDefinitionsApi, healthMetricsApi, profileApi, statsApi, weightApi } from '@/lib/api';
+import { beverageApi, bodyCompositionGoalsApi, dailyHabitsApi, habitDefinitionsApi, healthMetricsApi, profileApi, statsApi, weightApi } from '@/lib/api';
 import {
   formatHealthMetricDisplayUnitValue,
   getHealthMetricFieldMeta,
@@ -26,6 +26,7 @@ import { buildTrendAnalytics } from '@/lib/trendAnalytics';
 import { getDateDaysBefore, getTodayDate } from '@/lib/utils/dateUtils';
 import { buildAdvancedMetricGroups, buildTrendChartData } from '@/lib/trendDisplay';
 import { formatDisplayWeightValue, formatWeight, formatWeightChange, getWeightUnit } from '@/lib/utils/unitUtils';
+import { formatBodyFatTarget, formatGoalDate, formatGoalMass, formatGoalPercent, getBodyCompositionStatusMeta } from '@/lib/bodyCompositionGoalDisplay';
 import { formatWaterFromFlOz, getPreferredWaterUnit } from '@/lib/water';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
@@ -74,6 +75,7 @@ export default function Trends() {
   const [profile, setProfile] = useState(null);
   const [customHabits, setCustomHabits] = useState([]);
   const [weeklyStats, setWeeklyStats] = useState(null);
+  const [bodyCompositionGoals, setBodyCompositionGoals] = useState({ activeGoal: null, history: [] });
 
   const fetchTrends = async () => {
     try {
@@ -84,7 +86,7 @@ export default function Trends() {
       const startDate = getDateDaysBefore(endDate, period - 1);
       const weightStartDate = getDateDaysBefore(startDate, 6);
 
-      const [profileData, weeklyStatsData, mealTrendData, weightData, healthMetricData, beverageData, customHabitData, dailyHabitLogData] = await Promise.all([
+      const [profileData, weeklyStatsData, mealTrendData, weightData, healthMetricData, beverageData, customHabitData, dailyHabitLogData, goalData] = await Promise.all([
         profileApi.getProfile(),
         statsApi.getWeeklyStats(endDate),
         statsApi.getTrends(startDate, endDate),
@@ -93,11 +95,16 @@ export default function Trends() {
         beverageApi.getBeverages({ startDate, endDate }),
         habitDefinitionsApi.getHabitDefinitions(),
         dailyHabitsApi.getDailyHabitLogs({ startDate, endDate }),
+        bodyCompositionGoalsApi.getGoals(),
       ]);
 
       setProfile(profileData);
       setCustomHabits(customHabitData);
       setWeeklyStats(weeklyStatsData);
+      setBodyCompositionGoals({
+        activeGoal: goalData?.activeGoal || null,
+        history: goalData?.history || [],
+      });
       setAnalytics(buildTrendAnalytics({
         startDate,
         endDate,
@@ -138,6 +145,8 @@ export default function Trends() {
     weeklyAverageConsistency: analytics.summary.weeklyAverageConsistency,
   }));
   const advancedMetricGroups = buildAdvancedMetricGroups(chartData);
+  const activeBodyGoal = bodyCompositionGoals.activeGoal;
+  const bodyGoalStatus = getBodyCompositionStatusMeta(activeBodyGoal?.status?.overall);
   const preferredWaterUnit = getPreferredWaterUnit(profile.units);
   const weightUnit = getWeightUnit(profile.units);
   const carbLabel = analytics.summary.carbLabel || 'Carbs';
@@ -333,6 +342,102 @@ export default function Trends() {
           </div>
         </div>
       </div>
+
+      {activeBodyGoal ? (
+        <div className="card" style={{ marginBottom: '32px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', marginBottom: '18px' }}>
+            <div>
+              <h2 style={{ marginBottom: '8px' }}>Body Composition Goal Progress</h2>
+              <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+                {activeBodyGoal.name} • Target date {formatGoalDate(activeBodyGoal.targetDate)}
+              </p>
+            </div>
+            <div style={{
+              borderRadius: '999px',
+              padding: '6px 10px',
+              border: `1px solid ${bodyGoalStatus.border}`,
+              background: bodyGoalStatus.background,
+              color: bodyGoalStatus.color,
+              fontSize: '12px',
+              fontWeight: 600,
+            }}>
+              {bodyGoalStatus.label}
+            </div>
+          </div>
+
+          <div className="grid grid-2" style={{ marginBottom: '20px' }}>
+            <div style={{ display: 'grid', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                <span>Weight goal</span>
+                <strong>{formatGoalMass(activeBodyGoal.current?.weight, profile.units)} → {formatGoalMass(activeBodyGoal.goalWeight, profile.units)}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                <span>Body fat goal</span>
+                <strong>{formatGoalPercent(activeBodyGoal.current?.bodyFatPercent)} → {formatBodyFatTarget(activeBodyGoal)}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                <span>Lean mass floor</span>
+                <strong>{formatGoalMass(activeBodyGoal.current?.leanMass, profile.units)} current • floor {formatGoalMass(activeBodyGoal.minimumLeanMass, profile.units)}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                <span>Muscle mass floor</span>
+                <strong>{formatGoalMass(activeBodyGoal.current?.muscleMass, profile.units)} current • floor {formatGoalMass(activeBodyGoal.minimumMuscleMass, profile.units)}</strong>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                <span>Remaining weight</span>
+                <strong>{activeBodyGoal.progress?.remainingWeightToGoal != null ? formatGoalMass(activeBodyGoal.progress.remainingWeightToGoal, profile.units) : 'Needs current weight data'}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                <span>Estimated fat remaining</span>
+                <strong>{activeBodyGoal.progress?.remainingFatToLose != null ? formatGoalMass(activeBodyGoal.progress.remainingFatToLose, profile.units) : 'Needs body fat data'}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                <span>Lean mass change</span>
+                <strong>{activeBodyGoal.progress?.leanMassChangeSinceStart != null ? `${activeBodyGoal.progress.leanMassChangeSinceStart > 0 ? '+' : ''}${formatGoalMass(activeBodyGoal.progress.leanMassChangeSinceStart, profile.units)}` : 'Needs body composition data'}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                <span>Muscle mass change</span>
+                <strong>{activeBodyGoal.progress?.muscleMassChangeSinceStart != null ? `${activeBodyGoal.progress.muscleMassChangeSinceStart > 0 ? '+' : ''}${formatGoalMass(activeBodyGoal.progress.muscleMassChangeSinceStart, profile.units)}` : 'Needs body composition data'}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gap: '8px', marginBottom: bodyCompositionGoals.history.length > 0 ? '20px' : 0 }}>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+              Baseline: {formatGoalMass(activeBodyGoal.baseline?.weight, profile.units)} on {formatGoalDate(activeBodyGoal.baseline?.recordedAt?.slice(0, 10))}.
+              {activeBodyGoal.estimatedCompletionDate
+                ? ` Estimated based on recent trend: ${formatGoalDate(activeBodyGoal.estimatedCompletionDate)}.`
+                : ' Estimated completion appears after at least 3 entries across 14 days.'}
+            </p>
+            {activeBodyGoal.status?.warnings?.length > 0 ? activeBodyGoal.status.warnings.map((warning) => (
+              <p key={warning} style={{ margin: 0, color: 'var(--warning-color)', fontSize: '13px' }}>
+                {warning}
+              </p>
+            )) : null}
+          </div>
+
+          {bodyCompositionGoals.history.length > 0 ? (
+            <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '18px' }}>
+              <h3 style={{ margin: '0 0 12px' }}>Phase History</h3>
+              <div style={{ display: 'grid', gap: '10px' }}>
+                {bodyCompositionGoals.history.map((goal) => (
+                  <div key={goal.id} style={{ padding: '12px 14px', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+                    <p style={{ margin: '0 0 4px', fontWeight: 600 }}>{goal.name}</p>
+                    <p style={{ margin: '0 0 4px', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                      {formatGoalDate(goal.startedAt?.slice(0, 10))} → {formatGoalDate((goal.completedAt || goal.archivedAt)?.slice(0, 10))}
+                    </p>
+                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
+                      Baseline {formatGoalMass(goal.baseline?.weight, profile.units)} • Completion {formatGoalMass(goal.completionWeight, profile.units)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {hasMealBehaviorData && (
         <>

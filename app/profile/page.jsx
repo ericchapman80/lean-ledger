@@ -3,7 +3,15 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { accessApi, authApi, habitDefinitionsApi, householdLinksApi, profileApi, profilesApi } from '@/lib/api';
+import {
+  accessApi,
+  authApi,
+  bodyCompositionGoalsApi,
+  habitDefinitionsApi,
+  householdLinksApi,
+  profileApi,
+  profilesApi,
+} from '@/lib/api';
 import { toast } from '@/lib/toast';
 import {
   ACTIVITY_FOCUS_OPTIONS,
@@ -27,6 +35,15 @@ import {
 } from '@/lib/utils/macroUtils';
 import { getTodayDate } from '@/lib/utils/dateUtils';
 import { cmToFeetInches, feetInchesToCm, kgToLbs, lbsToKg, formatHeight, formatWeight, getWeightUnit } from '@/lib/utils/unitUtils';
+import {
+  buildBodyCompositionGoalPayload,
+  formatBodyFatTarget,
+  formatGoalDate,
+  formatGoalMass,
+  formatGoalPercent,
+  getBodyCompositionGoalForm,
+  getBodyCompositionStatusMeta,
+} from '@/lib/bodyCompositionGoalDisplay';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -133,6 +150,17 @@ function MacroSummaryCard({
   );
 }
 
+const EMPTY_GOAL_FORM = {
+  name: 'Project 200',
+  goalWeight: '',
+  goalBodyFatPercent: '',
+  targetBodyFatMin: '',
+  targetBodyFatMax: '',
+  minimumLeanMass: '',
+  minimumMuscleMass: '',
+  targetDate: '',
+};
+
 export default function Profile() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -141,6 +169,10 @@ export default function Profile() {
   const [profile, setProfile] = useState(null);
   const [authStatus, setAuthStatus] = useState({ mode: 'disabled', user: null });
   const [activeContext, setActiveContext] = useState({ activeName: null, selfName: null, isViewingSelf: true });
+  const [goalState, setGoalState] = useState({ activeGoal: null, history: [] });
+  const [goalEditing, setGoalEditing] = useState(false);
+  const [goalSubmitting, setGoalSubmitting] = useState(false);
+  const [goalForm, setGoalForm] = useState(EMPTY_GOAL_FORM);
   const [allowedMembers, setAllowedMembers] = useState([]);
   const [receivedHouseholdInvitations, setReceivedHouseholdInvitations] = useState([]);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -174,11 +206,12 @@ export default function Profile() {
     try {
       setLoading(true);
       setError(null);
-      const [data, habitData, authStatusData, householdLinkData] = await Promise.all([
+      const [data, habitData, authStatusData, householdLinkData, goalData] = await Promise.all([
         profileApi.getProfile(),
         habitDefinitionsApi.getHabitDefinitions(),
         authApi.getStatus(),
         householdLinksApi.getInvitations(),
+        bodyCompositionGoalsApi.getGoals(),
       ]);
       const profileRows = authStatusData?.user ? await profilesApi.getProfiles().catch(() => []) : [];
       const memberData = authStatusData?.user?.role === 'admin'
@@ -188,6 +221,10 @@ export default function Profile() {
       setAuthStatus(authStatusData);
       setAllowedMembers(memberData);
       setReceivedHouseholdInvitations((householdLinkData?.received || []).filter((invitation) => invitation.status === 'pending'));
+      setGoalState({
+        activeGoal: goalData?.activeGoal || null,
+        history: goalData?.history || [],
+      });
       const activeProfile = profileRows.find((row) => row.isActive) || profileRows.find((row) => row.isPrimary) || null;
       const selfProfile = profileRows.find((row) => row.isSelf) || profileRows.find((row) => row.isPrimary) || null;
       setActiveContext({
@@ -195,6 +232,8 @@ export default function Profile() {
         selfName: selfProfile?.name || authStatusData?.user?.name || null,
         isViewingSelf: !activeProfile || activeProfile.isSelf || activeProfile.isPrimary,
       });
+      setGoalForm(getBodyCompositionGoalForm(goalData?.activeGoal, activeProfile?.units || data?.units || 'metric'));
+      setGoalEditing(false);
       setSavedCustomHabits(habitData);
       setCustomHabits(habitData);
       setSelectedTemplateKey(data?.dailyWinsTemplateKey || '');
@@ -295,6 +334,53 @@ export default function Profile() {
       toast.success('Household invitation declined');
     } catch (err) {
       toast.error(err.message);
+    }
+  };
+
+  const handleGoalSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setGoalSubmitting(true);
+      const payload = buildBodyCompositionGoalPayload(goalForm, profile.units);
+      if (goalState.activeGoal) {
+        await bodyCompositionGoalsApi.updateGoal(goalState.activeGoal.id, payload);
+      } else {
+        await bodyCompositionGoalsApi.createGoal(payload);
+      }
+      await fetchProfile();
+      toast.success(goalState.activeGoal ? 'Body composition goal updated' : 'Body composition goal created');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setGoalSubmitting(false);
+    }
+  };
+
+  const handleCompleteGoal = async () => {
+    if (!goalState.activeGoal) return;
+    try {
+      setGoalSubmitting(true);
+      await bodyCompositionGoalsApi.completeGoal(goalState.activeGoal.id);
+      await fetchProfile();
+      toast.success('Body composition goal completed');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setGoalSubmitting(false);
+    }
+  };
+
+  const handleArchiveGoal = async () => {
+    if (!goalState.activeGoal) return;
+    try {
+      setGoalSubmitting(true);
+      await bodyCompositionGoalsApi.archiveGoal(goalState.activeGoal.id);
+      await fetchProfile();
+      toast.success('Body composition goal archived');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setGoalSubmitting(false);
     }
   };
 
@@ -423,6 +509,11 @@ export default function Profile() {
   });
   const isAuthLive = authStatus.mode === 'enabled';
   const isViewingOtherProfile = !activeContext.isViewingSelf && !!activeContext.activeName;
+  const activeGoal = goalState.activeGoal;
+  const goalStatusMeta = getBodyCompositionStatusMeta(activeGoal?.status?.overall);
+  const goalScopeLabel = isViewingOtherProfile
+    ? `${activeContext.activeName} is the current active profile`
+    : 'This goal is scoped to your active profile';
   const accountSummary = authStatus.user?.email
     ? `Signed in as ${authStatus.user.email}.`
     : isAuthLive
@@ -1184,6 +1275,239 @@ export default function Profile() {
             {authStatus.user?.email ? 'Manage Sign-In' : 'Open Sign-In'}
           </Link>
         </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: '32px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
+          <div>
+            <h2 style={{ marginBottom: '10px' }}>Body Composition Goal</h2>
+            <p style={{ color: 'var(--text-secondary)', margin: '0 0 8px' }}>
+              {goalScopeLabel}. Weight still matters, but this phase judges success by fat loss quality and lean-mass preservation.
+            </p>
+            {activeGoal ? (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                borderRadius: '999px',
+                padding: '6px 10px',
+                border: `1px solid ${goalStatusMeta.border}`,
+                background: goalStatusMeta.background,
+                color: goalStatusMeta.color,
+                fontSize: '12px',
+                fontWeight: 600,
+              }}>
+                {goalStatusMeta.label}
+              </span>
+            ) : null}
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {activeGoal && !goalEditing ? (
+              <button type="button" onClick={() => {
+                setGoalForm(getBodyCompositionGoalForm(activeGoal, profile.units));
+                setGoalEditing(true);
+              }} className="btn btn-outline">
+                Edit Goal
+              </button>
+            ) : null}
+            {!activeGoal && !goalEditing ? (
+              <button type="button" onClick={() => {
+                setGoalForm(EMPTY_GOAL_FORM);
+                setGoalEditing(true);
+              }} className="btn btn-primary">
+                Create Goal
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        {goalEditing ? (
+          <form onSubmit={handleGoalSubmit} style={{ display: 'grid', gap: '16px' }}>
+            <div className="grid grid-2">
+              <div className="form-group">
+                <label className="form-label">Phase name</label>
+                <input
+                  type="text"
+                  value={goalForm.name}
+                  onChange={(e) => setGoalForm((current) => ({ ...current, name: e.target.value }))}
+                  className="form-input"
+                  placeholder="Project 200"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Target date</label>
+                <input
+                  type="date"
+                  value={goalForm.targetDate}
+                  onChange={(e) => setGoalForm((current) => ({ ...current, targetDate: e.target.value }))}
+                  className="form-input"
+                  required
+                />
+              </div>
+            </div>
+            <div className="grid grid-2">
+              <div className="form-group">
+                <label className="form-label">Goal weight ({getWeightUnit(profile.units)})</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={goalForm.goalWeight}
+                  onChange={(e) => setGoalForm((current) => ({ ...current, goalWeight: e.target.value }))}
+                  className="form-input"
+                  placeholder={profile.units === 'imperial' ? '200' : '90.7'}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Goal body fat %</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={goalForm.goalBodyFatPercent}
+                  onChange={(e) => setGoalForm((current) => ({ ...current, goalBodyFatPercent: e.target.value }))}
+                  className="form-input"
+                  placeholder="12"
+                />
+              </div>
+            </div>
+            <div className="grid grid-2">
+              <div className="form-group">
+                <label className="form-label">Minimum lean mass ({getWeightUnit(profile.units)})</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={goalForm.minimumLeanMass}
+                  onChange={(e) => setGoalForm((current) => ({ ...current, minimumLeanMass: e.target.value }))}
+                  className="form-input"
+                  placeholder={profile.units === 'imperial' ? '176' : '79.8'}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Minimum muscle mass ({getWeightUnit(profile.units)})</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={goalForm.minimumMuscleMass}
+                  onChange={(e) => setGoalForm((current) => ({ ...current, minimumMuscleMass: e.target.value }))}
+                  className="form-input"
+                  placeholder={profile.units === 'imperial' ? '168' : '76.2'}
+                />
+              </div>
+            </div>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
+              Body fat can be an exact target for this first cut phase. Range support is already in the contract and can expand later.
+            </p>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button type="submit" className="btn btn-primary" disabled={goalSubmitting}>
+                {goalSubmitting ? 'Saving...' : activeGoal ? 'Update Goal' : 'Create Goal'}
+              </button>
+              <button type="button" className="btn btn-outline" onClick={() => {
+                setGoalEditing(false);
+                setGoalForm(getBodyCompositionGoalForm(activeGoal, profile.units));
+              }}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : activeGoal ? (
+          <div style={{ display: 'grid', gap: '16px' }}>
+            <div className="grid grid-2">
+              <div style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--surface-muted)' }}>
+                <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '13px' }}>Weight Goal</p>
+                <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
+                  {formatGoalMass(activeGoal.current?.weight, profile.units)} → {formatGoalMass(activeGoal.goalWeight, profile.units)}
+                </p>
+                <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  {activeGoal.progress?.remainingWeightToGoal != null
+                    ? `${formatGoalMass(activeGoal.progress.remainingWeightToGoal, profile.units)} remaining`
+                    : 'Weight progress will appear once enough data is logged.'}
+                </p>
+              </div>
+              <div style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--surface-muted)' }}>
+                <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '13px' }}>Body Fat Goal</p>
+                <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
+                  {formatGoalPercent(activeGoal.current?.bodyFatPercent)} → {formatBodyFatTarget(activeGoal)}
+                </p>
+                <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  {activeGoal.progress?.remainingFatToLose != null
+                    ? `${formatGoalMass(activeGoal.progress.remainingFatToLose, profile.units)} estimated fat remaining`
+                    : 'Add body fat measurements to track fat-loss progress.'}
+                </p>
+              </div>
+              <div style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--surface-muted)' }}>
+                <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '13px' }}>Lean Mass Floor</p>
+                <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
+                  Maintain ≥ {formatGoalMass(activeGoal.minimumLeanMass, profile.units)}
+                </p>
+                <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  Current {formatGoalMass(activeGoal.current?.leanMass, profile.units)}
+                  {activeGoal.progress?.leanMassChangeSinceStart != null ? ` • ${activeGoal.progress.leanMassChangeSinceStart > 0 ? '+' : ''}${formatGoalMass(activeGoal.progress.leanMassChangeSinceStart, profile.units)} since start` : ''}
+                </p>
+              </div>
+              <div style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--surface-muted)' }}>
+                <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '13px' }}>Muscle Mass Floor</p>
+                <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>
+                  Maintain ≥ {formatGoalMass(activeGoal.minimumMuscleMass, profile.units)}
+                </p>
+                <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  Current {formatGoalMass(activeGoal.current?.muscleMass, profile.units)}
+                  {activeGoal.progress?.muscleMassChangeSinceStart != null ? ` • ${activeGoal.progress.muscleMassChangeSinceStart > 0 ? '+' : ''}${formatGoalMass(activeGoal.progress.muscleMassChangeSinceStart, profile.units)} since start` : ''}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gap: '8px' }}>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                Started from {formatGoalMass(activeGoal.baseline?.weight, profile.units)} on {formatGoalDate(activeGoal.baseline?.recordedAt?.slice(0, 10))}.
+              </p>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                Target date: {formatGoalDate(activeGoal.targetDate)}.
+                {activeGoal.estimatedCompletionDate ? ` Estimated based on recent trend: ${formatGoalDate(activeGoal.estimatedCompletionDate)}.` : ' Estimated completion date will appear after at least 3 entries across 14 days.'}
+              </p>
+              {activeGoal.status?.warnings?.length > 0 ? (
+                <div style={{ display: 'grid', gap: '6px', marginTop: '6px' }}>
+                  {activeGoal.status.warnings.map((warning) => (
+                    <p key={warning} style={{ margin: 0, color: 'var(--warning-color)', fontSize: '13px' }}>
+                      {warning}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn-primary" onClick={handleCompleteGoal} disabled={goalSubmitting}>
+                {goalSubmitting ? 'Saving...' : 'Mark Complete'}
+              </button>
+              <button type="button" className="btn btn-outline" onClick={handleArchiveGoal} disabled={goalSubmitting}>
+                Archive Goal
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+            No active body composition goal yet. Create one here to track weight, body fat, lean mass, and muscle mass together instead of relying on scale weight alone.
+          </p>
+        )}
+
+        {goalState.history.length > 0 ? (
+          <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
+            <h3 style={{ margin: '0 0 10px' }}>Phase History</h3>
+            <div style={{ display: 'grid', gap: '10px' }}>
+              {goalState.history.slice(0, 3).map((goal) => (
+                <div key={goal.id} style={{ padding: '12px 14px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                  <p style={{ margin: '0 0 4px', fontWeight: 600 }}>{goal.name}</p>
+                  <p style={{ margin: '0 0 4px', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                    {formatGoalDate(goal.startedAt?.slice(0, 10))} → {formatGoalDate((goal.completedAt || goal.archivedAt)?.slice(0, 10))}
+                  </p>
+                  <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
+                    Baseline {formatGoalMass(goal.baseline?.weight, profile.units)} • Completion {formatGoalMass(goal.completionWeight, profile.units)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {receivedHouseholdInvitations.length > 0 && (
