@@ -1651,6 +1651,8 @@ Where:
 **Goal**
 - Add an explicit goal-setting and progress module for users who track weight plus body-composition signals.
 - Keep this additive to the existing profile, dashboard, and trends model rather than replacing the current macros workflow.
+- Make this part of the broader **Goals** experience, not a disconnected feature area.
+- Daily goals such as calories, protein, carbs, workouts, and steps remain; body-composition goals complement those existing goals and strategies.
 
 **Current metrics already tracked**
 - Weight
@@ -1667,12 +1669,41 @@ Where:
 - Minimum Muscle Mass
 - Target Date
 
+Example:
+- `Project 200`
+  - Goal Weight: `200 lb`
+  - Goal Body Fat: `12%`
+  - Minimum Lean Mass: `176 lb`
+  - Minimum Muscle Mass: `168 lb`
+
 **Phase 2 — Lean Recomp**
 - Goal Weight
 - Goal Body Fat %
 - Goal Lean Mass
 - Goal Muscle Mass
 - Target Date
+
+Example:
+- `Project Titan`
+  - Goal Weight: `215 lb`
+  - Goal Body Fat: `10–12%`
+  - Goal Lean Mass: `190+ lb`
+  - Goal Muscle Mass: `182+ lb`
+
+Only one active phase per profile.
+Historical phases remain viewable.
+
+Body-fat targeting should support either:
+- a single target
+- or a target range
+
+Recommended model:
+- `target_body_fat_min`
+- `target_body_fat_max`
+
+This allows examples like:
+- exact cut target: `12%`
+- recomposition target range: `10–12%`
 
 **Dashboard cards**
 - Weight Progress
@@ -1685,8 +1716,14 @@ Where:
 - Current Fat Mass = Weight × Body Fat %
 - Current Lean Mass = Weight - Fat Mass
 - Remaining Fat To Lose
+- Remaining Weight To Goal
 - Lean Mass Change Since Goal Start
 - Muscle Mass Change Since Goal Start
+
+Potential higher-level summary metrics:
+- Muscle Preservation Score
+- Lean Mass Retention %
+- Fat Loss Efficiency %
 
 **Status indicators**
 - Green = on track
@@ -1700,39 +1737,105 @@ Where:
 - `Muscle Mass Goal: Maintain ≥168 lbs (Current 169.4 lbs)`
 
 **Implementation direction**
+- goal values should follow the user's existing profile unit preference automatically
+- no separate goal-unit setting
+- store canonically in the same format as existing profile / health metrics
+- display and editing should always use the user's configured units
 - store body-composition goals separately from base profile settings
 - derive progress from existing `weight_logs` and `health_metrics`
 - use the newest valid body-composition entry for current-state cards
+- snapshot a baseline at phase start from the newest valid entry available at that time
 - preserve progress calculations even when only some optional metrics are present
 - estimated completion date should remain heuristic and only appear when enough trend data exists
+- only one active phase per profile at a time
+- goal phases should layer on top of `goalStrategy`, not replace it
+- body composition should be prioritized over scale weight in success logic
+- reaching a goal weight while violating lean-mass or muscle-mass floors should not count as ideal success
+
+**Placement**
+- Dashboard:
+  - goal summary cards
+  - progress rings / bars
+  - status indicators
+- Trends:
+  - detailed body-composition charts
+  - historical phase performance
+  - lean-mass and muscle-mass progression
 
 **Suggested table**
 - `body_composition_goals`
   - `id`
   - `profile_id`
+  - `name`
   - `phase_type` (`cut`, `lean_recomp`)
   - `goal_weight`
-  - `goal_body_fat_percent`
+  - `goal_body_fat_percent` (legacy/simple support)
+  - `target_body_fat_min`
+  - `target_body_fat_max`
   - `minimum_lean_mass`
   - `minimum_muscle_mass`
   - `goal_lean_mass`
   - `goal_muscle_mass`
   - `target_date`
+  - `baseline_recorded_at`
+  - `baseline_weight`
+  - `baseline_body_fat_percent`
+  - `baseline_lean_mass`
+  - `baseline_muscle_mass`
+  - `completion_weight`
+  - `completion_body_fat_percent`
+  - `completion_lean_mass`
+  - `completion_muscle_mass`
   - `started_at`
   - `completed_at`
   - `archived_at`
   - `created_at`
   - `updated_at`
 
+**Goal completion logic**
+- A phase is considered successful when:
+  - goal weight is reached, if specified
+  - goal body fat is reached, if specified
+  - lean-mass floor is maintained
+  - muscle-mass floor is maintained
+- If a weight goal is reached but lean-mass or muscle-mass floors are violated:
+  - show warning
+  - do not mark as ideal success
+
+**Estimated completion date**
+- show only when:
+  - at least 3 entries exist
+  - at least 14 days of data exist
+  - recent trend direction aligns with the active goal
+- label clearly:
+  - `Estimated based on recent trend`
+
+**Goal history**
+- preserve:
+  - phase start date
+  - baseline metrics
+  - completion metrics
+  - goal revisions
+- users should be able to review prior phases and compare outcomes
+
 **Guardrails**
 - do not require every body-composition metric before showing useful progress
 - do not punish users who only track weight
 - do not present noisy consumer-scale readings as medical precision
 - highlight possible lean-mass loss risk with supportive language, not alarmist copy
+- child profiles:
+  - no body-fat targets
+  - no cut / recomp phases
+- teen profiles:
+  - allow with age-appropriate messaging and guardrails
 
 **Future support**
 - allow multiple goal phases so users can move from Fat Loss to Lean Recomp without losing historical progress
 - keep completed phases visible historically while the dashboard focuses on the active phase
+- allow macro recommendations to adapt based on the active phase:
+  - cut phase → cutting / keto-oriented macros
+  - lean recomp phase → higher protein and training-day calorie increases
+- integrate with the existing `goalStrategy` framework rather than replacing it
 
 ### Youth Safety Guardrails
 
