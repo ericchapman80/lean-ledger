@@ -43,10 +43,12 @@ import {
   formatGoalPercent,
   getBodyCompositionGoalForm,
   getGoalOutcomeLabel,
+  getGoalProgressBarMeta,
   getBodyCompositionStatusMeta,
 } from '@/lib/bodyCompositionGoalDisplay';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
+import GoalProgressBar from '@/components/GoalProgressBar';
 import ThemeToggle from '@/components/ThemeToggle';
 
 const LEAN_RECOMP_HELPER_TEXT = 'Lean Recomp prioritizes fat loss while preserving or building muscle. Focus on strength performance, waist trend, and weekly average weight instead of day-to-day scale swings.';
@@ -512,6 +514,10 @@ export default function Profile() {
   const isViewingOtherProfile = !activeContext.isViewingSelf && !!activeContext.activeName;
   const activeGoal = goalState.activeGoal;
   const goalStatusMeta = getBodyCompositionStatusMeta(activeGoal?.status?.overall);
+  const weightProgressMeta = getGoalProgressBarMeta(activeGoal?.progress?.weightProgressPercent, activeGoal?.status?.overall);
+  const bodyFatProgressMeta = getGoalProgressBarMeta(activeGoal?.progress?.bodyFatProgressPercent, activeGoal?.status?.overall);
+  const leanRetentionMeta = getGoalProgressBarMeta(activeGoal?.progress?.leanMassRetentionScore, activeGoal?.status?.overall);
+  const muscleRetentionMeta = getGoalProgressBarMeta(activeGoal?.progress?.musclePreservationScore, activeGoal?.status?.overall);
   const goalScopeLabel = isViewingOtherProfile
     ? `${activeContext.activeName} is the current active profile`
     : 'This goal is scoped to your active profile';
@@ -1285,6 +1291,11 @@ export default function Profile() {
             <p style={{ color: 'var(--text-secondary)', margin: '0 0 8px' }}>
               {goalScopeLabel}. Weight still matters, but this phase judges success by fat loss quality and lean-mass preservation.
             </p>
+            {profile.ageGroup === 'teen' ? (
+              <p style={{ color: 'var(--text-secondary)', margin: '0 0 8px', fontSize: '13px' }}>
+                Teen profiles should use these goals conservatively. Lean Ledger will emphasize strength, recovery, consistency, and muscle preservation over aggressive weight cutting.
+              </p>
+            ) : null}
             {activeGoal ? (
               <span style={{
                 display: 'inline-flex',
@@ -1486,6 +1497,9 @@ export default function Profile() {
                 Started from {formatGoalMass(activeGoal.baseline?.weight, profile.units)} on {formatGoalDate(activeGoal.baseline?.recordedAt?.slice(0, 10))}.
               </p>
               <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                {activeGoal.status?.summary}
+              </p>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
                 Target date: {formatGoalDate(activeGoal.targetDate)}.
                 {activeGoal.estimatedCompletionDate ? ` Estimated based on recent trend: ${formatGoalDate(activeGoal.estimatedCompletionDate)}.` : ' Estimated completion date will appear after at least 3 entries across 14 days.'}
               </p>
@@ -1498,6 +1512,33 @@ export default function Profile() {
                   ))}
                 </div>
               ) : null}
+            </div>
+
+            <div className="grid grid-2">
+              <GoalProgressBar
+                label="Weight progress"
+                percent={weightProgressMeta.percent}
+                color={weightProgressMeta.color}
+                helper="Progress from baseline toward the target weight"
+              />
+              <GoalProgressBar
+                label="Body fat progress"
+                percent={bodyFatProgressMeta.percent}
+                color={bodyFatProgressMeta.color}
+                helper="Progress from baseline toward the body-fat target"
+              />
+              <GoalProgressBar
+                label="Lean mass retention"
+                percent={leanRetentionMeta.percent}
+                color={leanRetentionMeta.color}
+                helper="100% means lean mass is fully preserved vs. phase start"
+              />
+              <GoalProgressBar
+                label="Muscle preservation"
+                percent={muscleRetentionMeta.percent}
+                color={muscleRetentionMeta.color}
+                helper="100% means muscle mass is fully preserved vs. phase start"
+              />
             </div>
 
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>

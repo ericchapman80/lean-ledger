@@ -68,7 +68,10 @@ describe('body composition goal helpers', () => {
 
     expect(summary.progress.remainingWeightToGoal).toBeCloseTo(4.3, 1);
     expect(summary.progress.leanMassChangeSinceStart).toBeCloseTo(-1, 1);
+    expect(summary.progress.weightProgressPercent).toBeGreaterThan(0);
+    expect(summary.progress.bodyFatProgressPercent).toBeGreaterThan(0);
     expect(summary.status.overall).toBe('yellow');
+    expect(summary.status.summary).toContain('lean-mass preservation');
     expect(summary.estimatedCompletionDate).toBeTruthy();
   });
 
@@ -132,5 +135,6 @@ describe('body composition goal helpers', () => {
     expect(summary.current.weight).toBe(90.7);
     expect(summary.estimatedCompletionDate).toBeNull();
     expect(summary.isIdealSuccess).toBe(true);
+    expect(summary.completedWithWarnings).toBe(false);
   });
 });
