@@ -9,7 +9,7 @@ import { getTodayDate, formatDisplayDate } from '@/lib/utils/dateUtils';
 import { getProgressSemantics, getWaterProgressSemantics } from '@/lib/dashboardProgress';
 import { getGoalDescription } from '@/lib/utils/macroUtils';
 import { formatWeight } from '@/lib/utils/unitUtils';
-import { formatBodyFatTarget, formatGoalDate, formatGoalMass, formatGoalPercent, getBodyCompositionStatusMeta } from '@/lib/bodyCompositionGoalDisplay';
+import { formatBodyFatTarget, formatGoalDate, formatGoalMass, formatGoalPercent, getBodyCompositionStatusMeta, getGoalOutcomeLabel } from '@/lib/bodyCompositionGoalDisplay';
 import { getDailyWinsSummary, getDailyWinsValues, mergeDailyWinDefinitions } from '@/lib/dailyWins';
 import {
   formatBeverageFromFlOz,
@@ -321,6 +321,11 @@ export default function Dashboard() {
                   Goal evaluation prioritizes lean mass and muscle preservation over scale weight alone.
                 </p>
               )}
+              {getGoalOutcomeLabel(bodyCompositionGoal) ? (
+                <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  Outcome: {getGoalOutcomeLabel(bodyCompositionGoal)}
+                </p>
+              ) : null}
             </div>
             <Link href="/profile" className="btn btn-outline">
               Manage Goal

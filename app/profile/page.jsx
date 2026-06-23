@@ -42,6 +42,7 @@ import {
   formatGoalMass,
   formatGoalPercent,
   getBodyCompositionGoalForm,
+  getGoalOutcomeLabel,
   getBodyCompositionStatusMeta,
 } from '@/lib/bodyCompositionGoalDisplay';
 import Loading from '@/components/Loading';
@@ -1372,6 +1373,30 @@ export default function Profile() {
             </div>
             <div className="grid grid-2">
               <div className="form-group">
+                <label className="form-label">Body fat target min % (optional)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={goalForm.targetBodyFatMin}
+                  onChange={(e) => setGoalForm((current) => ({ ...current, targetBodyFatMin: e.target.value }))}
+                  className="form-input"
+                  placeholder="10"
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Body fat target max % (optional)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={goalForm.targetBodyFatMax}
+                  onChange={(e) => setGoalForm((current) => ({ ...current, targetBodyFatMax: e.target.value }))}
+                  className="form-input"
+                  placeholder="12"
+                />
+              </div>
+            </div>
+            <div className="grid grid-2">
+              <div className="form-group">
                 <label className="form-label">Minimum lean mass ({getWeightUnit(profile.units)})</label>
                 <input
                   type="number"
@@ -1395,7 +1420,7 @@ export default function Profile() {
               </div>
             </div>
             <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
-              Body fat can be an exact target for this first cut phase. Range support is already in the contract and can expand later.
+              Use either a single body-fat target or an optional range. If a range is provided, it takes priority over the exact target.
             </p>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button type="submit" className="btn btn-primary" disabled={goalSubmitting}>
@@ -1496,7 +1521,21 @@ export default function Profile() {
             <div style={{ display: 'grid', gap: '10px' }}>
               {goalState.history.slice(0, 3).map((goal) => (
                 <div key={goal.id} style={{ padding: '12px 14px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                  <p style={{ margin: '0 0 4px', fontWeight: 600 }}>{goal.name}</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <p style={{ margin: '0 0 4px', fontWeight: 600 }}>{goal.name}</p>
+                    {getGoalOutcomeLabel(goal) ? (
+                      <span style={{
+                        borderRadius: '999px',
+                        padding: '4px 8px',
+                        border: '1px solid var(--border-color)',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: 'var(--text-secondary)',
+                      }}>
+                        {getGoalOutcomeLabel(goal)}
+                      </span>
+                    ) : null}
+                  </div>
                   <p style={{ margin: '0 0 4px', color: 'var(--text-secondary)', fontSize: '13px' }}>
                     {formatGoalDate(goal.startedAt?.slice(0, 10))} → {formatGoalDate((goal.completedAt || goal.archivedAt)?.slice(0, 10))}
                   </p>

@@ -92,4 +92,45 @@ describe('body composition goal helpers', () => {
       baselineLeanMass: 80.8,
     });
   });
+
+  it('uses the completion snapshot for historical goal decoration', () => {
+    const summary = decorateGoalWithProgress({
+      id: 2,
+      profileId: 2,
+      name: 'Project 200',
+      phaseType: 'cut',
+      goalWeight: 90.7,
+      goalBodyFatPercent: 12,
+      minimumLeanMass: 79.8,
+      minimumMuscleMass: 76.2,
+      baselineRecordedAt: '2026-06-20T07:00:00',
+      baselineWeight: 97.6,
+      baselineBodyFatPercent: 17.2,
+      baselineFatMass: 16.8,
+      baselineLeanMass: 80.8,
+      baselineMuscleMass: 76.8,
+      completionRecordedAt: '2026-08-01T07:00:00',
+      completionWeight: 90.7,
+      completionBodyFatPercent: 12,
+      completionFatMass: 10.9,
+      completionLeanMass: 79.8,
+      completionMuscleMass: 76.4,
+      completedAt: '2026-08-01T08:00:00Z',
+    }, {
+      recordedAt: '2026-09-01T07:00:00',
+      weight: 95,
+      bodyFatPercent: 16,
+      fatMass: 15.2,
+      leanMass: 79.8,
+      muscleMass: 76.3,
+    }, [
+      { date: '2026-06-20', weight: 97.6 },
+      { date: '2026-07-04', weight: 95 },
+    ]);
+
+    expect(summary.current.recordedAt).toBe('2026-08-01T07:00:00');
+    expect(summary.current.weight).toBe(90.7);
+    expect(summary.estimatedCompletionDate).toBeNull();
+    expect(summary.isIdealSuccess).toBe(true);
+  });
 });

@@ -26,7 +26,7 @@ import { buildTrendAnalytics } from '@/lib/trendAnalytics';
 import { getDateDaysBefore, getTodayDate } from '@/lib/utils/dateUtils';
 import { buildAdvancedMetricGroups, buildTrendChartData } from '@/lib/trendDisplay';
 import { formatDisplayWeightValue, formatWeight, formatWeightChange, getWeightUnit } from '@/lib/utils/unitUtils';
-import { formatBodyFatTarget, formatGoalDate, formatGoalMass, formatGoalPercent, getBodyCompositionStatusMeta } from '@/lib/bodyCompositionGoalDisplay';
+import { formatBodyFatTarget, formatGoalDate, formatGoalMass, formatGoalPercent, getBodyCompositionStatusMeta, getGoalOutcomeLabel } from '@/lib/bodyCompositionGoalDisplay';
 import { formatWaterFromFlOz, getPreferredWaterUnit } from '@/lib/water';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
@@ -424,7 +424,21 @@ export default function Trends() {
               <div style={{ display: 'grid', gap: '10px' }}>
                 {bodyCompositionGoals.history.map((goal) => (
                   <div key={goal.id} style={{ padding: '12px 14px', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
-                    <p style={{ margin: '0 0 4px', fontWeight: 600 }}>{goal.name}</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <p style={{ margin: '0 0 4px', fontWeight: 600 }}>{goal.name}</p>
+                      {getGoalOutcomeLabel(goal) ? (
+                        <span style={{
+                          borderRadius: '999px',
+                          padding: '4px 8px',
+                          border: '1px solid var(--border-color)',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          color: 'var(--text-secondary)',
+                        }}>
+                          {getGoalOutcomeLabel(goal)}
+                        </span>
+                      ) : null}
+                    </div>
                     <p style={{ margin: '0 0 4px', color: 'var(--text-secondary)', fontSize: '13px' }}>
                       {formatGoalDate(goal.startedAt?.slice(0, 10))} → {formatGoalDate((goal.completedAt || goal.archivedAt)?.slice(0, 10))}
                     </p>
