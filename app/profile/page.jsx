@@ -1433,7 +1433,7 @@ export default function Profile() {
             <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
               Use either a single body-fat target or an optional range. If a range is provided, it takes priority over the exact target.
             </p>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <div className="cluster-actions">
               <button type="submit" className="btn btn-primary" disabled={goalSubmitting}>
                 {goalSubmitting ? 'Saving...' : activeGoal ? 'Update Goal' : 'Create Goal'}
               </button>
@@ -1619,7 +1619,7 @@ export default function Profile() {
                     Your existing data stays on your account and becomes available through the shared household switcher.
                   </p>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <div className="cluster-actions">
                   <button type="button" className="btn btn-primary" onClick={() => handleAcceptHouseholdInvitation(invitation.id)}>
                     Accept
                   </button>
@@ -1685,7 +1685,7 @@ export default function Profile() {
             </div>
           </form>
 
-          <div style={{ display: 'grid', gap: '12px' }}>
+          <div className="compact-card-list">
             {allowedMembers.map((member) => (
               <div
                 key={member.id}
@@ -1714,7 +1714,7 @@ export default function Profile() {
                     </p>
                   ) : null}
                 </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div className="cluster-actions">
                   <select
                     value={member.role}
                     onChange={(e) => handleRoleChange(member.id, e.target.value)}
@@ -1770,7 +1770,7 @@ export default function Profile() {
           </div>
         ) : null}
         {profile.activeDailyWins?.length > 0 ? (
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div className="cluster-actions">
             {profile.activeDailyWins.map((definition) => (
               <span
                 key={definition.key}

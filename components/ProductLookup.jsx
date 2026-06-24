@@ -119,7 +119,7 @@ export default function ProductLookup({
 
   return (
     <div className="product-lookup">
-      <button onClick={onBack} className="btn btn-outline" style={{ marginBottom: '16px' }}>
+      <button onClick={onBack} className="btn btn-outline" style={{ marginBottom: '16px', width: continuousMode ? '100%' : undefined }}>
         ← Back to Scanner
       </button>
 
@@ -202,14 +202,14 @@ export default function ProductLookup({
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          <div className="mobile-action-grid" style={{ marginBottom: '16px' }}>
             {getQuickOptions(product, portionUnit).map((option) => (
               <button
                 key={option}
                 type="button"
                 onClick={() => setPortionInput(option)}
                 className="btn btn-outline"
-                style={{ flex: '1 1 auto', minWidth: '88px', fontSize: '14px' }}
+                style={{ fontSize: '14px' }}
               >
                 {option} {portionUnit}
               </button>
@@ -221,7 +221,7 @@ export default function ProductLookup({
                 setPortionInput('1');
               }}
               className="btn btn-outline"
-              style={{ flex: '1 1 auto', minWidth: '88px', fontSize: '14px' }}
+              style={{ fontSize: '14px' }}
             >
               1 serving
             </button>
@@ -235,13 +235,7 @@ export default function ProductLookup({
               Normalized gram equivalent: {portionSummary.gramsLabel}
             </p>
           )}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
-              gap: '16px',
-            }}
-          >
+          <div className="metric-grid">
             <div>
               <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>Calories</p>
               <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '4px 0 0', color: 'var(--primary-color)' }}>
@@ -302,11 +296,10 @@ export default function ProductLookup({
         </p>
       ) : null}
 
-      <div style={{ display: 'grid', gap: '12px' }}>
+      <div className="mobile-action-grid">
         <button
           onClick={handleAddMeal}
           className="btn btn-primary"
-          style={{ width: '100%' }}
           disabled={!canSubmit}
         >
           {addButtonLabel}

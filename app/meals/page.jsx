@@ -1072,7 +1072,7 @@ export default function Meals() {
           </div>
         ) : (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '12px' }}>
+            <div className="page-header" style={{ marginBottom: '12px' }}>
               <div>
                 <h2 style={{ margin: '0 0 6px' }}>Today&apos;s Wins</h2>
                 <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
@@ -1099,9 +1099,9 @@ export default function Meals() {
                   </p>
                 ) : null}
               </div>
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
-                {dailyWinsSummary.completed} / {dailyWinsSummary.total}
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
+                  {dailyWinsSummary.completed} / {dailyWinsSummary.total}
                 </p>
                 <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
                   {dailyWinsSummary.percentage}% complete
@@ -1112,7 +1112,7 @@ export default function Meals() {
             <form onSubmit={handleDailyWinsSubmit} style={{ display: 'grid', gap: '14px' }}>
               <div>
                 <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Day Type</p>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <div className="cluster-actions">
                   {['workout_day', 'practice_day', 'competition_day', 'recovery_day', 'rest_day'].map((dayType) => (
                     <DailyWinToggle
                       key={dayType}
@@ -1128,7 +1128,7 @@ export default function Meals() {
                 {activeDailyWins.map((definition) => (
                   <div key={definition.key}>
                     <p style={{ margin: '0 0 8px', fontWeight: 600 }}>{definition.label}</p>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <div className="cluster-actions">
                       {definition.inputType === 'boolean' ? (
                         <>
                           <DailyWinToggle active={dailyWins[definition.key] === 'true'} onClick={() => setDailyWins((current) => ({ ...current, [definition.key]: 'true' }))}>Done</DailyWinToggle>
@@ -1816,7 +1816,7 @@ export default function Meals() {
             No favorite meals yet. Save a breakfast, lunch, dinner, or snack after logging it once.
           </p>
         ) : (
-          <div style={{ display: 'grid', gap: '12px' }}>
+          <div className="compact-card-list">
             {favoriteMeals.map((favoriteMeal) => (
               <div key={favoriteMeal.id} className="card" style={{ boxShadow: 'none', padding: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', marginBottom: '8px' }}>
@@ -1853,7 +1853,7 @@ export default function Meals() {
             No favorite foods yet. Favorite an item from your intake log to reuse it without duplicate/edit work.
           </p>
         ) : (
-          <div style={{ display: 'grid', gap: '12px' }}>
+          <div className="compact-card-list">
             <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
               Add to current target meal: <strong>{getMealTypeLabel(selectedMealType)}</strong>
             </p>
@@ -1909,7 +1909,7 @@ export default function Meals() {
             No favorite beverages yet. Favorite a beverage entry from your intake log to reuse it without rebuilding the hydration or macro details.
           </p>
         ) : (
-          <div style={{ display: 'grid', gap: '12px' }}>
+          <div className="compact-card-list">
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label" htmlFor="favorite-beverage-search" style={{ marginBottom: '6px' }}>Search favorites</label>
               <input
