@@ -205,7 +205,7 @@ export default function HouseholdPage() {
 
   return (
     <div className="container" style={{ paddingTop: '24px', paddingBottom: '40px', maxWidth: '720px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+      <div className="page-header" style={{ marginBottom: '8px' }}>
         <h1 style={{ margin: 0 }}>Household profiles</h1>
         <Link href="/profile" style={{ fontSize: '14px' }}>← Back to profile</Link>
       </div>
@@ -234,7 +234,7 @@ export default function HouseholdPage() {
                 {p.isDependent ? 'Dependent profile' : p.isSelf ? 'Account holder' : 'Existing account'}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}>
+            <div className="cluster-actions" style={{ flexShrink: 0 }}>
               {!p.isActive && (
                 <button type="button" className="btn btn-secondary" disabled={busyId === p.id} onClick={() => handleSwitch(p.id)}>
                   {busyId === p.id ? '…' : 'Switch to'}
@@ -280,7 +280,7 @@ export default function HouseholdPage() {
           Invite someone who already has a Lean Ledger account. Their existing data stays on their account and profile.
         </p>
         <form onSubmit={handleLookupExistingAccount} style={{ display: 'grid', gap: '12px' }}>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <div className="cluster-actions">
             <label style={{ flex: 2, minWidth: '220px' }}>
               Email
               <input
@@ -323,7 +323,7 @@ export default function HouseholdPage() {
                     This account is already part of your household.
                   </p>
                 ) : linkLookup.pendingInvite ? (
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div className="cluster-actions">
                     <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
                       Invitation pending.
                     </p>
@@ -352,7 +352,7 @@ export default function HouseholdPage() {
           <div style={{ display: 'grid', gap: '12px' }}>
             {sentInvitations.map((invitation) => (
               <div key={invitation.id} style={{ padding: '12px 0', borderBottom: '1px solid var(--border-color)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div className="page-header">
                   <div>
                     <p style={{ margin: '0 0 4px', fontWeight: 600 }}>{invitation.invitedEmail}</p>
                     <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
@@ -390,7 +390,7 @@ export default function HouseholdPage() {
           <label>Date of birth
             <input type="date" value={form.dateOfBirth} onChange={setField('dateOfBirth')} required />
           </label>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <div className="cluster-actions">
             <label style={{ flex: 1, minWidth: '120px' }}>{form.units === 'imperial' ? 'Height (in)' : 'Height (cm)'}
               <input type="number" step="any" value={form.height} onChange={setField('height')} required
                 placeholder={form.units === 'imperial' ? 'e.g. 64' : 'e.g. 163'} />
@@ -405,7 +405,7 @@ export default function HouseholdPage() {
               </select>
             </label>
           </div>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <div className="cluster-actions">
             <label style={{ flex: 1, minWidth: '120px' }}>Gender
               <select value={form.gender} onChange={setField('gender')}>
                 {GENDERS.map((g) => <option key={g} value={g}>{g}</option>)}
@@ -422,7 +422,7 @@ export default function HouseholdPage() {
               </select>
             </label>
           </div>
-          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+          <div className="cluster-actions" style={{ marginTop: '12px' }}>
             <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : (editingId ? 'Save changes' : 'Add profile')}</button>
             {editingId && <button type="button" className="btn btn-secondary" onClick={startAdd}>Cancel</button>}
           </div>

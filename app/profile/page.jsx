@@ -1158,7 +1158,7 @@ export default function Profile() {
           </p>
         </div>
       ) : null}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', gap: '12px', flexWrap: 'wrap' }}>
+      <div className="page-header" style={{ marginBottom: '32px', alignItems: 'center' }}>
         <h1 style={{ margin: 0 }}>Your Profile</h1>
         <button onClick={() => setEditing(true)} className="btn btn-primary">Edit Profile</button>
       </div>
@@ -1256,7 +1256,7 @@ export default function Profile() {
       </div>
 
       <div className="card" style={{ marginBottom: '32px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        <div className="page-header" style={{ alignItems: 'center' }}>
           <div>
             <h2 style={{ margin: 0 }}>Appearance</h2>
             <p style={{ color: 'var(--text-secondary)', margin: '4px 0 0', fontSize: '14px' }}>
@@ -1268,7 +1268,7 @@ export default function Profile() {
       </div>
 
       <div className="card" style={{ marginBottom: '32px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
+        <div className="page-header">
           <div>
             <h2 style={{ marginBottom: '12px' }}>Account & Access</h2>
             <p style={{ color: 'var(--text-secondary)', margin: '0 0 8px' }}>
@@ -1285,7 +1285,7 @@ export default function Profile() {
       </div>
 
       <div className="card" style={{ marginBottom: '32px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
+        <div className="page-header" style={{ marginBottom: '20px' }}>
           <div>
             <h2 style={{ marginBottom: '10px' }}>Body Composition Goal</h2>
             <p style={{ color: 'var(--text-secondary)', margin: '0 0 8px' }}>
@@ -1313,7 +1313,7 @@ export default function Profile() {
               </span>
             ) : null}
           </div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div className="cluster-actions">
             {activeGoal && !goalEditing ? (
               <button type="button" onClick={() => {
                 setGoalForm(getBodyCompositionGoalForm(activeGoal, profile.units));

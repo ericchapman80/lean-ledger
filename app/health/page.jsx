@@ -132,7 +132,7 @@ export default function HealthPage() {
 
   return (
     <div className="container" style={{ paddingTop: '24px', paddingBottom: '40px' }}>
-      <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+      <div className="page-header" style={{ marginBottom: '24px' }}>
         <div>
           <h1 style={{ marginBottom: '8px' }}>Advanced Health Metrics</h1>
           <p style={{ color: 'var(--text-secondary)', margin: 0, maxWidth: '760px' }}>
