@@ -26,10 +26,11 @@ import { buildTrendAnalytics } from '@/lib/trendAnalytics';
 import { getDateDaysBefore, getTodayDate } from '@/lib/utils/dateUtils';
 import { buildAdvancedMetricGroups, buildTrendChartData } from '@/lib/trendDisplay';
 import { formatDisplayWeightValue, formatWeight, formatWeightChange, getWeightUnit } from '@/lib/utils/unitUtils';
-import { formatBodyFatTarget, formatGoalDate, formatGoalMass, formatGoalPercent, getBodyCompositionStatusMeta, getGoalOutcomeLabel } from '@/lib/bodyCompositionGoalDisplay';
+import { formatBodyFatTarget, formatGoalDate, formatGoalMass, formatGoalPercent, getBodyCompositionStatusMeta, getGoalOutcomeLabel, getGoalProgressBarMeta } from '@/lib/bodyCompositionGoalDisplay';
 import { formatWaterFromFlOz, getPreferredWaterUnit } from '@/lib/water';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
+import GoalProgressBar from '@/components/GoalProgressBar';
 
 function EmptyTrendCard({ title, body }) {
   return (
@@ -147,6 +148,10 @@ export default function Trends() {
   const advancedMetricGroups = buildAdvancedMetricGroups(chartData);
   const activeBodyGoal = bodyCompositionGoals.activeGoal;
   const bodyGoalStatus = getBodyCompositionStatusMeta(activeBodyGoal?.status?.overall);
+  const trendWeightMeta = getGoalProgressBarMeta(activeBodyGoal?.progress?.weightProgressPercent, activeBodyGoal?.status?.overall);
+  const trendFatMeta = getGoalProgressBarMeta(activeBodyGoal?.progress?.bodyFatProgressPercent, activeBodyGoal?.status?.overall);
+  const trendLeanMeta = getGoalProgressBarMeta(activeBodyGoal?.progress?.leanMassRetentionScore, activeBodyGoal?.status?.overall);
+  const trendMuscleMeta = getGoalProgressBarMeta(activeBodyGoal?.progress?.musclePreservationScore, activeBodyGoal?.status?.overall);
   const preferredWaterUnit = getPreferredWaterUnit(profile.units);
   const weightUnit = getWeightUnit(profile.units);
   const carbLabel = analytics.summary.carbLabel || 'Carbs';
@@ -406,16 +411,51 @@ export default function Trends() {
 
           <div style={{ display: 'grid', gap: '8px', marginBottom: bodyCompositionGoals.history.length > 0 ? '20px' : 0 }}>
             <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+              {activeBodyGoal.status?.summary}
+            </p>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
               Baseline: {formatGoalMass(activeBodyGoal.baseline?.weight, profile.units)} on {formatGoalDate(activeBodyGoal.baseline?.recordedAt?.slice(0, 10))}.
               {activeBodyGoal.estimatedCompletionDate
                 ? ` Estimated based on recent trend: ${formatGoalDate(activeBodyGoal.estimatedCompletionDate)}.`
                 : ' Estimated completion appears after at least 3 entries across 14 days.'}
             </p>
+            {profile.ageGroup === 'teen' ? (
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
+                Teen profiles should treat this as a conservative body-composition guide, not an aggressive cut plan.
+              </p>
+            ) : null}
             {activeBodyGoal.status?.warnings?.length > 0 ? activeBodyGoal.status.warnings.map((warning) => (
               <p key={warning} style={{ margin: 0, color: 'var(--warning-color)', fontSize: '13px' }}>
                 {warning}
               </p>
             )) : null}
+          </div>
+
+          <div className="grid grid-2" style={{ marginBottom: bodyCompositionGoals.history.length > 0 ? '20px' : 0 }}>
+            <GoalProgressBar
+              label="Weight progress"
+              percent={trendWeightMeta.percent}
+              color={trendWeightMeta.color}
+              helper="Baseline to target weight progress"
+            />
+            <GoalProgressBar
+              label="Body fat progress"
+              percent={trendFatMeta.percent}
+              color={trendFatMeta.color}
+              helper="Baseline to body-fat target progress"
+            />
+            <GoalProgressBar
+              label="Lean mass retention"
+              percent={trendLeanMeta.percent}
+              color={trendLeanMeta.color}
+              helper="Retention vs. phase start"
+            />
+            <GoalProgressBar
+              label="Muscle preservation"
+              percent={trendMuscleMeta.percent}
+              color={trendMuscleMeta.color}
+              helper="Muscle mass held vs. phase start"
+            />
           </div>
 
           {bodyCompositionGoals.history.length > 0 ? (

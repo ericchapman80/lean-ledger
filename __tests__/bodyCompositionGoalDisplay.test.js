@@ -6,6 +6,7 @@ import {
   formatGoalPercent,
   getBodyCompositionGoalForm,
   getGoalOutcomeLabel,
+  getGoalProgressBarMeta,
   getBodyCompositionStatusMeta,
 } from '@/lib/bodyCompositionGoalDisplay.js';
 
@@ -78,7 +79,13 @@ describe('bodyCompositionGoalDisplay', () => {
 
   it('returns clear outcome labels for completed or archived phases', () => {
     expect(getGoalOutcomeLabel({ completedAt: '2026-08-01', isIdealSuccess: true })).toBe('Ideal Outcome');
+    expect(getGoalOutcomeLabel({ completedAt: '2026-08-01', isIdealSuccess: false, completedWithWarnings: true })).toBe('Completed with warnings');
     expect(getGoalOutcomeLabel({ completedAt: '2026-08-01', isIdealSuccess: false })).toBe('Completed');
     expect(getGoalOutcomeLabel({ archivedAt: '2026-08-01' })).toBe('Archived');
+  });
+
+  it('builds progress bar metadata safely', () => {
+    expect(getGoalProgressBarMeta(64.4, 'yellow')).toMatchObject({ percent: 64.4, label: '64%' });
+    expect(getGoalProgressBarMeta(null, 'green').label).toBe('No trend yet');
   });
 });

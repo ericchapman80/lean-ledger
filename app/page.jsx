@@ -9,7 +9,7 @@ import { getTodayDate, formatDisplayDate } from '@/lib/utils/dateUtils';
 import { getProgressSemantics, getWaterProgressSemantics } from '@/lib/dashboardProgress';
 import { getGoalDescription } from '@/lib/utils/macroUtils';
 import { formatWeight } from '@/lib/utils/unitUtils';
-import { formatBodyFatTarget, formatGoalDate, formatGoalMass, formatGoalPercent, getBodyCompositionStatusMeta, getGoalOutcomeLabel } from '@/lib/bodyCompositionGoalDisplay';
+import { formatBodyFatTarget, formatGoalDate, formatGoalMass, formatGoalPercent, getBodyCompositionStatusMeta, getGoalOutcomeLabel, getGoalProgressBarMeta } from '@/lib/bodyCompositionGoalDisplay';
 import { getDailyWinsSummary, getDailyWinsValues, mergeDailyWinDefinitions } from '@/lib/dailyWins';
 import {
   formatBeverageFromFlOz,
@@ -25,6 +25,7 @@ import ErrorMessage from '@/components/ErrorMessage';
 import HydrationFeedback from '@/components/HydrationFeedback';
 import ProgressBar from '@/components/ProgressBar';
 import MacroCard from '@/components/MacroCard';
+import GoalProgressBar from '@/components/GoalProgressBar';
 
 function getEmptyCheckIn(date, metric = null, units = 'metric') {
   return {
@@ -190,6 +191,10 @@ export default function Dashboard() {
     dailyWinsSummary,
   });
   const bodyGoalStatus = getBodyCompositionStatusMeta(bodyCompositionGoal?.status?.overall);
+  const bodyGoalWeightMeta = getGoalProgressBarMeta(bodyCompositionGoal?.progress?.weightProgressPercent, bodyCompositionGoal?.status?.overall);
+  const bodyGoalFatMeta = getGoalProgressBarMeta(bodyCompositionGoal?.progress?.bodyFatProgressPercent, bodyCompositionGoal?.status?.overall);
+  const bodyGoalLeanMeta = getGoalProgressBarMeta(bodyCompositionGoal?.progress?.leanMassRetentionScore, bodyCompositionGoal?.status?.overall);
+  const bodyGoalMuscleMeta = getGoalProgressBarMeta(bodyCompositionGoal?.progress?.musclePreservationScore, bodyCompositionGoal?.status?.overall);
   return (
     <div className="container" style={{ padding: '20px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
@@ -303,8 +308,38 @@ export default function Dashboard() {
             </div>
           </div>
 
+          <div className="grid grid-2" style={{ marginBottom: '16px' }}>
+            <GoalProgressBar
+              label="Weight progress"
+              percent={bodyGoalWeightMeta.percent}
+              color={bodyGoalWeightMeta.color}
+              helper="Baseline to target weight progress"
+            />
+            <GoalProgressBar
+              label="Body fat progress"
+              percent={bodyGoalFatMeta.percent}
+              color={bodyGoalFatMeta.color}
+              helper="Baseline to target body-fat progress"
+            />
+            <GoalProgressBar
+              label="Lean mass retention"
+              percent={bodyGoalLeanMeta.percent}
+              color={bodyGoalLeanMeta.color}
+              helper="Retention versus phase start"
+            />
+            <GoalProgressBar
+              label="Muscle preservation"
+              percent={bodyGoalMuscleMeta.percent}
+              color={bodyGoalMuscleMeta.color}
+              helper="Muscle mass held versus phase start"
+            />
+          </div>
+
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
             <div>
+              <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '14px' }}>
+                {bodyCompositionGoal.status?.summary}
+              </p>
               <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '14px' }}>
                 Estimated completion: {bodyCompositionGoal.estimatedCompletionDate
                   ? `${formatGoalDate(bodyCompositionGoal.estimatedCompletionDate)} (${bodyCompositionGoal.estimatedCompletionLabel})`
@@ -321,6 +356,11 @@ export default function Dashboard() {
                   Goal evaluation prioritizes lean mass and muscle preservation over scale weight alone.
                 </p>
               )}
+              {profile.ageGroup === 'teen' ? (
+                <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  Teen goals should stay conservative. Prioritize strength, recovery, consistency, and staying above lean-mass floors.
+                </p>
+              ) : null}
               {getGoalOutcomeLabel(bodyCompositionGoal) ? (
                 <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
                   Outcome: {getGoalOutcomeLabel(bodyCompositionGoal)}
