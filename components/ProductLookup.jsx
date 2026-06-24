@@ -43,7 +43,13 @@ function getQuickOptions(product, selectedUnit) {
   return ['50', '100', '150'];
 }
 
-export default function ProductLookup({ product, onAddToMeal, onBack }) {
+export default function ProductLookup({
+  product,
+  onAddToMeal,
+  onBack,
+  continuousMode = false,
+  onAddAndClose,
+}) {
   const profile = useMemo(() => inferFoodPortionProfile(product), [product]);
   const [portionUnit, setPortionUnit] = useState(getInitialUnit(product));
   const [portionInput, setPortionInput] = useState(() => getInitialAmount(product, getInitialUnit(product)));
@@ -70,22 +76,36 @@ export default function ProductLookup({ product, onAddToMeal, onBack }) {
     return buildPortionSummary(parsedAmount, portionUnit, macros.portionGrams);
   }, [macros.portionGrams, parsedAmount, portionUnit]);
 
+  const buildMealPayload = () => ({
+    mealName: product.brands ? `${product.brands} ${product.name}` : product.name,
+    portionAmount: Number.isFinite(parsedAmount) ? Number(formatPortionAmount(parsedAmount)) : null,
+    portionUnit,
+    portionGrams: macros.portionGrams,
+    protein: macros.protein,
+    carbs: macros.carbs,
+    fiber: macros.fiber,
+    sugarAlcohols: macros.sugarAlcohols,
+    fat: macros.fat,
+    calories: macros.calories,
+    externalFoodId: product.externalFoodId ?? null,
+    externalFoodSource: product.externalFoodSource ?? null,
+  });
+
   const handleAddMeal = () => {
-    onAddToMeal({
-      mealName: product.brands ? `${product.brands} ${product.name}` : product.name,
-      portionAmount: Number.isFinite(parsedAmount) ? Number(formatPortionAmount(parsedAmount)) : null,
-      portionUnit,
-      portionGrams: macros.portionGrams,
-      protein: macros.protein,
-      carbs: macros.carbs,
-      fiber: macros.fiber,
-      sugarAlcohols: macros.sugarAlcohols,
-      fat: macros.fat,
-      calories: macros.calories,
-      externalFoodId: product.externalFoodId ?? null,
-      externalFoodSource: product.externalFoodSource ?? null,
-    });
+    onAddToMeal(buildMealPayload());
   };
+
+  const handleAddAndClose = () => {
+    onAddAndClose?.(buildMealPayload());
+  };
+
+  const addButtonLabel = continuousMode ? 'Add and Scan Next' : "✓ Add to Today's Meals";
+
+  const canSubmit = Number.isFinite(parsedAmount) && parsedAmount > 0;
+
+  const addHelperText = continuousMode
+    ? 'This scanner session stays open so you can keep adding foods quickly.'
+    : null;
 
   const handleUnitChange = (newUnit) => {
     setPortionUnit(newUnit);
@@ -276,14 +296,32 @@ export default function ProductLookup({ product, onAddToMeal, onBack }) {
         </div>
       </div>
 
-      <button
-        onClick={handleAddMeal}
-        className="btn btn-primary"
-        style={{ width: '100%' }}
-        disabled={!Number.isFinite(parsedAmount) || parsedAmount <= 0}
-      >
-        ✓ Add to Today's Meals
-      </button>
+      {addHelperText ? (
+        <p style={{ margin: '0 0 12px', color: 'var(--text-secondary)', fontSize: '13px' }}>
+          {addHelperText}
+        </p>
+      ) : null}
+
+      <div style={{ display: 'grid', gap: '12px' }}>
+        <button
+          onClick={handleAddMeal}
+          className="btn btn-primary"
+          style={{ width: '100%' }}
+          disabled={!canSubmit}
+        >
+          {addButtonLabel}
+        </button>
+        {continuousMode && onAddAndClose ? (
+          <button
+            type="button"
+            onClick={handleAddAndClose}
+            className="btn btn-outline"
+            disabled={!canSubmit}
+          >
+            Add and Finish
+          </button>
+        ) : null}
+      </div>
 
       {product.ingredients && (
         <div style={{ marginTop: '20px', fontSize: '14px' }}>

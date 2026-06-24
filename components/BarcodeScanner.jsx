@@ -11,7 +11,13 @@ import {
 
 const NATIVE_SCAN_INTERVAL_MS = 500;
 
-export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, onAddManual }) {
+export default function BarcodeScanner({
+  onScanSuccess,
+  onClose,
+  onSearchFood,
+  onAddManual,
+  autoStart = false,
+}) {
   const [scanning, setScanning] = useState(false);
   const [starting, setStarting] = useState(false);
   const [ready, setReady] = useState(false);
@@ -27,6 +33,7 @@ export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, o
   const zxingControlsRef = useRef(null);
   const zxingReaderRef = useRef(null);
   const closingRef = useRef(false);
+  const autoStartedRef = useRef(false);
   const insecureContext = typeof window !== 'undefined' ? !window.isSecureContext : false;
 
   const clearNativeLoop = () => {
@@ -68,6 +75,7 @@ export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, o
 
   useEffect(() => {
     closingRef.current = false;
+    autoStartedRef.current = false;
     const handlePageHide = () => stopCamera();
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -84,6 +92,12 @@ export default function BarcodeScanner({ onScanSuccess, onClose, onSearchFood, o
       stopCamera();
     };
   }, []);
+
+  useEffect(() => {
+    if (!autoStart || autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    startCamera();
+  }, [autoStart]);
 
   useEffect(() => {
     const attachStream = async () => {
