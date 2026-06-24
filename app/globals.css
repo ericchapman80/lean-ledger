@@ -234,6 +234,46 @@ code {
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.page-header-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.cluster-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.stack-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chart-card {
+  overflow: hidden;
+}
+
 /* Header */
 header {
   background: var(--card-background);
@@ -412,6 +452,28 @@ header nav h2 {
     gap: 16px;
   }
 
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .page-header-actions,
+  .cluster-actions {
+    width: 100%;
+  }
+
+  .page-header-actions > *,
+  .cluster-actions > * {
+    flex: 1 1 140px;
+  }
+
+  .summary-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
   .modal {
     width: 100%;
     max-width: 100%;
@@ -490,6 +552,14 @@ header nav h2 {
   .inline-actions {
     flex-wrap: wrap;
     gap: 4px;
+  }
+
+  .stack-layout {
+    gap: 12px;
+  }
+
+  .chart-card {
+    padding-bottom: 12px;
   }
 }
 

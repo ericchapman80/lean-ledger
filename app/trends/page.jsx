@@ -197,14 +197,14 @@ export default function Trends() {
 
   return (
     <div className="container" style={{ paddingTop: '24px', paddingBottom: '40px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', gap: '16px', flexWrap: 'wrap' }}>
+      <div className="page-header" style={{ marginBottom: '32px' }}>
         <div>
           <h1 style={{ margin: 0, marginBottom: '6px' }}>Lean Recomp Trends</h1>
           <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
             Prioritize weekly signals over noisy day-to-day swings.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+        <div className="page-header-actions">
           {[7, 14, 30].map((days) => (
             <button
               key={days}
@@ -249,7 +249,7 @@ export default function Trends() {
       </div>
 
       {chartData.some((entry) => entry.weight != null || entry.sevenDayAverageWeight != null) ? (
-        <div className="card" style={{ marginBottom: '32px' }}>
+        <div className="card chart-card" style={{ marginBottom: '32px' }}>
           <h2 style={{ marginBottom: '8px' }}>7-Day Average Weight Trend</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
             Scale Weight is shown lightly. Use the 7-Day Average as the main signal.
@@ -276,7 +276,7 @@ export default function Trends() {
       )}
 
       <div className="grid grid-2" style={{ marginBottom: '32px' }}>
-        <div className="card">
+        <div className="card chart-card">
           <h2 style={{ marginBottom: '8px' }}>Weekly Calorie Budget</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
             Flexible weekends still need to fit the weekly calorie budget.
@@ -293,11 +293,11 @@ export default function Trends() {
             </BarChart>
           </ResponsiveContainer>
           <div style={{ display: 'grid', gap: '10px', marginTop: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+            <div className="summary-row">
               <span style={{ minWidth: 0 }}>Weekly Calorie Target</span>
               <strong style={{ flexShrink: 0 }}>{analytics.summary.weeklyCalorieTarget} kcal</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+            <div className="summary-row">
               <span style={{ minWidth: 0 }}>Daily Average Needed to Stay on Target</span>
               <strong style={{ flexShrink: 0 }}>{analytics.summary.dailyAverageNeeded} kcal</strong>
             </div>
@@ -310,36 +310,36 @@ export default function Trends() {
             Track weight trend, protein consistency, calorie alignment, and the core recomposition signals you actually use.
           </p>
           <div style={{ display: 'grid', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+            <div className="summary-row">
               <span style={{ minWidth: 0 }}>Current Weight</span>
               <strong>{analytics.summary.currentWeight != null ? formatWeight(analytics.summary.currentWeight, profile.units) : 'Add weight logs'}</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+            <div className="summary-row">
               <span>7-Day Average Weight</span>
               <strong>{analytics.summary.sevenDayAverageWeight != null ? formatWeight(analytics.summary.sevenDayAverageWeight, profile.units) : 'Not enough data'}</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+            <div className="summary-row">
               <span>Protein Adherence</span>
               <strong>{analytics.summary.proteinAdherencePercentage}%</strong>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+            <div className="summary-row">
               <span>Weekly Calorie Adherence</span>
               <strong>{analytics.summary.weeklyCalorieAdherencePercentage}%</strong>
             </div>
             {analytics.summary.waistChange != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+              <div className="summary-row">
                 <span>Waist Change</span>
                 <strong>{analytics.summary.waistChange > 0 ? '+' : ''}{analytics.summary.waistChange} in</strong>
               </div>
             )}
             {analytics.summary.workoutCompletionPercentage != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+              <div className="summary-row">
                 <span>Workout Completion</span>
                 <strong>{analytics.summary.workoutCompletionPercentage}%</strong>
               </div>
             )}
             {analytics.summary.hydrationAdherencePercentage != null && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+              <div className="summary-row">
                 <span>Hydration Adherence</span>
                 <strong>{analytics.summary.hydrationAdherencePercentage}%</strong>
               </div>

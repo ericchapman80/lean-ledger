@@ -991,7 +991,7 @@ export default function Meals() {
 
   return (
     <div className="container" style={{ padding: '20px' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+      <div className="stack-layout" style={{ marginBottom: '24px' }}>
         <div>
           <h1 style={{ margin: 0, marginBottom: '8px', fontSize: 'clamp(1.5rem, 5vw, 2rem)' }}>Intake</h1>
           <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
@@ -1003,7 +1003,7 @@ export default function Meals() {
             </p>
           ) : null}
         </div>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+        <div className="page-header-actions">
           <input
             type="date"
             value={selectedDate}
@@ -1038,7 +1038,7 @@ export default function Meals() {
             </button>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <div className="cluster-actions">
           <button onClick={() => openFoodSearch(selectedMealType)} className="btn btn-secondary" style={{ flex: '1 1 160px' }}>
             Search Food
           </button>
@@ -1059,7 +1059,7 @@ export default function Meals() {
 
       <div className="card" style={{ marginBottom: '24px' }}>
         {activeDailyWins.length === 0 ? (
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="page-header">
             <div>
               <h2 style={{ margin: '0 0 6px' }}>Today&apos;s Wins</h2>
               <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
@@ -1099,9 +1099,9 @@ export default function Meals() {
                   </p>
                 ) : null}
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
-                  {dailyWinsSummary.completed} / {dailyWinsSummary.total}
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: 'var(--primary-color)' }}>
+                {dailyWinsSummary.completed} / {dailyWinsSummary.total}
                 </p>
                 <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
                   {dailyWinsSummary.percentage}% complete
@@ -1174,7 +1174,7 @@ export default function Meals() {
       </div>
 
       <div id="beverages" className="card" style={{ marginBottom: '24px', marginTop: '32px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: '12px' }}>
+        <div className="page-header" style={{ marginBottom: '12px' }}>
           <div>
             <h2 style={{ margin: '0 0 6px' }}>Hydration &amp; Beverages</h2>
             <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
