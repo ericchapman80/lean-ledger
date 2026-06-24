@@ -77,6 +77,7 @@ export default function Trends() {
   const [customHabits, setCustomHabits] = useState([]);
   const [weeklyStats, setWeeklyStats] = useState(null);
   const [bodyCompositionGoals, setBodyCompositionGoals] = useState({ activeGoal: null, history: [] });
+  const [isMobile, setIsMobile] = useState(false);
 
   const fetchTrends = async () => {
     try {
@@ -126,6 +127,14 @@ export default function Trends() {
   };
 
   useEffect(() => { fetchTrends(); }, [period]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const media = window.matchMedia('(max-width: 640px)');
+    const update = () => setIsMobile(media.matches);
+    update();
+    media.addEventListener?.('change', update);
+    return () => media.removeEventListener?.('change', update);
+  }, []);
 
   if (loading) return <Loading />;
   if (error) return <ErrorMessage error={error} onRetry={fetchTrends} />;
@@ -194,6 +203,16 @@ export default function Trends() {
   const formatAdvancedMetricTooltip = (value, _name, item) => (
     formatHealthMetricDisplayUnitValue(item?.dataKey, value, profile.units)
   );
+  const legendProps = {
+    iconSize: isMobile ? 10 : 14,
+    wrapperStyle: {
+      fontSize: isMobile ? '12px' : '14px',
+      lineHeight: isMobile ? '1.35' : '1.5',
+      paddingTop: '8px',
+    },
+  };
+  const weightChartHeight = isMobile ? 232 : 280;
+  const calorieChartHeight = isMobile ? 220 : 250;
 
   return (
     <div className="container" style={{ paddingTop: '24px', paddingBottom: '40px' }}>
@@ -254,7 +273,7 @@ export default function Trends() {
           <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
             Scale Weight is shown lightly. Use the 7-Day Average as the main signal.
           </p>
-          <ResponsiveContainer width="100%" height={280}>
+          <ResponsiveContainer width="100%" height={weightChartHeight}>
             <ComposedChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="displayDate" minTickGap={24} />
@@ -263,7 +282,7 @@ export default function Trends() {
                 label={{ value: weightUnit, angle: -90, position: 'insideLeft' }}
               />
               <Tooltip formatter={(value) => formatDisplayWeightValue(value, profile.units)} />
-              <Legend />
+              <Legend {...legendProps} />
               <Bar dataKey="weight" fill="rgba(33, 150, 243, 0.25)" name="Scale Weight" radius={[4, 4, 0, 0]} />
               <Line type="monotone" dataKey="sevenDayAverageWeight" stroke="#1f6feb" strokeWidth={3} dot={false} name="7-Day Average" />
             </ComposedChart>
@@ -281,13 +300,13 @@ export default function Trends() {
           <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
             Flexible weekends still need to fit the weekly calorie budget.
           </p>
-          <ResponsiveContainer width="100%" height={250}>
+          <ResponsiveContainer width="100%" height={calorieChartHeight}>
             <BarChart data={calorieBudgetChart}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="label" />
               <YAxis />
               <Tooltip />
-              <Legend />
+              <Legend {...legendProps} />
               <Bar dataKey="consumed" stackId="budget" fill="var(--primary-color)" name="Calories Consumed So Far" radius={[4, 4, 0, 0]} />
               <Bar dataKey="remaining" stackId="budget" fill="rgba(76, 175, 80, 0.2)" name="Calories Remaining" radius={[4, 4, 0, 0]} />
             </BarChart>

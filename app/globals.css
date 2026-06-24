@@ -274,6 +274,50 @@ code {
   overflow: hidden;
 }
 
+.mobile-action-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.mobile-form-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mobile-form-row > * {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 16px;
+}
+
+.scanner-frame {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: #000;
+  margin-bottom: 12px;
+}
+
+.scanner-video {
+  width: 100%;
+  max-height: 320px;
+  min-height: 240px;
+  display: block;
+  object-fit: cover;
+}
+
+.compact-card-list {
+  display: grid;
+  gap: 12px;
+}
+
 /* Header */
 header {
   background: var(--card-background);
@@ -561,6 +605,30 @@ header nav h2 {
   .chart-card {
     padding-bottom: 12px;
   }
+
+  .mobile-action-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .mobile-form-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .scanner-video {
+    min-height: 220px;
+    max-height: min(52vh, 300px);
+  }
+
+  .compact-card-list {
+    gap: 10px;
+  }
 }
 
 /* Extra small devices (phones in portrait) */
@@ -617,6 +685,15 @@ header nav h2 {
   .modal {
     max-height: 96vh;
     padding: 16px 12px;
+  }
+
+  .metric-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .scanner-video {
+    min-height: 200px;
+    max-height: min(48vh, 260px);
   }
 }
 

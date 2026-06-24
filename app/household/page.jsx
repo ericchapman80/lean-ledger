@@ -299,7 +299,7 @@ export default function HouseholdPage() {
               </select>
             </label>
           </div>
-          <div>
+          <div className="cluster-actions">
             <button type="submit" className="btn btn-secondary" disabled={linkLookupLoading}>
               {linkLookupLoading ? 'Looking up…' : 'Look up existing account'}
             </button>
@@ -349,7 +349,7 @@ export default function HouseholdPage() {
         {sentInvitations.length === 0 ? (
           <p style={{ margin: 0, color: 'var(--text-secondary)' }}>No household account invitations yet.</p>
         ) : (
-          <div style={{ display: 'grid', gap: '12px' }}>
+          <div className="compact-card-list">
             {sentInvitations.map((invitation) => (
               <div key={invitation.id} style={{ padding: '12px 0', borderBottom: '1px solid var(--border-color)' }}>
                 <div className="page-header">

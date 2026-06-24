@@ -344,7 +344,7 @@ export default function BarcodeScanner({
               </p>
             ) : null}
           </div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
+          <div className="cluster-actions" style={{ marginTop: '12px' }}>
             {cameraHelp.canRetry ? (
               <button onClick={startCamera} className="btn btn-primary" type="button" disabled={starting}>
                 {starting ? 'Retrying...' : 'Retry Camera'}
@@ -369,7 +369,7 @@ export default function BarcodeScanner({
           >
             {starting ? 'Starting Camera...' : 'Start Scanner'}
           </button>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+          <div className="mobile-action-grid" style={{ marginBottom: '16px' }}>
             {onSearchFood ? (
               <button type="button" onClick={handleSearchFood} className="btn btn-outline" style={{ flex: '1 1 160px' }}>
                 Search Food
@@ -384,25 +384,13 @@ export default function BarcodeScanner({
         </div>
       ) : (
         <div style={{ marginBottom: '16px' }}>
-          <div
-            style={{
-              position: 'relative',
-              borderRadius: '12px',
-              overflow: 'hidden',
-              backgroundColor: '#000',
-              marginBottom: '12px',
-            }}
-          >
+          <div className="scanner-frame">
             <video
               ref={videoRef}
               autoPlay
               playsInline
               onLoadedMetadata={() => setReady(true)}
-              style={{
-                width: '100%',
-                maxHeight: '320px',
-                display: 'block',
-              }}
+              className="scanner-video"
             />
             <div
               style={{
@@ -435,7 +423,7 @@ export default function BarcodeScanner({
               {scannerStatus.message}
             </p>
           ) : null}
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <div className="mobile-action-grid">
             <button onClick={stopCamera} className="btn btn-outline" type="button" style={{ flex: '1 1 150px' }}>
               Stop Scanner
             </button>
@@ -465,7 +453,7 @@ export default function BarcodeScanner({
           Enter Barcode Manually
         </p>
         <form onSubmit={handleManualSubmit}>
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div className="mobile-form-row">
             <input
               type="text"
               value={manualEntry}
