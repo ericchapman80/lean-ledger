@@ -260,6 +260,8 @@ export default function Meals() {
   const [favoriteBeverageDraft, setFavoriteBeverageDraft] = useState(null);
   const [scannedProduct, setScannedProduct] = useState(null);
   const [lookupLoading, setLookupLoading] = useState(false);
+  const [scannerRestartKey, setScannerRestartKey] = useState(0);
+  const [scannerAddedCount, setScannerAddedCount] = useState(0);
   const [editingMeal, setEditingMeal] = useState(null);
   const [formData, setFormData] = useState(getEmptyFormData());
   const [mealMacroSnapshot, setMealMacroSnapshot] = useState(null);
@@ -603,6 +605,9 @@ export default function Meals() {
   const openBarcodeScanner = (mealType = selectedMealType) => {
     setSelectedMealType(mealType);
     setScannedProduct(null);
+    setLookupLoading(false);
+    setScannerAddedCount(0);
+    setScannerRestartKey((current) => current + 1);
     setIsScannerOpen(true);
   };
 
@@ -622,7 +627,6 @@ export default function Meals() {
     try {
       const product = await lookupByBarcode(barcode);
       setScannedProduct(product);
-      setIsScannerOpen(false);
     } catch (err) {
       toast.error(err.message || 'Failed to lookup product. Please try again or enter manually.');
     } finally {
@@ -630,7 +634,20 @@ export default function Meals() {
     }
   };
 
-  const handleAddScannedMeal = async (mealData) => {
+  const resumeScannerSession = () => {
+    setScannedProduct(null);
+    setLookupLoading(false);
+    setScannerRestartKey((current) => current + 1);
+  };
+
+  const closeScannerSession = () => {
+    setIsScannerOpen(false);
+    setScannedProduct(null);
+    setLookupLoading(false);
+    setScannerAddedCount(0);
+  };
+
+  const handleAddScannedMeal = async (mealData, { keepScanning = true } = {}) => {
     try {
       const result = await mealsApi.createMeal({
         date: selectedDate,
@@ -648,7 +665,10 @@ export default function Meals() {
         externalFoodId: mealData.externalFoodId ?? null,
         externalFoodSource: mealData.externalFoodSource ?? null,
       });
-      setScannedProduct(null);
+      setActionMessage(`Added ${mealData.mealName}`);
+      setScannerAddedCount((current) => current + 1);
+      if (keepScanning) resumeScannerSession();
+      else closeScannerSession();
       fetchMeals();
       if (result?.suggestFavorite) {
         toast(`You've used ${mealData.mealName} twice — save as a favorite?`, {
@@ -1738,19 +1758,35 @@ export default function Meals() {
         </form>
       </Modal>
 
-      <Modal isOpen={isScannerOpen} onClose={() => setIsScannerOpen(false)} title={`Scan for ${getMealTypeLabel(selectedMealType)}`}>
+      <Modal
+        isOpen={isScannerOpen}
+        onClose={closeScannerSession}
+        title={scannedProduct
+          ? `Add Scanned Food to ${getMealTypeLabel(selectedMealType)}`
+          : `Scan for ${getMealTypeLabel(selectedMealType)}${scannerAddedCount > 0 ? ` · ${scannerAddedCount} added` : ''}`}
+      >
         {lookupLoading ? (
           <Loading message="Looking up product..." />
+        ) : scannedProduct ? (
+          <ProductLookup
+            product={scannedProduct}
+            onAddToMeal={(mealData) => handleAddScannedMeal(mealData, { keepScanning: true })}
+            onAddAndClose={(mealData) => handleAddScannedMeal(mealData, { keepScanning: false })}
+            onBack={resumeScannerSession}
+            continuousMode
+          />
         ) : (
           <BarcodeScanner
+            key={scannerRestartKey}
+            autoStart
             onScanSuccess={handleBarcodeScanned}
-            onClose={() => setIsScannerOpen(false)}
+            onClose={closeScannerSession}
             onSearchFood={() => {
-              setIsScannerOpen(false);
+              closeScannerSession();
               openFoodSearch(selectedMealType);
             }}
             onAddManual={() => {
-              setIsScannerOpen(false);
+              closeScannerSession();
               openAddModal(selectedMealType);
             }}
           />
@@ -1761,15 +1797,14 @@ export default function Meals() {
         <FoodSearch onSelectFood={handleFoodSelected} onClose={() => setIsSearchOpen(false)} />
       </Modal>
 
-      <Modal isOpen={!!scannedProduct} onClose={() => setScannedProduct(null)} title={`Add Food to ${getMealTypeLabel(selectedMealType)}`}>
+      <Modal isOpen={!!scannedProduct && !isScannerOpen} onClose={() => setScannedProduct(null)} title={`Add Food to ${getMealTypeLabel(selectedMealType)}`}>
         {scannedProduct && (
           <ProductLookup
             product={scannedProduct}
-            onAddToMeal={handleAddScannedMeal}
+            onAddToMeal={(mealData) => handleAddScannedMeal(mealData, { keepScanning: false })}
             onBack={() => {
               setScannedProduct(null);
-              if (isSearchOpen) setIsSearchOpen(true);
-              else setIsScannerOpen(true);
+              setIsSearchOpen(true);
             }}
           />
         )}
