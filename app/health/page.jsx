@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { healthMetricsApi, profileApi } from '@/lib/api';
+import { healthMetricsApi, performanceMetricsApi, profileApi } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import {
   CSV_IMPORT_FIELDS,
@@ -14,6 +14,12 @@ import {
   mapCsvRows,
   parseCsvText,
 } from '@/lib/healthMetrics';
+import {
+  formatPerformanceMetricValue,
+  getPerformanceMetricInputProps,
+  getPerformanceMetricMeta,
+  getPerformanceMetricOptions,
+} from '@/lib/performanceMetrics';
 import { formatDisplayDate, getTodayDate } from '@/lib/utils/dateUtils';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
@@ -43,13 +49,26 @@ function getEmptyFormData(date = getTodayDate()) {
   };
 }
 
+function getEmptyPerformanceForm(date = getTodayDate(), metricKey = 'bench_press') {
+  return {
+    recordedAt: date ? `${date}T07:00` : '',
+    metricKey,
+    value: '',
+    reps: '',
+    note: '',
+  };
+}
+
 export default function HealthPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [profile, setProfile] = useState(null);
   const [metrics, setMetrics] = useState([]);
+  const [performanceMetrics, setPerformanceMetrics] = useState([]);
   const [formData, setFormData] = useState(() => getEmptyFormData(typeof window === 'undefined' ? '' : getTodayDate()));
+  const [performanceForm, setPerformanceForm] = useState(() => getEmptyPerformanceForm(typeof window === 'undefined' ? '' : getTodayDate()));
   const [submitting, setSubmitting] = useState(false);
+  const [performanceSubmitting, setPerformanceSubmitting] = useState(false);
   const [csvData, setCsvData] = useState({ headers: [], rows: [] });
   const [mapping, setMapping] = useState({});
   const [importing, setImporting] = useState(false);
@@ -59,12 +78,14 @@ export default function HealthPage() {
     try {
       setLoading(true);
       setError(null);
-      const [profileData, metricData] = await Promise.all([
+      const [profileData, metricData, performanceData] = await Promise.all([
         profileApi.getProfile(),
         healthMetricsApi.getHealthMetrics({ limit: 25 }),
+        performanceMetricsApi.getPerformanceMetrics({ limit: 25 }),
       ]);
       setProfile(profileData);
       setMetrics(metricData);
+      setPerformanceMetrics(performanceData);
     } catch (err) {
       setError(err.message || 'Failed to load health metrics');
     } finally {
@@ -129,6 +150,34 @@ export default function HealthPage() {
   const displayUnits = profile?.units || 'metric';
   const weightMeta = getHealthMetricFieldMeta('weight', displayUnits);
   const muscleMassMeta = getHealthMetricFieldMeta('muscleMass', displayUnits);
+  const performanceMetricOptions = getPerformanceMetricOptions();
+  const selectedPerformanceMetricMeta = getPerformanceMetricMeta(performanceForm.metricKey, displayUnits);
+  const performanceInputProps = getPerformanceMetricInputProps(performanceForm.metricKey);
+
+  const handlePerformanceSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setPerformanceSubmitting(true);
+      await performanceMetricsApi.createPerformanceMetric(performanceForm);
+      setPerformanceForm(getEmptyPerformanceForm(getTodayDate(), performanceForm.metricKey));
+      await fetchData();
+      toast.success('Performance metric saved.');
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setPerformanceSubmitting(false);
+    }
+  };
+
+  const handleDeletePerformanceMetric = async (id) => {
+    try {
+      await performanceMetricsApi.deletePerformanceMetric(id);
+      setPerformanceMetrics((current) => current.filter((entry) => entry.id !== id));
+      toast.success('Performance metric removed.');
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
 
   return (
     <div className="container" style={{ paddingTop: '24px', paddingBottom: '40px' }}>
@@ -158,14 +207,14 @@ export default function HealthPage() {
           <p style={{ fontSize: '28px', fontWeight: 'bold', margin: 0 }}>{metrics.length}</p>
         </div>
         <div className="card">
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>Performance Logs</p>
+          <p style={{ fontSize: '28px', fontWeight: 'bold', margin: 0 }}>{performanceMetrics.length}</p>
+        </div>
+        <div className="card">
           <p style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>Import Mode</p>
           <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>
             {csvData.headers.length > 0 ? 'CSV Preview Ready' : 'Manual or CSV'}
           </p>
-        </div>
-        <div className="card">
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '4px' }}>Recommended Use</p>
-          <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>Trends, not pressure</p>
         </div>
       </div>
 
@@ -384,6 +433,158 @@ export default function HealthPage() {
           )}
         </div>
       </details>
+
+      <div style={{ marginTop: '32px', marginBottom: '32px' }}>
+        <h2 style={{ marginBottom: '8px' }}>Performance Metrics</h2>
+        <p style={{ color: 'var(--text-secondary)', margin: 0, maxWidth: '760px' }}>
+          Log lifting, sprint, jump, and sport-performance markers here. Lean Ledger keeps these profile-scoped so household athletes can trend their own strength, speed, and power separately.
+        </p>
+      </div>
+
+      <div className="grid grid-2">
+        <details className="card" open>
+          <summary style={{ cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1rem' }}>Log Performance Metric</summary>
+          <p style={{ color: 'var(--text-secondary)', margin: '16px 0 24px' }}>
+            Use this for performance checkpoints like squat, bench, deadlift, jumps, sprints, and throwing marks.
+          </p>
+          <form onSubmit={handlePerformanceSubmit}>
+            <div className="grid grid-2">
+              <div className="form-group">
+                <label className="form-label">Recorded At</label>
+                <input
+                  type="datetime-local"
+                  value={performanceForm.recordedAt}
+                  onChange={(e) => setPerformanceForm((current) => ({ ...current, recordedAt: e.target.value }))}
+                  className="form-input"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Metric</label>
+                <select
+                  value={performanceForm.metricKey}
+                  onChange={(e) => setPerformanceForm((current) => ({ ...current, metricKey: e.target.value, reps: '' }))}
+                  className="form-select"
+                >
+                  {performanceMetricOptions.map((option) => (
+                    <option key={option.key} value={option.key}>
+                      {option.label} • {option.categoryLabel}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-2">
+              <div className="form-group">
+                <label className="form-label">
+                  Value{selectedPerformanceMetricMeta?.displayUnit ? ` (${selectedPerformanceMetricMeta.displayUnit})` : ''}
+                </label>
+                <input
+                  type="number"
+                  value={performanceForm.value}
+                  onChange={(e) => setPerformanceForm((current) => ({ ...current, value: e.target.value }))}
+                  className="form-input"
+                  step={performanceInputProps.step}
+                  min={performanceInputProps.min}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Reps</label>
+                <input
+                  type="number"
+                  value={performanceForm.reps}
+                  onChange={(e) => setPerformanceForm((current) => ({ ...current, reps: e.target.value }))}
+                  className="form-input"
+                  min="1"
+                  step="1"
+                  disabled={!selectedPerformanceMetricMeta?.supportsReps}
+                  placeholder={selectedPerformanceMetricMeta?.supportsReps ? 'Optional' : 'Not used for this metric'}
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Note</label>
+              <textarea
+                value={performanceForm.note}
+                onChange={(e) => setPerformanceForm((current) => ({ ...current, note: e.target.value }))}
+                className="form-input"
+                rows={3}
+                placeholder="Optional context like trap bar, meet day, hand-timed, PR, or field conditions."
+              />
+            </div>
+
+            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: '0 0 20px' }}>
+              {selectedPerformanceMetricMeta
+                ? `${selectedPerformanceMetricMeta.label} counts as a ${selectedPerformanceMetricMeta.categoryLabel.toLowerCase()} metric and trends on the active profile only.`
+                : 'Select a metric to begin.'}
+            </p>
+
+            <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={performanceSubmitting}>
+              {performanceSubmitting ? 'Saving...' : 'Save Performance Metric'}
+            </button>
+          </form>
+        </details>
+
+        <details className="card" open>
+          <summary style={{ cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1rem' }}>Recent Performance Entries</summary>
+          <div style={{ marginTop: '16px' }}>
+            {performanceMetrics.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+                No performance metrics yet. Add a lift, sprint, jump, or throw to start trending progress.
+              </p>
+            ) : (
+              <div className="table-scroll">
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--border-color)' }}>
+                      <th style={{ padding: '12px', textAlign: 'left' }}>Recorded At</th>
+                      <th style={{ padding: '12px', textAlign: 'left' }}>Metric</th>
+                      <th style={{ padding: '12px', textAlign: 'right' }}>Value</th>
+                      <th style={{ padding: '12px', textAlign: 'right' }}>Reps</th>
+                      <th style={{ padding: '12px', textAlign: 'left' }}>Note</th>
+                      <th style={{ padding: '12px', textAlign: 'right' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {performanceMetrics.slice(0, 12).map((entry) => {
+                      const meta = getPerformanceMetricMeta(entry.metricKey, displayUnits);
+                      return (
+                        <tr key={entry.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                          <td style={{ padding: '12px' }}>{formatDisplayDate(entry.date)}</td>
+                          <td style={{ padding: '12px' }}>
+                            <div style={{ display: 'grid', gap: '4px' }}>
+                              <strong>{meta?.label || entry.metricKey}</strong>
+                              <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{meta?.categoryLabel || entry.category}</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'right' }}>
+                            {formatPerformanceMetricValue(entry.metricKey, entry.value, displayUnits)}
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'right' }}>{entry.reps ?? '—'}</td>
+                          <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: '14px' }}>{entry.note || '—'}</td>
+                          <td style={{ padding: '12px', textAlign: 'right' }}>
+                            <button
+                              type="button"
+                              className="btn btn-outline"
+                              style={{ padding: '6px 10px', fontSize: '13px' }}
+                              onClick={() => handleDeletePerformanceMetric(entry.id)}
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </details>
+      </div>
     </div>
   );
 }
