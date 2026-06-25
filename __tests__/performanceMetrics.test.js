@@ -3,7 +3,10 @@ import {
   buildPerformanceTrendGroups,
   convertPerformanceMetricValueFromCanonical,
   formatPerformanceMetricValue,
+  formatPerformanceMetricRow,
   getPerformanceMetricDisplayUnit,
+  getPerformanceMetricInputProps,
+  getPerformanceMetricMeta,
   normalizePerformanceMetricInput,
   validatePerformanceMetricEntry,
 } from '@/lib/performanceMetrics.js';
@@ -33,6 +36,18 @@ describe('performance metric unit helpers', () => {
     expect(convertPerformanceMetricValueFromCanonical('vertical_jump', 76.2, 'imperial')).toBeCloseTo(30, 1);
     expect(formatPerformanceMetricValue('throwing_distance', 36.58, 'imperial')).toBe('40 yd');
   });
+
+  it('handles unsupported metric lookups defensively', () => {
+    expect(getPerformanceMetricDisplayUnit('unknown_metric', 'imperial')).toBe('');
+    expect(getPerformanceMetricMeta('unknown_metric', 'metric')).toBeNull();
+    expect(convertPerformanceMetricValueFromCanonical('unknown_metric', 10, 'metric')).toBeNull();
+  });
+
+  it('returns input metadata for time, distance, and unknown metrics', () => {
+    expect(getPerformanceMetricInputProps('sprint_40_yard')).toMatchObject({ step: '0.01', min: '0' });
+    expect(getPerformanceMetricInputProps('throwing_distance')).toMatchObject({ step: '0.1', min: '0' });
+    expect(getPerformanceMetricInputProps('unknown_metric')).toMatchObject({ step: '0.1', min: '0' });
+  });
 });
 
 describe('validatePerformanceMetricEntry', () => {
@@ -57,6 +72,18 @@ describe('validatePerformanceMetricEntry', () => {
     }, 'imperial');
 
     expect(result.errors).toContain('Reps are not supported for this performance metric.');
+  });
+
+  it('validates missing value and non-integer reps for supported lift metrics', () => {
+    const result = validatePerformanceMetricEntry({
+      metricKey: 'squat',
+      recordedAt: '2026-06-24T07:00',
+      value: '',
+      reps: '2.5',
+    }, 'metric');
+
+    expect(result.errors).toContain('Value is required.');
+    expect(result.errors).toContain('Reps must be a positive whole number.');
   });
 });
 
@@ -123,5 +150,28 @@ describe('buildPerformanceTrendGroups', () => {
       'Mon, Jun 15, 2026',
       'Mon, Jun 22, 2026',
     ]);
+  });
+
+  it('ignores invalid entries and preserves fallback row labels when metric metadata is missing', () => {
+    const groups = buildPerformanceTrendGroups([
+      { id: 1, metricKey: null, value: 100, recordedAt: '2026-06-01T07:00', date: '2026-06-01' },
+      { id: 2, metricKey: 'unknown_metric', value: 100, recordedAt: '2026-06-01T07:00', date: '2026-06-01' },
+      { id: 3, metricKey: 'vertical_jump', value: Number.NaN, recordedAt: '2026-06-02T07:00', date: '2026-06-02' },
+    ], 'metric');
+
+    expect(groups).toEqual([]);
+
+    const fallback = formatPerformanceMetricRow({
+      id: 9,
+      metricKey: 'unknown_metric',
+      category: 'custom',
+      value: 12,
+      note: null,
+    }, 'metric');
+
+    expect(fallback.label).toBe('unknown_metric');
+    expect(fallback.categoryLabel).toBe('custom');
+    expect(fallback.displayUnit).toBe('');
+    expect(fallback.displayValueLabel).toBe('—');
   });
 });
