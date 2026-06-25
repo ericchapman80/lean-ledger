@@ -15,12 +15,13 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { beverageApi, bodyCompositionGoalsApi, dailyHabitsApi, habitDefinitionsApi, healthMetricsApi, profileApi, statsApi, weightApi } from '@/lib/api';
+import { beverageApi, bodyCompositionGoalsApi, dailyHabitsApi, habitDefinitionsApi, healthMetricsApi, performanceMetricsApi, profileApi, statsApi, weightApi } from '@/lib/api';
 import {
   formatHealthMetricDisplayUnitValue,
   getHealthMetricFieldMeta,
   HEALTH_METRIC_FIELDS,
 } from '@/lib/healthMetrics';
+import { buildPerformanceTrendGroups } from '@/lib/performanceMetrics';
 import { mergeDailyWinDefinitions } from '@/lib/dailyWins';
 import { buildTrendAnalytics } from '@/lib/trendAnalytics';
 import { getDateDaysBefore, getTodayDate } from '@/lib/utils/dateUtils';
@@ -77,6 +78,7 @@ export default function Trends() {
   const [customHabits, setCustomHabits] = useState([]);
   const [weeklyStats, setWeeklyStats] = useState(null);
   const [bodyCompositionGoals, setBodyCompositionGoals] = useState({ activeGoal: null, history: [] });
+  const [performanceMetrics, setPerformanceMetrics] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
 
   const fetchTrends = async () => {
@@ -88,7 +90,7 @@ export default function Trends() {
       const startDate = getDateDaysBefore(endDate, period - 1);
       const weightStartDate = getDateDaysBefore(startDate, 6);
 
-      const [profileData, weeklyStatsData, mealTrendData, weightData, healthMetricData, beverageData, customHabitData, dailyHabitLogData, goalData] = await Promise.all([
+      const [profileData, weeklyStatsData, mealTrendData, weightData, healthMetricData, beverageData, customHabitData, dailyHabitLogData, goalData, performanceData] = await Promise.all([
         profileApi.getProfile(),
         statsApi.getWeeklyStats(endDate),
         statsApi.getTrends(startDate, endDate),
@@ -98,6 +100,7 @@ export default function Trends() {
         habitDefinitionsApi.getHabitDefinitions(),
         dailyHabitsApi.getDailyHabitLogs({ startDate, endDate }),
         bodyCompositionGoalsApi.getGoals(),
+        performanceMetricsApi.getPerformanceMetrics({ startDate, endDate, limit: 120 }),
       ]);
 
       setProfile(profileData);
@@ -107,6 +110,7 @@ export default function Trends() {
         activeGoal: goalData?.activeGoal || null,
         history: goalData?.history || [],
       });
+      setPerformanceMetrics(performanceData || []);
       setAnalytics(buildTrendAnalytics({
         startDate,
         endDate,
@@ -156,6 +160,7 @@ export default function Trends() {
   }));
   const advancedMetricGroups = buildAdvancedMetricGroups(chartData);
   const activeBodyGoal = bodyCompositionGoals.activeGoal;
+  const performanceTrendGroups = buildPerformanceTrendGroups(performanceMetrics, profile.units);
   const bodyGoalStatus = getBodyCompositionStatusMeta(activeBodyGoal?.status?.overall);
   const trendWeightMeta = getGoalProgressBarMeta(activeBodyGoal?.progress?.weightProgressPercent, activeBodyGoal?.status?.overall);
   const trendFatMeta = getGoalProgressBarMeta(activeBodyGoal?.progress?.bodyFatProgressPercent, activeBodyGoal?.status?.overall);
@@ -213,6 +218,7 @@ export default function Trends() {
   };
   const weightChartHeight = isMobile ? 232 : 280;
   const calorieChartHeight = isMobile ? 220 : 250;
+  const performanceChartHeight = isMobile ? 208 : 240;
 
   return (
     <div className="container" style={{ paddingTop: '24px', paddingBottom: '40px' }}>
@@ -510,6 +516,83 @@ export default function Trends() {
             </div>
           ) : null}
         </div>
+      ) : null}
+
+      {performanceTrendGroups.length > 0 ? (
+        <>
+          <div className="card" style={{ marginBottom: '24px' }}>
+            <h2 style={{ marginBottom: '8px' }}>Performance Trends</h2>
+            <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+              Track strength, speed, power, and sport-specific markers separately from body composition so each profile can see whether training outcomes are actually moving.
+            </p>
+          </div>
+
+          <div className="grid grid-2" style={{ marginBottom: '32px' }}>
+            {performanceTrendGroups.map((group) => (
+              <div key={group.key} className="card chart-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', alignItems: 'flex-start', marginBottom: '16px' }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 6px' }}>{group.label}</h3>
+                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                      {group.categoryLabel} • {group.totalEntries} {group.totalEntries === 1 ? 'entry' : 'entries'}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{ margin: '0 0 4px', color: 'var(--text-secondary)', fontSize: '13px' }}>Latest</p>
+                    <strong>{group.latest?.displayValueLabel || '—'}</strong>
+                  </div>
+                </div>
+
+                <div className="grid grid-3" style={{ marginBottom: '16px' }}>
+                  <div style={{ padding: '12px', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+                    <p style={{ margin: '0 0 4px', color: 'var(--text-secondary)', fontSize: '13px' }}>Best</p>
+                    <strong>{group.best?.displayValueLabel || '—'}</strong>
+                  </div>
+                  <div style={{ padding: '12px', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+                    <p style={{ margin: '0 0 4px', color: 'var(--text-secondary)', fontSize: '13px' }}>Change vs previous</p>
+                    <strong>
+                      {group.deltaSincePrevious == null
+                        ? '—'
+                        : `${group.deltaSincePrevious > 0 ? '+' : ''}${group.deltaSincePrevious} ${group.displayUnit}`.trim()}
+                    </strong>
+                  </div>
+                  <div style={{ padding: '12px', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
+                    <p style={{ margin: '0 0 4px', color: 'var(--text-secondary)', fontSize: '13px' }}>Better direction</p>
+                    <strong>{group.betterDirection === 'down' ? 'Lower' : 'Higher'}</strong>
+                  </div>
+                </div>
+
+                <ResponsiveContainer width="100%" height={performanceChartHeight}>
+                  <LineChart data={group.chartRows}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="displayDate" minTickGap={24} />
+                    <YAxis />
+                    <Tooltip formatter={(value) => `${value} ${group.displayUnit}`.trim()} />
+                    <Legend {...legendProps} />
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke={group.color}
+                      strokeWidth={3}
+                      dot={{ r: 3 }}
+                      activeDot={{ r: 5 }}
+                      name={`${group.label} (${group.displayUnit})`}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+                {group.latest?.reps ? (
+                  <p style={{ margin: '12px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                    Latest rep scheme: {group.latest.reps} reps{group.latest.note ? ` • ${group.latest.note}` : ''}
+                  </p>
+                ) : group.latest?.note ? (
+                  <p style={{ margin: '12px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                    Latest note: {group.latest.note}
+                  </p>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </>
       ) : null}
 
       {hasMealBehaviorData && (
