@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { beverageApi, bodyCompositionGoalsApi, dailyHabitsApi, habitDefinitionsApi, healthMetricsApi, performanceMetricsApi, statsApi, profileApi } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { getHealthMetricDisplayValue } from '@/lib/healthMetrics';
-import { getTodayDate, formatDisplayDate } from '@/lib/utils/dateUtils';
+import { getDateDaysBefore, getTodayDate, formatDisplayDate } from '@/lib/utils/dateUtils';
 import { getProgressSemantics, getWaterProgressSemantics } from '@/lib/dashboardProgress';
 import { getGoalDescription } from '@/lib/utils/macroUtils';
 import { formatWeight } from '@/lib/utils/unitUtils';
