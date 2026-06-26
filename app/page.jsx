@@ -79,7 +79,7 @@ export default function Dashboard() {
       setLoading(true);
       setError(null);
       const performanceStartDate = getDateDaysBefore(selectedDate, 59);
-      const [statsData, profileData, weeklyStatsData, healthMetricData, beverageData, customHabitData, dailyHabitLogData, goalData, performanceData] = await Promise.all([
+      const [statsData, profileData, weeklyStatsData, healthMetricData, beverageData, customHabitData, dailyHabitLogData, goalData] = await Promise.all([
         statsApi.getDailyStats(selectedDate),
         profileApi.getProfile(),
         statsApi.getWeeklyStats(selectedDate),
@@ -88,8 +88,12 @@ export default function Dashboard() {
         habitDefinitionsApi.getHabitDefinitions(),
         dailyHabitsApi.getDailyHabitLogs({ startDate: selectedDate, endDate: selectedDate }),
         bodyCompositionGoalsApi.getGoals(),
-        performanceMetricsApi.getPerformanceMetrics({ startDate: performanceStartDate, endDate: selectedDate, limit: 120 }),
       ]);
+      const performanceData = await performanceMetricsApi.getPerformanceMetrics({
+        startDate: performanceStartDate,
+        endDate: selectedDate,
+        limit: 120,
+      }).catch(() => []);
       setStats(statsData);
       setProfile(profileData);
       setWeeklyStats(weeklyStatsData);
@@ -102,7 +106,7 @@ export default function Dashboard() {
       });
       setBeverageEntries(beverageData);
       setBodyCompositionGoal(goalData?.activeGoal || null);
-      setPerformanceMetrics(performanceData || []);
+      setPerformanceMetrics(Array.isArray(performanceData) ? performanceData : []);
     } catch (err) {
       setError(err.message || 'Failed to load data');
     } finally {

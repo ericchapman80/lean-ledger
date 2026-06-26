@@ -9,6 +9,9 @@ import { validatePerformanceMetricEntry } from '@/lib/performanceMetrics';
 export async function GET(request) {
   try {
     const profileId = await getActiveProfileId(request);
+    if (!profileId) {
+      return NextResponse.json([]);
+    }
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');

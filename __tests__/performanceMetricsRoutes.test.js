@@ -49,6 +49,20 @@ describe('GET /api/performance-metrics', () => {
       limit: 25,
     });
   });
+
+  it('returns an empty list when no active profile is available yet', async () => {
+    getActiveProfileId.mockResolvedValue(null);
+    const { GET } = await import('@/app/api/performance-metrics/route.js');
+
+    const res = await GET({
+      url: 'http://localhost/api/performance-metrics?startDate=2026-06-01&endDate=2026-06-24&limit=25',
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toEqual([]);
+    expect(PerformanceMetric.findByProfile).not.toHaveBeenCalled();
+  });
 });
 
 describe('POST /api/performance-metrics', () => {

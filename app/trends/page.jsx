@@ -92,7 +92,7 @@ export default function Trends() {
       const startDate = getDateDaysBefore(endDate, period - 1);
       const weightStartDate = getDateDaysBefore(startDate, 6);
 
-      const [profileData, weeklyStatsData, mealTrendData, weightData, healthMetricData, beverageData, customHabitData, dailyHabitLogData, goalData, performanceData] = await Promise.all([
+      const [profileData, weeklyStatsData, mealTrendData, weightData, healthMetricData, beverageData, customHabitData, dailyHabitLogData, goalData] = await Promise.all([
         profileApi.getProfile(),
         statsApi.getWeeklyStats(endDate),
         statsApi.getTrends(startDate, endDate),
@@ -102,8 +102,12 @@ export default function Trends() {
         habitDefinitionsApi.getHabitDefinitions(),
         dailyHabitsApi.getDailyHabitLogs({ startDate, endDate }),
         bodyCompositionGoalsApi.getGoals(),
-        performanceMetricsApi.getPerformanceMetrics({ startDate, endDate, limit: 120 }),
       ]);
+      const performanceData = await performanceMetricsApi.getPerformanceMetrics({
+        startDate,
+        endDate,
+        limit: 120,
+      }).catch(() => []);
 
       setProfile(profileData);
       setCustomHabits(customHabitData);
@@ -112,7 +116,7 @@ export default function Trends() {
         activeGoal: goalData?.activeGoal || null,
         history: goalData?.history || [],
       });
-      setPerformanceMetrics(performanceData || []);
+      setPerformanceMetrics(Array.isArray(performanceData) ? performanceData : []);
       setLatestHealthMetric((healthMetricData || []).find((metric) => metric != null) || null);
       setAnalytics(buildTrendAnalytics({
         startDate,
