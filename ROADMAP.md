@@ -4,7 +4,7 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 
 ---
 
-## What's next (prioritized — updated 2026-06-21)
+## What's next (prioritized — updated 2026-06-25)
 
 1. ✅ **V2.2 Family Profiles — shipped end to end** (foundation + Phases 1–5, PRs #42, #48–#56). Households, dependent profiles, switching, per-profile data isolation, and youth-safe per-profile coaching are live. See [`docs/family-profiles.md`](docs/family-profiles.md).
 2. ✅ **Application UX / quality-of-life cleanup** — replaced all `alert()`/`confirm()` with toast + optimistic-undo, Modal focus-trap a11y, Dashboard check-in moved to Intake deep-link (PR #59).
@@ -12,12 +12,12 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 4. ✅ **Food database integration** — `GET /api/food-search` with merged OpenFoodFacts + USDA search, server-side only, `use_count` auto-favorite suggestion at count=2 (PR #64, follow-up search ranking patch on trunk).
 5. ✅ **CI/CD pipeline review** — docs path filter (PR #60), Next.js + Playwright caching, parallel `validate`/`local-functional`, `security-audit`, `workflow-lint` with actionlint, `quality-gate` join (PR #62), CodeQL SAST + branch protection (PR #63).
 6. ✅ **Google Auth** — multi-tenant auth, invite-only member access, and Google OAuth are live in production.
-7. **Mobile responsiveness pass** — PR #65 shipped: bottom-sheet modal, landscape revert to centered dialog, `.btn-group .btn` full-width scoping, `.table-scroll` / `.inline-actions` utilities, 48 px touch targets, meals action-row wrapping. A full per-page breakpoint audit is still needed before this can be marked complete.
+7. ✅ **Mobile responsiveness pass** — Phases 1–2 shipped (PRs #82–#83): `/meals`, `/profile`, `/trends`, `/household`, and `/health` received responsive layout, scanner/modal, chart, and form ergonomics updates across core phone flows.
 8. ✅ **Multi-user isolation E2E hardening** — profile/weight cross-profile corruption prevention and owner-profile isolation E2E shipped (PRs #69, #71). Closed production bug #70 (wrong DOB/height/weight/units showing for account owner).
-9. 🧭 **Body Composition Goals module** — add cut / lean recomp goal targets, progress cards, lean-mass guardrails, and estimated completion tracking on top of the existing advanced-metric system. See [`docs/body-composition-goals.md`](docs/body-composition-goals.md).
-10. **Continuous barcode scanning** — move `BarcodeScanner.jsx` from single-frame capture to a continuous scanner (ZXing or equivalent).
+9. ✅ **Body Composition Goals module** — Phase 1 shipped (PRs #77–#80): cut-phase goals, dashboard/trends progress, lean-mass guardrails, estimated completion, and polish pass are live. See [`docs/body-composition-goals.md`](docs/body-composition-goals.md).
+10. ✅ **Continuous barcode scanning** — shipped (PR #81): scan session stays open across multiple items with add-and-scan-next flow.
 11. **CI/CD Step 5 — sharding** — shard vitest/Playwright if pipeline wall-clock is still >10 min after warm-cache data is available.
-12. **V2.3 Performance Extensions** 🕒 — event/lift metrics and readiness interpretation; explicitly after the family-profile layer.
+12. **V2.3 Performance Extensions** 🚧 — event/lift metrics foundation and readiness / performance summaries are shipped; next is sport-specific presets, event summaries, and deeper readiness interpretation.
 
 ---
 
@@ -107,7 +107,7 @@ rather than focusing exclusively on scale-weight reduction.
 - 🧭 next up
 - 🕒 later / future iteration
 
-**Current status snapshot** (updated 2026-06-21)
+**Current status snapshot** (updated 2026-06-25)
 - ✅ Meal intelligence foundation is shipped on `main`
 - ✅ Hydration and beverage intelligence foundation is shipped on `main`
 - ✅ Daily Wins foundation, configurability, templates, and challenge progress are shipped on `main`
@@ -118,8 +118,10 @@ rather than focusing exclusively on scale-weight reduction.
 - ✅ UX/QoL Phase A+B: toast/undo, a11y modal, light/dark/system theming (PR #59)
 - ✅ Food database integration: merged OpenFoodFacts + USDA search, use_count auto-favorite (PR #64 + follow-up ranking patch)
 - ✅ CI/CD: docs path filter, caching, parallelism, security-audit, actionlint workflow validation, quality-gate, CodeQL SAST (PRs #60, #62, #63)
-- **Mobile responsiveness pass** — PR #65 shipped bottom-sheet modals, button/touch fixes, padding fixes; full per-page breakpoint audit still needed
-- 🧭 Body Composition Goals module is now a prioritized next slice for users cutting or recompositioning with weight + smart-scale body-composition data
+- ✅ Mobile responsiveness Phases 1–2 are shipped across meals/scanner, trends, profile, household, and health flows (PRs #82–#83)
+- ✅ Body Composition Goals Phase 1 is shipped with dashboard/trends UI, lean-mass guardrails, and completion/polish logic (PRs #77–#80)
+- ✅ Continuous barcode scanning is shipped with add-and-scan-next workflow (PR #81)
+- 🚧 V2.3 performance metrics foundation + readiness/performance summaries are shipped; deeper athlete presets and event summaries remain next
 
 ## Meal Intelligence & Behavioral Insights
 
@@ -2094,11 +2096,21 @@ Goal: support multiple profiles per household, let a parent/admin create and man
 
 **Guardrails (carry over):** household membership must be intentional (not generic multi-tenancy); profile switching must be explicit and safe; keep `user_id` as the ownership/auth anchor and `profile_id` as the data-scope key; do not expose other households' data; preserve low-friction logging.
 
-#### V2.3 Performance Extensions 🕒
+#### V2.3 Performance Extensions 🚧
 
-- event/lift metrics
-- trend and readiness interpretation
-- athlete-performance summaries
+- ✅ event/lift metrics foundation is shipped on `main`
+  - profile-scoped `performance_metrics`
+  - health-page logging for lifts, jumps, sprints, and throws
+  - trends-page per-metric charts
+- ✅ readiness and performance summaries are shipped on `main`
+  - latest readiness score from sleep / energy / soreness / hydration
+  - recent PR count
+  - momentum / improving-vs-slipping interpretation
+  - dashboard + trends summaries
+- 🕒 later
+  - sport-specific presets and event summaries
+  - deeper readiness interpretation by day type and athlete profile
+  - readiness-informed coaching prompts
 
 ### Guardrails
 

@@ -410,7 +410,10 @@ Keep them separate. Preview should never point at the same database as productio
 
 ## What's next
 
-See [ROADMAP.md](./ROADMAP.md). Top priority: real multi-tenancy via Auth.js + Google. The schema and route handlers are already auth-ready — the work is wiring up the sign-in flow.
+See [ROADMAP.md](./ROADMAP.md). Current near-term priorities are:
+- CI/CD Step 5 sharding if pipeline wall-clock still needs work
+- V2.3 deeper athlete/performance summaries and sport-specific presets
+- continuing polish on responsive/mobile UX as needed
 
 ## License
 

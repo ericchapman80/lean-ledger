@@ -23,6 +23,7 @@ import {
 } from '@/lib/healthMetrics';
 import { buildPerformanceTrendGroups } from '@/lib/performanceMetrics';
 import { mergeDailyWinDefinitions } from '@/lib/dailyWins';
+import { buildPerformanceSummary } from '@/lib/performanceSummary';
 import { buildTrendAnalytics } from '@/lib/trendAnalytics';
 import { getDateDaysBefore, getTodayDate } from '@/lib/utils/dateUtils';
 import { buildAdvancedMetricGroups, buildTrendChartData } from '@/lib/trendDisplay';
@@ -79,6 +80,7 @@ export default function Trends() {
   const [weeklyStats, setWeeklyStats] = useState(null);
   const [bodyCompositionGoals, setBodyCompositionGoals] = useState({ activeGoal: null, history: [] });
   const [performanceMetrics, setPerformanceMetrics] = useState([]);
+  const [latestHealthMetric, setLatestHealthMetric] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
 
   const fetchTrends = async () => {
@@ -90,7 +92,7 @@ export default function Trends() {
       const startDate = getDateDaysBefore(endDate, period - 1);
       const weightStartDate = getDateDaysBefore(startDate, 6);
 
-      const [profileData, weeklyStatsData, mealTrendData, weightData, healthMetricData, beverageData, customHabitData, dailyHabitLogData, goalData, performanceData] = await Promise.all([
+      const [profileData, weeklyStatsData, mealTrendData, weightData, healthMetricData, beverageData, customHabitData, dailyHabitLogData, goalData] = await Promise.all([
         profileApi.getProfile(),
         statsApi.getWeeklyStats(endDate),
         statsApi.getTrends(startDate, endDate),
@@ -100,8 +102,12 @@ export default function Trends() {
         habitDefinitionsApi.getHabitDefinitions(),
         dailyHabitsApi.getDailyHabitLogs({ startDate, endDate }),
         bodyCompositionGoalsApi.getGoals(),
-        performanceMetricsApi.getPerformanceMetrics({ startDate, endDate, limit: 120 }),
       ]);
+      const performanceData = await performanceMetricsApi.getPerformanceMetrics({
+        startDate,
+        endDate,
+        limit: 120,
+      }).catch(() => []);
 
       setProfile(profileData);
       setCustomHabits(customHabitData);
@@ -110,7 +116,8 @@ export default function Trends() {
         activeGoal: goalData?.activeGoal || null,
         history: goalData?.history || [],
       });
-      setPerformanceMetrics(performanceData || []);
+      setPerformanceMetrics(Array.isArray(performanceData) ? performanceData : []);
+      setLatestHealthMetric((healthMetricData || []).find((metric) => metric != null) || null);
       setAnalytics(buildTrendAnalytics({
         startDate,
         endDate,
@@ -161,6 +168,14 @@ export default function Trends() {
   const advancedMetricGroups = buildAdvancedMetricGroups(chartData);
   const activeBodyGoal = bodyCompositionGoals.activeGoal;
   const performanceTrendGroups = buildPerformanceTrendGroups(performanceMetrics, profile.units);
+  const latestDailySeriesEntry = analytics.dailySeries?.length > 0
+    ? [...analytics.dailySeries].sort((a, b) => b.date.localeCompare(a.date))[0]
+    : null;
+  const performanceSummary = buildPerformanceSummary({
+    performanceMetrics,
+    latestMetric: latestHealthMetric,
+    hydrationTarget: latestDailySeriesEntry?.hydrationTarget ?? null,
+  });
   const bodyGoalStatus = getBodyCompositionStatusMeta(activeBodyGoal?.status?.overall);
   const trendWeightMeta = getGoalProgressBarMeta(activeBodyGoal?.progress?.weightProgressPercent, activeBodyGoal?.status?.overall);
   const trendFatMeta = getGoalProgressBarMeta(activeBodyGoal?.progress?.bodyFatProgressPercent, activeBodyGoal?.status?.overall);
@@ -525,6 +540,57 @@ export default function Trends() {
             <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
               Track strength, speed, power, and sport-specific markers separately from body composition so each profile can see whether training outcomes are actually moving.
             </p>
+          </div>
+
+          <div className="grid grid-4" style={{ marginBottom: '24px' }}>
+            <SummaryCard
+              label="Readiness"
+              value={performanceSummary.readiness.score != null ? `${performanceSummary.readiness.score}%` : 'Not enough data'}
+              helper={performanceSummary.readiness.status.label}
+              accent={performanceSummary.readiness.status.color}
+            />
+            <SummaryCard
+              label="Recent PRs"
+              value={`${performanceSummary.recentPersonalBests}`}
+              helper="Last 21 days"
+              accent="var(--primary-color)"
+            />
+            <SummaryCard
+              label="Momentum"
+              value={performanceSummary.momentum.label}
+              helper={`${performanceSummary.momentum.improvingCount} improving • ${performanceSummary.momentum.decliningCount} slipping`}
+              accent={performanceSummary.momentum.color}
+            />
+            <SummaryCard
+              label="Tracked Metrics"
+              value={`${performanceSummary.activeMetricsCount}`}
+              helper={performanceSummary.topMetricLabel || 'No repeat metric yet'}
+              accent="#8e44ad"
+            />
+          </div>
+
+          <div className="card" style={{ marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gap: '8px' }}>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                {performanceSummary.readiness.status.summary}
+              </p>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                {performanceSummary.momentum.summary}
+              </p>
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+                {performanceSummary.focusMessage}
+              </p>
+              {performanceSummary.latestSessionLabel ? (
+                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  Latest performance session: {performanceSummary.latestSessionLabel}
+                </p>
+              ) : null}
+              {performanceSummary.readiness.signals.length > 0 ? (
+                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
+                  Latest readiness signals: {performanceSummary.readiness.signals.map((signal) => `${signal.label}${signal.valueLabel ? ` ${signal.valueLabel}` : ''}`).join(' • ')}
+                </p>
+              ) : null}
+            </div>
           </div>
 
           <div className="grid grid-2" style={{ marginBottom: '32px' }}>

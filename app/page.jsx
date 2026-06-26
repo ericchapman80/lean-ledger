@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { beverageApi, bodyCompositionGoalsApi, dailyHabitsApi, habitDefinitionsApi, healthMetricsApi, statsApi, profileApi } from '@/lib/api';
+import { beverageApi, bodyCompositionGoalsApi, dailyHabitsApi, habitDefinitionsApi, healthMetricsApi, performanceMetricsApi, statsApi, profileApi } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { getHealthMetricDisplayValue } from '@/lib/healthMetrics';
-import { getTodayDate, formatDisplayDate } from '@/lib/utils/dateUtils';
+import { getDateDaysBefore, getTodayDate, formatDisplayDate } from '@/lib/utils/dateUtils';
 import { getProgressSemantics, getWaterProgressSemantics } from '@/lib/dashboardProgress';
 import { getGoalDescription } from '@/lib/utils/macroUtils';
 import { formatWeight } from '@/lib/utils/unitUtils';
 import { formatBodyFatTarget, formatGoalDate, formatGoalMass, formatGoalPercent, getBodyCompositionStatusMeta, getGoalOutcomeLabel, getGoalProgressBarMeta } from '@/lib/bodyCompositionGoalDisplay';
 import { getDailyWinsSummary, getDailyWinsValues, mergeDailyWinDefinitions } from '@/lib/dailyWins';
+import { buildPerformanceSummary } from '@/lib/performanceSummary';
 import {
   formatBeverageFromFlOz,
   getHydrationHelperCopy,
@@ -70,11 +71,14 @@ export default function Dashboard() {
   const [customHabits, setCustomHabits] = useState([]);
   const [beverageEntries, setBeverageEntries] = useState([]);
   const [bodyCompositionGoal, setBodyCompositionGoal] = useState(null);
+  const [performanceMetrics, setPerformanceMetrics] = useState([]);
+  const [latestHealthMetric, setLatestHealthMetric] = useState(null);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
+      const performanceStartDate = getDateDaysBefore(selectedDate, 59);
       const [statsData, profileData, weeklyStatsData, healthMetricData, beverageData, customHabitData, dailyHabitLogData, goalData] = await Promise.all([
         statsApi.getDailyStats(selectedDate),
         profileApi.getProfile(),
@@ -85,10 +89,16 @@ export default function Dashboard() {
         dailyHabitsApi.getDailyHabitLogs({ startDate: selectedDate, endDate: selectedDate }),
         bodyCompositionGoalsApi.getGoals(),
       ]);
+      const performanceData = await performanceMetricsApi.getPerformanceMetrics({
+        startDate: performanceStartDate,
+        endDate: selectedDate,
+        limit: 120,
+      }).catch(() => []);
       setStats(statsData);
       setProfile(profileData);
       setWeeklyStats(weeklyStatsData);
       const dailyCheckIn = healthMetricData.find(hasCoreCheckInData) || null;
+      setLatestHealthMetric(dailyCheckIn);
       setCustomHabits(customHabitData);
       setCheckIn({
         ...getEmptyCheckIn(selectedDate, dailyCheckIn, profileData.units || 'metric'),
@@ -96,6 +106,7 @@ export default function Dashboard() {
       });
       setBeverageEntries(beverageData);
       setBodyCompositionGoal(goalData?.activeGoal || null);
+      setPerformanceMetrics(Array.isArray(performanceData) ? performanceData : []);
     } catch (err) {
       setError(err.message || 'Failed to load data');
     } finally {
@@ -195,6 +206,11 @@ export default function Dashboard() {
   const bodyGoalFatMeta = getGoalProgressBarMeta(bodyCompositionGoal?.progress?.bodyFatProgressPercent, bodyCompositionGoal?.status?.overall);
   const bodyGoalLeanMeta = getGoalProgressBarMeta(bodyCompositionGoal?.progress?.leanMassRetentionScore, bodyCompositionGoal?.status?.overall);
   const bodyGoalMuscleMeta = getGoalProgressBarMeta(bodyCompositionGoal?.progress?.musclePreservationScore, bodyCompositionGoal?.status?.overall);
+  const performanceSummary = buildPerformanceSummary({
+    performanceMetrics,
+    latestMetric: latestHealthMetric,
+    hydrationTarget: beverageSummary.targetFlOz,
+  });
   return (
     <div className="container" style={{ padding: '20px' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
@@ -370,6 +386,77 @@ export default function Dashboard() {
             <Link href="/profile" className="btn btn-outline">
               Manage Goal
             </Link>
+          </div>
+        </div>
+      ) : null}
+
+      {performanceSummary.hasData ? (
+        <div className="card" style={{ marginBottom: '32px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap', marginBottom: '18px' }}>
+            <div>
+              <h2 style={{ margin: '0 0 8px' }}>Performance & Readiness</h2>
+              <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                Use readiness to decide how hard to press today, then use recent lifts, jumps, sprints, and throws to confirm whether training is actually moving.
+              </p>
+            </div>
+            <Link href="/health" className="btn btn-outline">
+              Log Performance
+            </Link>
+          </div>
+
+          <div className="grid grid-4" style={{ marginBottom: '16px' }}>
+            <div style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--surface-muted)' }}>
+              <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '13px' }}>Readiness</p>
+              <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: performanceSummary.readiness.status.color }}>
+                {performanceSummary.readiness.score != null ? `${performanceSummary.readiness.score}%` : performanceSummary.readiness.status.label}
+              </p>
+              <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                {performanceSummary.readiness.status.label}
+              </p>
+            </div>
+            <div style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--surface-muted)' }}>
+              <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '13px' }}>Recent PRs</p>
+              <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold' }}>{performanceSummary.recentPersonalBests}</p>
+              <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>Last 21 days</p>
+            </div>
+            <div style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--surface-muted)' }}>
+              <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '13px' }}>Momentum</p>
+              <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: performanceSummary.momentum.color }}>
+                {performanceSummary.momentum.label}
+              </p>
+              <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                {performanceSummary.momentum.improvingCount} improving • {performanceSummary.momentum.decliningCount} slipping
+              </p>
+            </div>
+            <div style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', background: 'var(--surface-muted)' }}>
+              <p style={{ margin: '0 0 6px', color: 'var(--text-secondary)', fontSize: '13px' }}>Tracked Metrics</p>
+              <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold' }}>{performanceSummary.activeMetricsCount}</p>
+              <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                {performanceSummary.topMetricLabel || 'No repeat metric yet'}
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gap: '8px' }}>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+              {performanceSummary.readiness.status.summary}
+            </p>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+              {performanceSummary.momentum.summary}
+            </p>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '14px' }}>
+              {performanceSummary.focusMessage}
+            </p>
+            {performanceSummary.latestSessionLabel ? (
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
+                Latest logged performance session: {performanceSummary.latestSessionLabel}
+              </p>
+            ) : null}
+            {performanceSummary.readiness.signals.length > 0 ? (
+              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>
+                Readiness signals: {performanceSummary.readiness.signals.map((signal) => `${signal.label}${signal.valueLabel ? ` ${signal.valueLabel}` : ''}`).join(' • ')}
+              </p>
+            ) : null}
           </div>
         </div>
       ) : null}
