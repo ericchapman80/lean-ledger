@@ -4,7 +4,7 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 
 ---
 
-## What's next (prioritized — updated 2026-06-25)
+## What's next (prioritized — updated 2026-06-26)
 
 1. ✅ **V2.2 Family Profiles — shipped end to end** (foundation + Phases 1–5, PRs #42, #48–#56). Households, dependent profiles, switching, per-profile data isolation, and youth-safe per-profile coaching are live. See [`docs/family-profiles.md`](docs/family-profiles.md).
 2. ✅ **Application UX / quality-of-life cleanup** — replaced all `alert()`/`confirm()` with toast + optimistic-undo, Modal focus-trap a11y, Dashboard check-in moved to Intake deep-link (PR #59).
@@ -18,6 +18,7 @@ Future work that isn't part of the initial Next.js + Neon port. Each item below 
 10. ✅ **Continuous barcode scanning** — shipped (PR #81): scan session stays open across multiple items with add-and-scan-next flow.
 11. **CI/CD Step 5 — sharding** — shard vitest/Playwright if pipeline wall-clock is still >10 min after warm-cache data is available.
 12. **V2.3 Performance Extensions** 🚧 — event/lift metrics foundation and readiness / performance summaries are shipped; next is sport-specific presets, event summaries, and deeper readiness interpretation.
+13. **Offline / PWA support** 🕒 — future consideration. No true offline mode exists today; later work could add a cached shell, local entry queue, and sync-on-reconnect flow for travel/no-service use cases.
 
 ---
 
@@ -107,7 +108,7 @@ rather than focusing exclusively on scale-weight reduction.
 - 🧭 next up
 - 🕒 later / future iteration
 
-**Current status snapshot** (updated 2026-06-25)
+**Current status snapshot** (updated 2026-06-26)
 - ✅ Meal intelligence foundation is shipped on `main`
 - ✅ Hydration and beverage intelligence foundation is shipped on `main`
 - ✅ Daily Wins foundation, configurability, templates, and challenge progress are shipped on `main`
@@ -121,7 +122,7 @@ rather than focusing exclusively on scale-weight reduction.
 - ✅ Mobile responsiveness Phases 1–2 are shipped across meals/scanner, trends, profile, household, and health flows (PRs #82–#83)
 - ✅ Body Composition Goals Phase 1 is shipped with dashboard/trends UI, lean-mass guardrails, and completion/polish logic (PRs #77–#80)
 - ✅ Continuous barcode scanning is shipped with add-and-scan-next workflow (PR #81)
-- 🚧 V2.3 performance metrics foundation + readiness/performance summaries are shipped; deeper athlete presets and event summaries remain next
+- 🚧 V2.3 performance metrics foundation + readiness/performance summaries are shipped on `main` (PRs #84–#85); deeper athlete presets and event summaries remain next
 
 ## Meal Intelligence & Behavioral Insights
 
@@ -2650,7 +2651,8 @@ The current merged search is a good baseline, but it is not yet a fully intent-a
 
 - **Food database integration** — ✅ shipped (PR #64 + follow-up ranking patch). `GET /api/food-search`, merged OpenFoodFacts + USDA ranking, `use_count` auto-favorite suggestion. See spec above and [`docs/FOOD_SEARCH.md`](docs/FOOD_SEARCH.md).
 - **Barcode scanning** — `BarcodeScanner.jsx` and `lib/barcodeScanner.js` exist with ZXing continuous stream fallback. Native `BarcodeDetector` path still uses polling. Next priority: unify on pure ZXing continuous path. See [`docs/BARCODE_SCANNING.md`](docs/BARCODE_SCANNING.md).
-- **Mobile responsiveness pass** — 🚧 in progress. PR #65 shipped bottom-sheet modals, touch targets, and action-row wrapping. Full per-page breakpoint audit is the remaining work.
+- **Mobile responsiveness pass** — ✅ Phases 1–2 shipped (PRs #82–#83) across meals/scanner, trends, profile, household, and health. Future work here is incremental polish, not a core unfinished phase.
+- **Offline / PWA mode** — roadmap placeholder. Future candidate for a cached app shell, local-first intake queue, and sync-on-reconnect behavior for travel / low-connectivity use.
 - **Recipe management** — log a saved recipe as one entry instead of re-entering ingredients.
 - **Meal planning** — forward-looking meal plan with target adherence.
 - **Micronutrient tracking** — fiber, sugar, sodium, vitamins/minerals.
